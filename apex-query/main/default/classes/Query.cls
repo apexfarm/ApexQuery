@@ -33,6 +33,11 @@ public with sharing abstract class Query implements Querable {
 
     // =============
     // #region Query
+    private interface FragmentBuilder {
+        void build(List<String> fragments, List<List<Object>> tmpVars);
+        // TODO: a builder interface;
+    }
+
     private class SoqlQuery extends Query {
         private SObjectType objectType { get; set; }
 
@@ -856,30 +861,24 @@ public with sharing abstract class Query implements Querable {
 
     // ==============
     // #region Filter
-    public interface Filterable {
-    }
-
-    public interface FilterableList extends Filterable {
-        FilterableList add(Filterable filter);
-    }
-
-    private interface InnerFilterable {
+    public interface FilterExpression {
         void build(List<String> fragments, List<List<Object>> tmpVars);
     }
 
-    private abstract class FilterManager implements InnerFilterable {
-        private InnerFilterable filter { get; set; }
+    public interface CompositeFilterExpression extends FilterExpression {
+        CompositeFilterExpression add(FilterExpression filter);
+    }
 
-        private void add(Filterable filter) {
-            this.filter = (InnerFilterable) filter;
-        }
+    private abstract class FilterManager implements FilterExpression {
+        private FilterExpression filter { get; set; }
 
-        public virtual void build(List<String> fragments, List<List<Object>> tmpVars) {
+        private void add(FilterExpression filter) {
+            this.filter = filter;
         }
     }
 
     private class SOQLQueryFilterManager extends FilterManager {
-        public override void build(List<String> fragments, List<List<Object>> tmpVars) {
+        public void build(List<String> fragments, List<List<Object>> tmpVars) {
             if (this.filter != null) {
                 fragments.add(' WHERE ');
                 filter.build(fragments, tmpVars);
@@ -887,17 +886,17 @@ public with sharing abstract class Query implements Querable {
         }
     }
 
-    private abstract class LogicalExpression implements FilterableList, InnerFilterable {
-        private List<InnerFilterable> filters { get; set; }
+    private abstract class LogicalExpression implements CompositeFilterExpression {
+        private List<FilterExpression> filters { get; set; }
         private String operator { get; set; }
 
         private LogicalExpression(String operator) {
-            this.filters = new List<InnerFilterable>();
+            this.filters = new List<FilterExpression>();
             this.operator = operator;
         }
 
-        public FilterableList add(Filterable filter) {
-            this.filters.add((InnerFilterable) filter);
+        public CompositeFilterExpression add(FilterExpression filter) {
+            this.filters.add((FilterExpression) filter);
             return this;
         }
 
@@ -908,7 +907,7 @@ public with sharing abstract class Query implements Querable {
 
             fragments.add('(');
             Integer index = 0;
-            for (InnerFilterable filter : this.filters) {
+            for (FilterExpression filter : this.filters) {
                 if (index > 0) {
                     fragments.add(this.operator);
                 }
@@ -931,7 +930,7 @@ public with sharing abstract class Query implements Querable {
         }
     }
 
-    private abstract class ComparisonExpression implements Filterable, InnerFilterable {
+    private abstract class ComparisonExpression implements FilterExpression {
         private String fieldName { get; set; }
         private List<String> pathNames { get; set; }
         private String operator { get; set; }
@@ -962,16 +961,16 @@ public with sharing abstract class Query implements Querable {
         }
     }
 
-    public Query filterBy(Filterable filter) {
+    public Query filterBy(FilterExpression filter) {
         this.getFilterManager().add(filter);
         return this;
     }
 
-    public static FilterableList orx() {
+    public static CompositeFilterExpression orx() {
         return new OrLogicalExpression();
     }
 
-    public static FilterableList andx() {
+    public static CompositeFilterExpression andx() {
         return new AndLogicalExpression();
     }
 
@@ -992,11 +991,11 @@ public with sharing abstract class Query implements Querable {
         }
     }
 
-    public static Filterable eq(String name, Object value) {
+    public static FilterExpression eq(String name, Object value) {
         return new EQ(name, value);
     }
 
-    public static Filterable ne(String name, Object value) {
+    public static FilterExpression ne(String name, Object value) {
         return new NE(name, value);
     }
     // #endregion
@@ -1011,80 +1010,62 @@ public with sharing abstract class Query implements Querable {
     }
 
     private class GT_Decimal extends GT {
-        private Decimal value { get; set; }
-
         private GT_Decimal(String fieldName, Decimal value) {
             super(fieldName, value);
-            this.value = value;
         }
     }
 
     private class GT_Date extends GT {
-        private Date value { get; set; }
-
         private GT_Date(String fieldName, Date value) {
             super(fieldName, value);
-            this.value = value;
         }
     }
 
     private class GT_Datetime extends GT {
-        private Datetime value { get; set; }
-
         private GT_Datetime(String fieldName, Datetime value) {
             super(fieldName, value);
-            this.value = value;
         }
     }
 
     private class GT_Time extends GT {
-        private Time value { get; set; }
-
         private GT_Time(String fieldName, Time value) {
             super(fieldName, value);
-            this.value = value;
         }
     }
 
     private class GT_Id extends GT {
-        private Id value { get; set; }
-
         private GT_Id(String fieldName, Id value) {
             super(fieldName, value);
-            this.value = value;
         }
     }
 
     private class GT_String extends GT {
-        private String value { get; set; }
-
         private GT_String(String fieldName, String value) {
             super(fieldName, value);
-            this.value = value;
         }
     }
 
-    public static Filterable gt(String name, Decimal value) {
+    public static FilterExpression gt(String name, Decimal value) {
         return new GT_Decimal(name, value);
     }
 
-    public static Filterable gt(String name, Date value) {
+    public static FilterExpression gt(String name, Date value) {
         return new GT_Date(name, value);
     }
 
-    public static Filterable gt(String name, Datetime value) {
+    public static FilterExpression gt(String name, Datetime value) {
         return new GT_Datetime(name, value);
     }
 
-    public static Filterable gt(String name, Time value) {
+    public static FilterExpression gt(String name, Time value) {
         return new GT_Time(name, value);
     }
 
-    public static Filterable gt(String name, Id value) {
+    public static FilterExpression gt(String name, Id value) {
         return new GT_Id(name, value);
     }
 
-    public static Filterable gt(String name, String value) {
+    public static FilterExpression gt(String name, String value) {
         return new GT_String(name, value);
     }
 
@@ -1100,80 +1081,62 @@ public with sharing abstract class Query implements Querable {
     }
 
     private class GTE_Decimal extends GTE {
-        private Decimal value { get; set; }
-
         private GTE_Decimal(String fieldName, Decimal value) {
             super(fieldName, value);
-            this.value = value;
         }
     }
 
     private class GTE_Date extends GTE {
-        private Date value { get; set; }
-
         private GTE_Date(String fieldName, Date value) {
             super(fieldName, value);
-            this.value = value;
         }
     }
 
     private class GTE_Datetime extends GTE {
-        private Datetime value { get; set; }
-
         private GTE_Datetime(String fieldName, Datetime value) {
             super(fieldName, value);
-            this.value = value;
         }
     }
 
     private class GTE_Time extends GTE {
-        private Time value { get; set; }
-
         private GTE_Time(String fieldName, Time value) {
             super(fieldName, value);
-            this.value = value;
         }
     }
 
     private class GTE_Id extends GTE {
-        private Id value { get; set; }
-
         private GTE_Id(String fieldName, Id value) {
             super(fieldName, value);
-            this.value = value;
         }
     }
 
     private class GTE_String extends GTE {
-        private String value { get; set; }
-
         private GTE_String(String fieldName, String value) {
             super(fieldName, value);
-            this.value = value;
         }
     }
 
-    public static Filterable gte(String name, Decimal value) {
+    public static FilterExpression gte(String name, Decimal value) {
         return new GTE_Decimal(name, value);
     }
 
-    public static Filterable gte(String name, Date value) {
+    public static FilterExpression gte(String name, Date value) {
         return new GTE_Date(name, value);
     }
 
-    public static Filterable gte(String name, Datetime value) {
+    public static FilterExpression gte(String name, Datetime value) {
         return new GTE_Datetime(name, value);
     }
 
-    public static Filterable gte(String name, Time value) {
+    public static FilterExpression gte(String name, Time value) {
         return new GTE_Time(name, value);
     }
 
-    public static Filterable gte(String name, Id value) {
+    public static FilterExpression gte(String name, Id value) {
         return new GTE_Id(name, value);
     }
 
-    public static Filterable gte(String name, String value) {
+    public static FilterExpression gte(String name, String value) {
         return new GTE_String(name, value);
     }
 
@@ -1189,74 +1152,62 @@ public with sharing abstract class Query implements Querable {
     }
 
     private class LT_Decimal extends LT {
-        private Decimal value { get; set; }
         private LT_Decimal(String fieldName, Decimal value) {
             super(fieldName, value);
-            this.value = value;
         }
     }
 
     private class LT_Date extends LT {
-        private Date value { get; set; }
         private LT_Date(String fieldName, Date value) {
             super(fieldName, value);
-            this.value = value;
         }
     }
 
     private class LT_Datetime extends LT {
-        private Datetime value { get; set; }
         private LT_Datetime(String fieldName, Datetime value) {
             super(fieldName, value);
-            this.value = value;
         }
     }
 
     private class LT_Time extends LT {
-        private Time value { get; set; }
         private LT_Time(String fieldName, Time value) {
             super(fieldName, value);
-            this.value = value;
         }
     }
 
     private class LT_Id extends LT {
-        private Id value { get; set; }
         private LT_Id(String fieldName, Id value) {
             super(fieldName, value);
-            this.value = value;
         }
     }
 
     private class LT_String extends LT {
-        private String value { get; set; }
         private LT_String(String fieldName, String value) {
             super(fieldName, value);
-            this.value = value;
         }
     }
 
-    public static Filterable lt(String name, Decimal value) {
+    public static FilterExpression lt(String name, Decimal value) {
         return new LT_Decimal(name, value);
     }
 
-    public static Filterable lt(String name, Date value) {
+    public static FilterExpression lt(String name, Date value) {
         return new LT_Date(name, value);
     }
 
-    public static Filterable lt(String name, Datetime value) {
+    public static FilterExpression lt(String name, Datetime value) {
         return new LT_Datetime(name, value);
     }
 
-    public static Filterable lt(String name, Time value) {
+    public static FilterExpression lt(String name, Time value) {
         return new LT_Time(name, value);
     }
 
-    public static Filterable lt(String name, Id value) {
+    public static FilterExpression lt(String name, Id value) {
         return new LT_Id(name, value);
     }
 
-    public static Filterable lt(String name, String value) {
+    public static FilterExpression lt(String name, String value) {
         return new LT_String(name, value);
     }
     // #endregion
@@ -1265,82 +1216,68 @@ public with sharing abstract class Query implements Querable {
     // ==========
     // #region <=
     private abstract class LTE extends ComparisonExpression {
-        private Object value { get; set; }
         private LTE(String fieldName, Object value) {
             super(fieldName, ' <= ', value);
-            this.value = value;
         }
     }
 
     private class LTE_Decimal extends LTE {
-        private Decimal value { get; set; }
         private LTE_Decimal(String fieldName, Decimal value) {
             super(fieldName, value);
-            this.value = value;
         }
     }
 
     private class LTE_Date extends LTE {
-        private Date value { get; set; }
         private LTE_Date(String fieldName, Date value) {
             super(fieldName, value);
-            this.value = value;
         }
     }
 
     private class LTE_Datetime extends LTE {
-        private Datetime value { get; set; }
         private LTE_Datetime(String fieldName, Datetime value) {
             super(fieldName, value);
-            this.value = value;
         }
     }
 
     private class LTE_Time extends LTE {
-        private Time value { get; set; }
         private LTE_Time(String fieldName, Time value) {
             super(fieldName, value);
-            this.value = value;
         }
     }
 
     private class LTE_Id extends LTE {
-        private Id value { get; set; }
         private LTE_Id(String fieldName, Id value) {
             super(fieldName, value);
-            this.value = value;
         }
     }
 
     private class LTE_String extends LTE {
-        private String value { get; set; }
         private LTE_String(String fieldName, String value) {
             super(fieldName, value);
-            this.value = value;
         }
     }
 
-    public static Filterable lte(String name, Decimal value) {
+    public static FilterExpression lte(String name, Decimal value) {
         return new LTE_Decimal(name, value);
     }
 
-    public static Filterable lte(String name, Date value) {
+    public static FilterExpression lte(String name, Date value) {
         return new LTE_Date(name, value);
     }
 
-    public static Filterable lte(String name, Datetime value) {
+    public static FilterExpression lte(String name, Datetime value) {
         return new LTE_Datetime(name, value);
     }
 
-    public static Filterable lte(String name, Time value) {
+    public static FilterExpression lte(String name, Time value) {
         return new LTE_Time(name, value);
     }
 
-    public static Filterable lte(String name, Id value) {
+    public static FilterExpression lte(String name, Id value) {
         return new LTE_Id(name, value);
     }
 
-    public static Filterable lte(String name, String value) {
+    public static FilterExpression lte(String name, String value) {
         return new LTE_String(name, value);
     }
     // #endregion
@@ -1431,27 +1368,27 @@ public with sharing abstract class Query implements Querable {
         }
     }
     // prettier-ignore
-    public static Filterable between(String name, Decimal fromValue, Decimal toValue) {
+    public static FilterExpression between(String name, Decimal fromValue, Decimal toValue) {
         return new Between_Decimal(name, fromValue, toValue);
     }
     // prettier-ignore
-    public static Filterable between(String name, Date fromValue, Date toValue) {
+    public static FilterExpression between(String name, Date fromValue, Date toValue) {
         return new Between_Date(name, fromValue, toValue);
     }
     // prettier-ignore
-    public static Filterable between(String name, Datetime fromValue, Datetime toValue) {
+    public static FilterExpression between(String name, Datetime fromValue, Datetime toValue) {
         return new Between_Datetime(name, fromValue, toValue);
     }
     // prettier-ignore
-    public static Filterable between(String name, Time fromValue, Time toValue) {
+    public static FilterExpression between(String name, Time fromValue, Time toValue) {
         return new Between_Time(name, fromValue, toValue);
     }
     // prettier-ignore
-    public static Filterable between(String name, Id fromValue, Id toValue) {
+    public static FilterExpression between(String name, Id fromValue, Id toValue) {
         return new Between_Id(name, fromValue, toValue);
     }
     // prettier-ignore
-    public static Filterable between(String name, String fromValue, String toValue) {
+    public static FilterExpression between(String name, String fromValue, String toValue) {
         return new Between_String(name, fromValue, toValue);
     }
     // #endregion
@@ -1477,11 +1414,11 @@ public with sharing abstract class Query implements Querable {
         }
     }
 
-    public static Filterable likex(String name, String value) {
+    public static FilterExpression likex(String name, String value) {
         return new LikeX(name, value);
     }
 
-    public static Filterable nlike(String name, String value) {
+    public static FilterExpression nlike(String name, String value) {
         return new NLike(name, value);
     }
     // #endregion
@@ -1572,31 +1509,27 @@ public with sharing abstract class Query implements Querable {
         }
     }
 
-    public static Filterable anyOf(String name, Filterable filter) {
-        return null;
-    }
-
-    public static Filterable includes(String name, List<Object> values) {
+    public static FilterExpression includes(String name, List<Object> values) {
         return new Includes(name, values);
     }
 
-    public static Filterable excludes(String name, List<Object> query) {
+    public static FilterExpression excludes(String name, List<Object> query) {
         return new Excludes(name, query);
     }
 
-    public static Filterable inx(String name, List<Object> values) {
+    public static FilterExpression inx(String name, List<Object> values) {
         return new INX(name, values);
     }
 
-    public static Filterable inx(String name, Query query) {
+    public static FilterExpression inx(String name, Query query) {
         return new INX_Query(name, false, query);
     }
 
-    public static Filterable nin(String name, List<Object> values) {
+    public static FilterExpression nin(String name, List<Object> values) {
         return new NIN(name, values);
     }
 
-    public static Filterable nin(String name, Query query) {
+    public static FilterExpression nin(String name, Query query) {
         return new INX_Query(name, true, query);
     }
 
@@ -1768,7 +1701,7 @@ public with sharing abstract class Query implements Querable {
         Query forReference();
         Query forUpdate();
 
-        Query filterBy(Filterable filter);
+        Query filterBy(FilterExpression filter);
         Object run();
     }
 }

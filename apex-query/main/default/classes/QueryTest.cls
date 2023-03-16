@@ -63,7 +63,7 @@ public with sharing class QueryTest extends Query {
         query.selectWith('BillingCountry', 'BillingState');
         query.selectWith('Contacts', contactQuery);
 
-        Query.FilterableList filters = orx();
+        Query.CompositeFilterExpression filters = orx();
 
         filters.add(andx()
             .add(gt('AnnualRevenue', 1000))
