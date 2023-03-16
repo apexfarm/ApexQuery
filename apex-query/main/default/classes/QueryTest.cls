@@ -24,42 +24,6 @@ public with sharing class QueryTest extends Query {
     }
 
     @isTest
-    static void testQuery_Of_Soql_GroupBy() {
-        // prettier-ignore
-        List<AggregateResult> results = (List<AggregateResult>) Query.of(Account.SObjectType)
-            .grouping('BillingCountry')
-            .grouping('BillingState', 'StateGroup')
-            .min('AnnualRevenue')
-            .max('AnnualRevenue')
-            .avg('AnnualRevenue', 'average')
-            .sum('AnnualRevenue', 'summary')
-            .groupBy('BillingCountry' ,'BillingState').rollup()
-            .orderBy('expr0', 'StateGroup').nullsLast().descending()
-            .run();
-        System.debug(results);
-    }
-
-    @isTest
-    static void testQuery_Of_Object_List_GroupBy() {
-        // prettier-ignore
-        List<Account> accountList = (List<Account>) Query.of(Account.SObjectType)
-            .selectWith('Name', 'AnnualRevenue', 'BillingCountry', 'BillingState')
-            .run();
-        // prettier-ignore
-        List<GroupByResult> results = (List<GroupByResult>) Query.of(accountList)
-            // .grouping('BillingCountry')
-            // .grouping('BillingState', 'StateGroup')
-            .min('AnnualRevenue')
-            .max('AnnualRevenue')
-            .avg('AnnualRevenue', 'average')
-            .sum('AnnualRevenue', 'summary')
-            .groupBy('BillingCountry', 'BillingState').rollup()
-            .orderBy('expr0', 'average').nullsLast().descending()
-            .run();
-        System.debug(results);
-    }
-
-    @isTest
     static void testQuery_Of_Soql() {
         // prettier-ignore
         List<Account> accountList = (List<Account>) Query.of(Account.SObjectType)
@@ -146,37 +110,6 @@ public with sharing class QueryTest extends Query {
                         .add(eq('BillingCountry', 'China'))
                         .add(eq('BillingState', 'Shanghai'))
                     )
-                )
-            )
-            .orderBy('AnnualRevenue').descending().nullsLast()
-            .run();
-        System.debug(accountList);
-        System.assertEquals(2, accountList.size());
-        System.assertEquals(1500, accountList[0].AnnualRevenue);
-        System.assertEquals('Beijing', accountList[0].BillingState);
-        System.assertEquals(500, accountList[1].AnnualRevenue);
-        System.assertEquals('Shanghai', accountList[1].BillingState);
-    }
-
-    @isTest
-    static void testQuery_Of_Object_List() {
-        // prettier-ignore
-        List<Account> accountList = (List<Account>) Query.of(Account.SObjectType)
-            .selectWith('Name', 'AnnualRevenue', 'BillingCountry', 'BillingState')
-            .run();
-        // prettier-ignore
-        accountList = (List<Account>) Query.of(accountList)
-            .selectWith('Name', 'AnnualRevenue', 'BillingCountry', 'BillingState')
-            .filterBy(orx()
-                .add(andx()
-                    .add(gt('AnnualRevenue', 1000))
-                    .add(eq('BillingCountry', 'China'))
-                    .add(eq('BillingState', 'Beijing'))
-                )
-                .add(andx()
-                    .add(lt('AnnualRevenue', 1000))
-                    .add(eq('BillingCountry', 'China'))
-                    .add(eq('BillingState', 'Shanghai'))
                 )
             )
             .orderBy('AnnualRevenue').descending().nullsLast()

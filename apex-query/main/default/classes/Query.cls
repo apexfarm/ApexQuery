@@ -11,10 +11,6 @@ public with sharing abstract class Query implements Querable {
         return new SoqlQuery(objectType);
     }
 
-    public static Query of(List<SObject> objectList) {
-        return new SObjectQuery(objectList);
-    }
-
     private virtual SelectManager getSelectManager() {
         return null;
     }
@@ -251,55 +247,6 @@ public with sharing abstract class Query implements Querable {
             return Database.query(query);
         }
     }
-
-    private class SObjectQuery extends Query {
-        private List<SObject> objectList { get; set; }
-
-        private ObjectSelectManager selectManager { get; set; }
-        private ObjectFilterManager filterManager { get; set; }
-        private ObjectOrderManager orderManager { get; set; }
-        private ObjectGroupManager groupManager { get; set; }
-
-        private SObjectQuery(List<SObject> objectList) {
-            this.objectList = objectList;
-            this.selectManager = new ObjectSelectManager();
-            this.filterManager = new ObjectFilterManager();
-            this.orderManager = new ObjectOrderManager();
-            this.groupManager = new ObjectGroupManager();
-        }
-
-        private override SelectManager getSelectManager() {
-            return this.selectManager;
-        }
-
-        private override FilterManager getFilterManager() {
-            return this.filterManager;
-        }
-
-        private override IOrderManager getOrderManager() {
-            return this.orderManager;
-        }
-
-        private override IGroupManager getGroupManager() {
-            return this.groupManager;
-        }
-
-        // prettier-ignore
-        public override Object run() {
-            List<SObject> newObjectList = new List<SObject>();
-            for (SObject obj : this.objectList) {
-                if (this.filterManager.check(obj)) {
-                    newObjectList.add(obj);
-                }
-            }
-
-            if (!this.groupManager.isEmpty()) {
-                return this.groupManager.summerize(newObjectList);
-            }
-
-            return this.orderManager.sort(newObjectList);
-        }
-    }
     // #endregion
     // =============
 
@@ -379,10 +326,7 @@ public with sharing abstract class Query implements Querable {
         }
     }
 
-    private class ObjectSelectManager extends SelectManager {
-    }
-
-    public Query selectWithAll() {
+    public Query selectAll() {
         return this;
     }
 
@@ -433,17 +377,6 @@ public with sharing abstract class Query implements Querable {
             this.fieldName = fieldName;
             this.ascending = true;
             this.nullFirst = true;
-        }
-    }
-
-    public class FilterableOrderByClause extends OrderByClause {
-        private InnerFilterable filter { get; set; }
-        private String valueFieldName { get; set; }
-
-        private FilterableOrderByClause(String fieldName, Filterable filter, String valueFieldName) {
-            super(fieldName);
-            this.filter = (InnerFilterable) filter;
-            this.valueFieldName = valueFieldName;
         }
     }
 
@@ -541,62 +474,6 @@ public with sharing abstract class Query implements Querable {
                     fragments.add(' NULLS LAST');
                 }
             }
-        }
-    }
-
-    private class ObjectOrderManager extends OrderManager {
-        public Object sort(Object objects) {
-            List<SObject> objectList = (List<SObject>) objects;
-            if (this.orderByClauses.size() == 0) {
-                return objectList;
-            }
-
-            List<ComparableSObject> comparableSObjects = new List<ComparableSObject>();
-            for (SObject obj : objectList) {
-                comparableSObjects.add(new ComparableSObject(obj, this.orderByClauses));
-            }
-
-            comparableSObjects.sort();
-
-            List<SObject> newObjectList = new List<SObject>();
-            for (ComparableSObject obj : comparableSObjects) {
-                newObjectList.add(obj.currentObj);
-            }
-            return newObjectList;
-        }
-    }
-
-    private class ComparableSObject implements Comparable {
-        private SObject currentObj { get; set; }
-        private List<OrderByClause> orderByClauses { get; set; }
-
-        private ComparableSObject(SObject currentObj, List<OrderByClause> orderByClauses) {
-            this.currentObj = currentObj;
-            this.orderByClauses = orderByClauses;
-        }
-
-        public Integer compareTo(Object compareTo) {
-            SObject compareObj = ((ComparableSObject) compareTo).currentObj;
-            for (OrderByClause clause : this.orderByClauses) {
-                Object currentValue = currentObj.get(clause.fieldName);
-                Object compareValue = compareObj.get(clause.fieldName);
-
-                if (currentValue == compareValue) {
-                    continue;
-                }
-
-                if (currentValue == null) {
-                    return clause.nullFirst ? 1 : -1;
-                }
-
-                if (currentValue instanceof Decimal && (Decimal) currentValue > (Decimal) compareValue) {
-                    return clause.ascending ? 1 : -1;
-                } else {
-                    return clause.ascending ? -1 : 1;
-                }
-            }
-
-            return 0;
         }
     }
 
@@ -741,94 +618,6 @@ public with sharing abstract class Query implements Querable {
             if (this.rollup || this.cube) {
                 fragments.add(')');
             }
-        }
-    }
-
-    private class ObjectGroupManager extends GroupManager {
-        private List<GroupByResult> summerize(List<SObject> objectList) {
-            Map<String, GroupByResult> results = new Map<String, GroupByResult>();
-
-            for (SObject obj : objectList) {
-                String key = '';
-                Map<String, Object> fieldValues = new Map<String, Object>();
-                for (String fieldName : this.fieldNames) {
-                    key += String.valueOf(obj.get(fieldName));
-                    fieldValues.put(fieldName, obj.get(fieldName));
-                }
-
-                if (!results.containsKey(key)) {
-                    results.put(key, new GroupByResult(fieldValues));
-                }
-                GroupByResult result = results.get(key);
-                result.sobjects.add(obj);
-            }
-
-            for (GroupByResult result : results.values()) {
-                result.compute(this.operations);
-            }
-
-            return results.values();
-        }
-    }
-
-    public class GroupByResult implements Comparable {
-        private List<OrderByClause> orderByClauses { get; set; }
-        private Map<String, Object> fieldValues { get; set; }
-        private Map<String, Object> results { get; set; }
-        private List<Object> elements { get; set; }
-        private List<SObject> sobjects { get; set; }
-
-        {
-            results = new Map<String, Object>();
-            elements = new List<Object>();
-            sobjects = new List<SObject>();
-        }
-
-        private GroupByResult(Map<String, Object> fieldValues) {
-            this.fieldValues = fieldValues;
-        }
-
-        public Object get(String name) {
-            return results.get(name);
-        }
-
-        public List<SObject> getSObjects() {
-            return this.sobjects;
-        }
-
-        public List<Object> getElements() {
-            return this.elements;
-        }
-
-        private void compute(List<AggregateOperation> operations) {
-            for (AggregateOperation operation : operations) {
-                results.put(operation.aliasName, operation.compute(sobjects));
-            }
-
-            results.putAll(this.fieldValues);
-        }
-
-        public Integer compareTo(Object compareTo) {
-            GroupByResult that = (GroupByResult) compareTo;
-            for (OrderByClause clause : this.orderByClauses) {
-                Object currentValue = this.get(clause.fieldName);
-                Object compareValue = that.get(clause.fieldName);
-
-                if (currentValue == compareValue) {
-                    continue;
-                }
-
-                if (currentValue == null) {
-                    return clause.nullFirst ? 1 : -1;
-                }
-
-                if (currentValue instanceof Decimal && (Decimal) currentValue > (Decimal) compareValue) {
-                    return clause.ascending ? 1 : -1;
-                } else {
-                    return clause.ascending ? -1 : 1;
-                }
-            }
-            return 0;
         }
     }
 
@@ -1076,7 +865,6 @@ public with sharing abstract class Query implements Querable {
 
     private interface InnerFilterable {
         void build(List<String> fragments, List<List<Object>> tmpVars);
-        Boolean check(SObject obj);
     }
 
     private abstract class FilterManager implements InnerFilterable {
@@ -1088,10 +876,6 @@ public with sharing abstract class Query implements Querable {
 
         public virtual void build(List<String> fragments, List<List<Object>> tmpVars) {
         }
-
-        public virtual Boolean check(SObject obj) {
-            return true;
-        }
     }
 
     private class SOQLQueryFilterManager extends FilterManager {
@@ -1100,15 +884,6 @@ public with sharing abstract class Query implements Querable {
                 fragments.add(' WHERE ');
                 filter.build(fragments, tmpVars);
             }
-        }
-    }
-
-    private class ObjectFilterManager extends FilterManager {
-        public override Boolean check(SObject obj) {
-            if (filter != null) {
-                return filter.check(obj);
-            }
-            return true;
         }
     }
 
@@ -1148,29 +923,11 @@ public with sharing abstract class Query implements Querable {
         private AndLogicalExpression() {
             super(' AND ');
         }
-
-        public Boolean check(SObject obj) {
-            for (InnerFilterable filter : filters) {
-                if (!filter.check(obj)) {
-                    return false;
-                }
-            }
-            return true;
-        }
     }
 
     private class OrLogicalExpression extends LogicalExpression {
         private OrLogicalExpression() {
             super(' OR ');
-        }
-
-        public Boolean check(SObject obj) {
-            for (InnerFilterable filter : filters) {
-                if (filter.check(obj)) {
-                    return true;
-                }
-            }
-            return false;
         }
     }
 
@@ -1227,19 +984,11 @@ public with sharing abstract class Query implements Querable {
         private EQ(String fieldName, Object value) {
             super(fieldName, ' = ', value);
         }
-
-        public Boolean check(SObject obj) {
-            return obj.get(this.fieldName) == this.value;
-        }
     }
 
     private class NE extends ComparisonExpression {
         private NE(String fieldName, Object value) {
             super(fieldName, ' != ', value);
-        }
-
-        public Boolean check(SObject obj) {
-            return obj.get(this.fieldName) == this.value;
         }
     }
 
@@ -1261,55 +1010,12 @@ public with sharing abstract class Query implements Querable {
         }
     }
 
-    private class GT_Integer extends GT {
-        private Integer value { get; set; }
-
-        private GT_Integer(String fieldName, Integer value) {
-            super(fieldName, value);
-            this.value = value;
-        }
-
-        public Boolean check(SObject obj) {
-            return ((Decimal) obj.get(this.fieldName)) > this.value;
-        }
-    }
-
-    private class GT_Long extends GT {
-        private Long value { get; set; }
-
-        private GT_Long(String fieldName, Long value) {
-            super(fieldName, value);
-            this.value = value;
-        }
-
-        public Boolean check(SObject obj) {
-            return ((Decimal) obj.get(this.fieldName)) > this.value;
-        }
-    }
-
-    private class GT_Double extends GT {
-        private Double value { get; set; }
-
-        private GT_Double(String fieldName, Double value) {
-            super(fieldName, value);
-            this.value = value;
-        }
-
-        public Boolean check(SObject obj) {
-            return ((Decimal) obj.get(this.fieldName)) > this.value;
-        }
-    }
-
     private class GT_Decimal extends GT {
         private Decimal value { get; set; }
 
         private GT_Decimal(String fieldName, Decimal value) {
             super(fieldName, value);
             this.value = value;
-        }
-
-        public Boolean check(SObject obj) {
-            return ((Decimal) obj.get(this.fieldName)) > this.value;
         }
     }
 
@@ -1320,10 +1026,6 @@ public with sharing abstract class Query implements Querable {
             super(fieldName, value);
             this.value = value;
         }
-
-        public Boolean check(SObject obj) {
-            return ((Date) obj.get(this.fieldName)) > this.value;
-        }
     }
 
     private class GT_Datetime extends GT {
@@ -1332,10 +1034,6 @@ public with sharing abstract class Query implements Querable {
         private GT_Datetime(String fieldName, Datetime value) {
             super(fieldName, value);
             this.value = value;
-        }
-
-        public Boolean check(SObject obj) {
-            return ((Datetime) obj.get(this.fieldName)) > this.value;
         }
     }
 
@@ -1346,10 +1044,6 @@ public with sharing abstract class Query implements Querable {
             super(fieldName, value);
             this.value = value;
         }
-
-        public Boolean check(SObject obj) {
-            return ((Time) obj.get(this.fieldName)) > this.value;
-        }
     }
 
     private class GT_Id extends GT {
@@ -1358,10 +1052,6 @@ public with sharing abstract class Query implements Querable {
         private GT_Id(String fieldName, Id value) {
             super(fieldName, value);
             this.value = value;
-        }
-
-        public Boolean check(SObject obj) {
-            return ((Id) obj.get(this.fieldName)) > this.value;
         }
     }
 
@@ -1372,18 +1062,6 @@ public with sharing abstract class Query implements Querable {
             super(fieldName, value);
             this.value = value;
         }
-
-        public Boolean check(SObject obj) {
-            return ((String) obj.get(this.fieldName)) > this.value;
-        }
-    }
-
-    public static Filterable gt(String name, Integer value) {
-        return new GT_Integer(name, value);
-    }
-
-    public static Filterable gt(String name, Long value) {
-        return new GT_Long(name, value);
     }
 
     public static Filterable gt(String name, Decimal value) {
@@ -1421,55 +1099,12 @@ public with sharing abstract class Query implements Querable {
         }
     }
 
-    private class GTE_Integer extends GTE {
-        private Integer value { get; set; }
-
-        private GTE_Integer(String fieldName, Integer value) {
-            super(fieldName, value);
-            this.value = value;
-        }
-
-        public Boolean check(SObject obj) {
-            return ((Decimal) obj.get(this.fieldName)) >= this.value;
-        }
-    }
-
-    private class GTE_Long extends GTE {
-        private Long value { get; set; }
-
-        private GTE_Long(String fieldName, Long value) {
-            super(fieldName, value);
-            this.value = value;
-        }
-
-        public Boolean check(SObject obj) {
-            return ((Decimal) obj.get(this.fieldName)) >= this.value;
-        }
-    }
-
-    private class GTE_Double extends GTE {
-        private Double value { get; set; }
-
-        private GTE_Double(String fieldName, Double value) {
-            super(fieldName, value);
-            this.value = value;
-        }
-
-        public Boolean check(SObject obj) {
-            return ((Decimal) obj.get(this.fieldName)) >= this.value;
-        }
-    }
-
     private class GTE_Decimal extends GTE {
         private Decimal value { get; set; }
 
         private GTE_Decimal(String fieldName, Decimal value) {
             super(fieldName, value);
             this.value = value;
-        }
-
-        public Boolean check(SObject obj) {
-            return ((Decimal) obj.get(this.fieldName)) >= this.value;
         }
     }
 
@@ -1480,10 +1115,6 @@ public with sharing abstract class Query implements Querable {
             super(fieldName, value);
             this.value = value;
         }
-
-        public Boolean check(SObject obj) {
-            return ((Date) obj.get(this.fieldName)) >= this.value;
-        }
     }
 
     private class GTE_Datetime extends GTE {
@@ -1492,10 +1123,6 @@ public with sharing abstract class Query implements Querable {
         private GTE_Datetime(String fieldName, Datetime value) {
             super(fieldName, value);
             this.value = value;
-        }
-
-        public Boolean check(SObject obj) {
-            return ((Datetime) obj.get(this.fieldName)) >= this.value;
         }
     }
 
@@ -1506,10 +1133,6 @@ public with sharing abstract class Query implements Querable {
             super(fieldName, value);
             this.value = value;
         }
-
-        public Boolean check(SObject obj) {
-            return ((Time) obj.get(this.fieldName)) >= this.value;
-        }
     }
 
     private class GTE_Id extends GTE {
@@ -1518,10 +1141,6 @@ public with sharing abstract class Query implements Querable {
         private GTE_Id(String fieldName, Id value) {
             super(fieldName, value);
             this.value = value;
-        }
-
-        public Boolean check(SObject obj) {
-            return ((Id) obj.get(this.fieldName)) >= this.value;
         }
     }
 
@@ -1532,18 +1151,6 @@ public with sharing abstract class Query implements Querable {
             super(fieldName, value);
             this.value = value;
         }
-
-        public Boolean check(SObject obj) {
-            return ((String) obj.get(this.fieldName)) >= this.value;
-        }
-    }
-
-    public static Filterable gte(String name, Integer value) {
-        return new GTE_Integer(name, value);
-    }
-
-    public static Filterable gte(String name, Long value) {
-        return new GTE_Long(name, value);
     }
 
     public static Filterable gte(String name, Decimal value) {
@@ -1581,51 +1188,11 @@ public with sharing abstract class Query implements Querable {
         }
     }
 
-    private class LT_Integer extends LT {
-        private Integer value { get; set; }
-        private LT_Integer(String fieldName, Integer value) {
-            super(fieldName, value);
-            this.value = value;
-        }
-
-        public Boolean check(SObject obj) {
-            return ((Decimal) obj.get(this.fieldName)) < this.value;
-        }
-    }
-
-    private class LT_Long extends LT {
-        private Long value { get; set; }
-        private LT_Long(String fieldName, Long value) {
-            super(fieldName, value);
-            this.value = value;
-        }
-
-        public Boolean check(SObject obj) {
-            return ((Decimal) obj.get(this.fieldName)) < this.value;
-        }
-    }
-
-    private class LT_Double extends LT {
-        private Double value { get; set; }
-        private LT_Double(String fieldName, Double value) {
-            super(fieldName, value);
-            this.value = value;
-        }
-
-        public Boolean check(SObject obj) {
-            return ((Decimal) obj.get(this.fieldName)) < this.value;
-        }
-    }
-
     private class LT_Decimal extends LT {
         private Decimal value { get; set; }
         private LT_Decimal(String fieldName, Decimal value) {
             super(fieldName, value);
             this.value = value;
-        }
-
-        public Boolean check(SObject obj) {
-            return ((Decimal) obj.get(this.fieldName)) < this.value;
         }
     }
 
@@ -1635,10 +1202,6 @@ public with sharing abstract class Query implements Querable {
             super(fieldName, value);
             this.value = value;
         }
-
-        public Boolean check(SObject obj) {
-            return ((Date) obj.get(this.fieldName)) < this.value;
-        }
     }
 
     private class LT_Datetime extends LT {
@@ -1646,10 +1209,6 @@ public with sharing abstract class Query implements Querable {
         private LT_Datetime(String fieldName, Datetime value) {
             super(fieldName, value);
             this.value = value;
-        }
-
-        public Boolean check(SObject obj) {
-            return ((Datetime) obj.get(this.fieldName)) < this.value;
         }
     }
 
@@ -1659,10 +1218,6 @@ public with sharing abstract class Query implements Querable {
             super(fieldName, value);
             this.value = value;
         }
-
-        public Boolean check(SObject obj) {
-            return ((Time) obj.get(this.fieldName)) < this.value;
-        }
     }
 
     private class LT_Id extends LT {
@@ -1670,10 +1225,6 @@ public with sharing abstract class Query implements Querable {
         private LT_Id(String fieldName, Id value) {
             super(fieldName, value);
             this.value = value;
-        }
-
-        public Boolean check(SObject obj) {
-            return ((Id) obj.get(this.fieldName)) > this.value;
         }
     }
 
@@ -1683,22 +1234,6 @@ public with sharing abstract class Query implements Querable {
             super(fieldName, value);
             this.value = value;
         }
-
-        public Boolean check(SObject obj) {
-            return ((String) obj.get(this.fieldName)) > this.value;
-        }
-    }
-
-    public static Filterable lt(String name, Integer value) {
-        return new LT_Integer(name, value);
-    }
-
-    public static Filterable lt(String name, Long value) {
-        return new LT_Long(name, value);
-    }
-
-    public static Filterable lt(String name, Double value) {
-        return new LT_Double(name, value);
     }
 
     public static Filterable lt(String name, Decimal value) {
@@ -1737,51 +1272,11 @@ public with sharing abstract class Query implements Querable {
         }
     }
 
-    private class LTE_Integer extends LTE {
-        private Integer value { get; set; }
-        private LTE_Integer(String fieldName, Integer value) {
-            super(fieldName, value);
-            this.value = value;
-        }
-
-        public Boolean check(SObject obj) {
-            return ((Decimal) obj.get(this.fieldName)) <= this.value;
-        }
-    }
-
-    private class LTE_Long extends LTE {
-        private Long value { get; set; }
-        private LTE_Long(String fieldName, Long value) {
-            super(fieldName, value);
-            this.value = value;
-        }
-
-        public Boolean check(SObject obj) {
-            return ((Decimal) obj.get(this.fieldName)) <= this.value;
-        }
-    }
-
-    private class LTE_Double extends LTE {
-        private Double value { get; set; }
-        private LTE_Double(String fieldName, Double value) {
-            super(fieldName, value);
-            this.value = value;
-        }
-
-        public Boolean check(SObject obj) {
-            return ((Decimal) obj.get(this.fieldName)) <= this.value;
-        }
-    }
-
     private class LTE_Decimal extends LTE {
         private Decimal value { get; set; }
         private LTE_Decimal(String fieldName, Decimal value) {
             super(fieldName, value);
             this.value = value;
-        }
-
-        public Boolean check(SObject obj) {
-            return ((Decimal) obj.get(this.fieldName)) <= this.value;
         }
     }
 
@@ -1791,10 +1286,6 @@ public with sharing abstract class Query implements Querable {
             super(fieldName, value);
             this.value = value;
         }
-
-        public Boolean check(SObject obj) {
-            return ((Date) obj.get(this.fieldName)) <= this.value;
-        }
     }
 
     private class LTE_Datetime extends LTE {
@@ -1802,10 +1293,6 @@ public with sharing abstract class Query implements Querable {
         private LTE_Datetime(String fieldName, Datetime value) {
             super(fieldName, value);
             this.value = value;
-        }
-
-        public Boolean check(SObject obj) {
-            return ((Datetime) obj.get(this.fieldName)) <= this.value;
         }
     }
 
@@ -1815,10 +1302,6 @@ public with sharing abstract class Query implements Querable {
             super(fieldName, value);
             this.value = value;
         }
-
-        public Boolean check(SObject obj) {
-            return ((Time) obj.get(this.fieldName)) <= this.value;
-        }
     }
 
     private class LTE_Id extends LTE {
@@ -1826,10 +1309,6 @@ public with sharing abstract class Query implements Querable {
         private LTE_Id(String fieldName, Id value) {
             super(fieldName, value);
             this.value = value;
-        }
-
-        public Boolean check(SObject obj) {
-            return ((Id) obj.get(this.fieldName)) <= this.value;
         }
     }
 
@@ -1839,22 +1318,6 @@ public with sharing abstract class Query implements Querable {
             super(fieldName, value);
             this.value = value;
         }
-
-        public Boolean check(SObject obj) {
-            return ((String) obj.get(this.fieldName)) <= this.value;
-        }
-    }
-
-    public static Filterable lte(String name, Integer value) {
-        return new LTE_Integer(name, value);
-    }
-
-    public static Filterable lte(String name, Long value) {
-        return new LTE_Long(name, value);
-    }
-
-    public static Filterable lte(String name, Double value) {
-        return new LTE_Double(name, value);
     }
 
     public static Filterable lte(String name, Decimal value) {
@@ -1896,57 +1359,6 @@ public with sharing abstract class Query implements Querable {
         }
     }
 
-    private class Between_Integer extends Between {
-        private Integer fromValue { get; set; }
-        private Integer toValue { get; set; }
-
-        private Between_Integer(String fieldName, Integer fromValue, Integer toValue) {
-            this.fromValue = fromValue;
-            this.toValue = toValue;
-            this.gteFromValue = new GTE_Integer(fieldName, fromValue);
-            this.lteToValue = new LTE_Integer(fieldName, toValue);
-        }
-
-        public Boolean check(SObject obj) {
-            Decimal objValue = (Decimal) obj.get(this.fieldName);
-            return objValue >= this.fromValue && objValue <= this.toValue;
-        }
-    }
-
-    private class Between_Long extends Between {
-        private Long fromValue { get; set; }
-        private Long toValue { get; set; }
-
-        private Between_Long(String fieldName, Long fromValue, Long toValue) {
-            this.fromValue = fromValue;
-            this.toValue = toValue;
-            this.gteFromValue = new GTE_Long(fieldName, fromValue);
-            this.lteToValue = new LTE_Long(fieldName, toValue);
-        }
-
-        public Boolean check(SObject obj) {
-            Decimal objValue = (Decimal) obj.get(this.fieldName);
-            return objValue >= this.fromValue && objValue <= this.toValue;
-        }
-    }
-
-    private class Between_Double extends Between {
-        private Double fromValue { get; set; }
-        private Double toValue { get; set; }
-
-        private Between_Double(String fieldName, Double fromValue, Double toValue) {
-            this.fromValue = fromValue;
-            this.toValue = toValue;
-            this.gteFromValue = new GTE_Double(fieldName, fromValue);
-            this.lteToValue = new LTE_Double(fieldName, toValue);
-        }
-
-        public Boolean check(SObject obj) {
-            Decimal objValue = (Decimal) obj.get(this.fieldName);
-            return objValue >= this.fromValue && objValue <= this.toValue;
-        }
-    }
-
     private class Between_Decimal extends Between {
         private Decimal fromValue { get; set; }
         private Decimal toValue { get; set; }
@@ -1956,11 +1368,6 @@ public with sharing abstract class Query implements Querable {
             this.toValue = toValue;
             this.gteFromValue = new GTE_Decimal(fieldName, fromValue);
             this.lteToValue = new LTE_Decimal(fieldName, toValue);
-        }
-
-        public Boolean check(SObject obj) {
-            Decimal objValue = (Decimal) obj.get(this.fieldName);
-            return objValue >= this.fromValue && objValue <= this.toValue;
         }
     }
 
@@ -1974,11 +1381,6 @@ public with sharing abstract class Query implements Querable {
             this.gteFromValue = new GTE_Date(fieldName, fromValue);
             this.lteToValue = new LTE_Date(fieldName, toValue);
         }
-
-        public Boolean check(SObject obj) {
-            Date objValue = (Date) obj.get(this.fieldName);
-            return objValue >= this.fromValue && objValue <= this.toValue;
-        }
     }
 
     private class Between_Datetime extends Between {
@@ -1990,11 +1392,6 @@ public with sharing abstract class Query implements Querable {
             this.toValue = toValue;
             this.gteFromValue = new GTE_Datetime(fieldName, fromValue);
             this.lteToValue = new LTE_Datetime(fieldName, toValue);
-        }
-
-        public Boolean check(SObject obj) {
-            Datetime objValue = (Datetime) obj.get(this.fieldName);
-            return objValue >= this.fromValue && objValue <= this.toValue;
         }
     }
 
@@ -2008,11 +1405,6 @@ public with sharing abstract class Query implements Querable {
             this.gteFromValue = new GTE_Time(fieldName, fromValue);
             this.lteToValue = new LTE_Time(fieldName, toValue);
         }
-
-        public Boolean check(SObject obj) {
-            Time objValue = (Time) obj.get(this.fieldName);
-            return objValue >= this.fromValue && objValue <= this.toValue;
-        }
     }
 
     private class Between_Id extends Between {
@@ -2024,11 +1416,6 @@ public with sharing abstract class Query implements Querable {
             this.toValue = toValue;
             this.gteFromValue = new GTE_Id(fieldName, fromValue);
             this.lteToValue = new LTE_Id(fieldName, toValue);
-        }
-
-        public Boolean check(SObject obj) {
-            Id objValue = (Id) obj.get(this.fieldName);
-            return objValue >= this.fromValue && objValue <= this.toValue;
         }
     }
 
@@ -2042,23 +1429,6 @@ public with sharing abstract class Query implements Querable {
             this.gteFromValue = new GTE_String(fieldName, fromValue);
             this.lteToValue = new LTE_String(fieldName, toValue);
         }
-
-        public Boolean check(SObject obj) {
-            String objValue = (String) obj.get(this.fieldName);
-            return objValue >= this.fromValue && objValue <= this.toValue;
-        }
-    }
-    // prettier-ignore
-    public static Filterable between(String name, Integer fromValue, Integer toValue) {
-        return new Between_Integer(name, fromValue, toValue);
-    }
-    // prettier-ignore
-    public static Filterable between(String name, Long fromValue, Long toValue) {
-        return new Between_Long(name, fromValue, toValue);
-    }
-    // prettier-ignore
-    public static Filterable between(String name, Double fromValue, Double toValue) {
-        return new Between_Double(name, fromValue, toValue);
     }
     // prettier-ignore
     public static Filterable between(String name, Decimal fromValue, Decimal toValue) {
@@ -2093,19 +1463,11 @@ public with sharing abstract class Query implements Querable {
         private LikeX(String fieldName, String value) {
             super(fieldName, 'LIKE', value);
         }
-
-        public Boolean check(SObject obj) {
-            return true;
-        }
     }
 
     private class NLike extends ComparisonExpression {
         private NLike(String fieldName, String value) {
             super(fieldName, 'LIKE', value);
-        }
-
-        public Boolean check(SObject obj) {
-            return true;
         }
 
         public override void build(List<String> fragments, List<List<Object>> tmpVars) {
@@ -2172,19 +1534,11 @@ public with sharing abstract class Query implements Querable {
         private Includes(String fieldName, List<Object> values) {
             super(fieldName, 'INCLUDES', values);
         }
-
-        public Boolean check(SObject obj) {
-            return true;
-        }
     }
 
     private class Excludes extends ComparisonExpression {
         private Excludes(String fieldName, List<Object> values) {
             super(fieldName, 'EXCLUDES', values);
-        }
-
-        public Boolean check(SObject obj) {
-            return true;
         }
     }
 
@@ -2192,29 +1546,17 @@ public with sharing abstract class Query implements Querable {
         private INX(String fieldName, List<Object> values) {
             super(fieldName, ' IN ', values);
         }
-
-        public Boolean check(SObject obj) {
-            return true;
-        }
     }
 
     private class NIN extends ComparisonExpression {
         private NIN(String fieldName, List<Object> values) {
             super(fieldName, 'NOT IN', values);
         }
-
-        public Boolean check(SObject obj) {
-            return true;
-        }
     }
 
     private virtual class INX_Query extends ComparisonExpression {
         private INX_Query(String fieldName, Boolean isNot, Query query) {
             super(fieldName, isNot ? 'NOT IN' : 'IN', query);
-        }
-
-        public Boolean check(SObject obj) {
-            return true;
         }
 
         public override void build(List<String> fragments, List<List<Object>> tmpVars) {
@@ -2397,7 +1739,7 @@ public with sharing abstract class Query implements Querable {
         Query cube();
 
         // Select
-        Query selectWithAll();
+        Query selectAll();
         Query selectWith(String name);
         Query selectWith(String name1, String name2);
         Query selectWith(String name1, String name2, String name3);
