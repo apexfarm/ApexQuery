@@ -1,0 +1,12 @@
+{
+  "packageDirectories": [
+    {
+      "path": "apex-query",
+      "default": true
+    }
+  ],
+  "name": "ApexQuery",
+  "namespace": "",
+  "sfdcLoginUrl": "https://login.salesforce.com",
+  "sourceApiVersion": "57.0"
+}

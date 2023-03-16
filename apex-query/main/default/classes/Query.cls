@@ -1,0 +1,3005 @@
+public with sharing abstract class Query implements Querable {
+    public static DateLiteral d = new DateLiteral();
+
+    public Integer offset { get; set; }
+    public Integer limitx { get; set; }
+    public Boolean forView { get; set; }
+    public Boolean forReference { get; set; }
+    public Boolean forUpdate { get; set; }
+
+    public static Query of(SObjectType objectType) {
+        return new SoqlQuery(objectType);
+    }
+
+    public static Query of(List<SObject> objectList) {
+        return new SObjectQuery(objectList);
+    }
+
+    public static Query of(List<Object> collection) {
+        return new CollectionQuery(collection);
+    }
+
+    public static Query of(Map<String, Object> collection) {
+        return of(new List<Object>{ collection });
+    }
+
+    private static Object getPathValue(Map<String, Object> obj, List<String> pathNames) {
+        Object value = obj;
+        for (String pathName : pathNames) {
+            value = ((Map<String, Object>) value).get(pathName);
+        }
+        return value;
+    }
+
+    private static List<String> getPathNames(String fieldName, String commonName) {
+        System.debug(commonName);
+        String newName = fieldName.replaceFirst(commonName, '');
+        System.debug(newName);
+        List<String> newPath = newName.split('\\.');
+        if (newPath.size() > 1) {
+            newPath.remove(0);
+        }
+        System.debug(String.join(newPath, '.'));
+        return newPath;
+    }
+
+    private virtual SelectManager getSelectManager() {
+        return null;
+    }
+
+    private virtual FilterManager getFilterManager() {
+        return null;
+    }
+
+    private virtual IOrderManager getOrderManager() {
+        return null;
+    }
+
+    private virtual IGroupManager getGroupManager() {
+        return null;
+    }
+
+    public virtual Object run() {
+        return null;
+    }
+
+    // =============
+    // #region Query
+    private class SoqlQuery extends Query {
+        private SObjectType objectType { get; set; }
+
+        private SOQLQuerySelectManager selectManager { get; set; }
+        private SOQLQueryFilterManager filterManager { get; set; }
+        private SOQLQueryOrderManager orderManager { get; set; }
+        private SOQLQueryGroupManager groupManager { get; set; }
+
+        private SoqlQuery(SObjectType objectType) {
+            this.objectType = objectType;
+            this.selectManager = new SOQLQuerySelectManager();
+            this.filterManager = new SOQLQueryFilterManager();
+            this.orderManager = new SOQLQueryOrderManager();
+            this.groupManager = new SOQLQueryGroupManager();
+        }
+
+        private override SelectManager getSelectManager() {
+            return this.selectManager;
+        }
+
+        private override FilterManager getFilterManager() {
+            return this.filterManager;
+        }
+
+        private override IOrderManager getOrderManager() {
+            return this.orderManager;
+        }
+
+        private override IGroupManager getGroupManager() {
+            return this.groupManager;
+        }
+
+        private void buildSoql(String fromObjectName, List<String> fragments, List<List<Object>> tmpVars) {
+            if (!this.groupManager.isEmpty()) {
+                this.groupManager.buildSelect(fragments);
+            } else {
+                this.selectManager.build(fragments, tmpVars);
+            }
+            fragments.add(' FROM ');
+            fragments.add(fromObjectName);
+
+            this.filterManager.build(fragments, tmpVars);
+            this.groupManager.build(fragments);
+
+            if (!this.groupManager.isEmpty()) {
+                this.orderManager.build(fragments, this.groupManager.operationByAliasName);
+            } else {
+                this.orderManager.build(fragments);
+            }
+
+            if (this.offset != null) {
+                fragments.add(' OFFSET ');
+                fragments.add(String.valueOf(this.offset));
+            }
+
+            if (this.offset != null) {
+                fragments.add(' LIMIT ');
+                fragments.add(String.valueOf(this.offset));
+            }
+
+            if (this.forView == true) {
+                fragments.add(' FOR VIEW');
+            }
+
+            if (this.forReference == true) {
+                fragments.add(' FOR REFERENCE');
+            }
+
+            if (this.forUpdate == true) {
+                fragments.add(' FOR UPDATE');
+            }
+        }
+
+        private void buildSoql(List<String> fragments, List<List<Object>> tmpVars) {
+            this.buildSoql(this.objectType.getDescribe().getName(), fragments, tmpVars);
+        }
+
+        public override Object run() {
+            List<String> fragments = new List<String>();
+            List<List<Object>> tmpVars = new List<List<Object>>();
+            buildSoql(fragments, tmpVars);
+            String query = String.join(fragments, '');
+            System.debug(query);
+
+            List<Object> tmpVar1;
+            List<Object> tmpVar2;
+            List<Object> tmpVar3;
+            List<Object> tmpVar4;
+            List<Object> tmpVar5;
+            List<Object> tmpVar6;
+            List<Object> tmpVar7;
+            List<Object> tmpVar8;
+            List<Object> tmpVar9;
+            List<Object> tmpVar10;
+            List<Object> tmpVar11;
+            List<Object> tmpVar12;
+            List<Object> tmpVar13;
+            List<Object> tmpVar14;
+            List<Object> tmpVar15;
+            List<Object> tmpVar16;
+            List<Object> tmpVar17;
+            List<Object> tmpVar18;
+            List<Object> tmpVar19;
+            List<Object> tmpVar20;
+            List<Object> tmpVar21;
+            List<Object> tmpVar22;
+            List<Object> tmpVar23;
+            List<Object> tmpVar24;
+            List<Object> tmpVar25;
+            List<Object> tmpVar26;
+            List<Object> tmpVar27;
+            List<Object> tmpVar28;
+            List<Object> tmpVar29;
+            List<Object> tmpVar30;
+
+            for (Integer i = 0; i < tmpVars.size(); i++) {
+                switch on i {
+                    when 0 {
+                        tmpVar1 = tmpVars[i];
+                    }
+                    when 1 {
+                        tmpVar2 = tmpVars[i];
+                    }
+                    when 2 {
+                        tmpVar3 = tmpVars[i];
+                    }
+                    when 3 {
+                        tmpVar4 = tmpVars[i];
+                    }
+                    when 4 {
+                        tmpVar5 = tmpVars[i];
+                    }
+                    when 5 {
+                        tmpVar6 = tmpVars[i];
+                    }
+                    when 6 {
+                        tmpVar7 = tmpVars[i];
+                    }
+                    when 7 {
+                        tmpVar8 = tmpVars[i];
+                    }
+                    when 8 {
+                        tmpVar9 = tmpVars[i];
+                    }
+                    when 9 {
+                        tmpVar10 = tmpVars[i];
+                    }
+                    when 10 {
+                        tmpVar11 = tmpVars[i];
+                    }
+                    when 11 {
+                        tmpVar12 = tmpVars[i];
+                    }
+                    when 12 {
+                        tmpVar13 = tmpVars[i];
+                    }
+                    when 13 {
+                        tmpVar14 = tmpVars[i];
+                    }
+                    when 14 {
+                        tmpVar15 = tmpVars[i];
+                    }
+                    when 15 {
+                        tmpVar16 = tmpVars[i];
+                    }
+                    when 16 {
+                        tmpVar17 = tmpVars[i];
+                    }
+                    when 17 {
+                        tmpVar18 = tmpVars[i];
+                    }
+                    when 18 {
+                        tmpVar19 = tmpVars[i];
+                    }
+                    when 19 {
+                        tmpVar20 = tmpVars[i];
+                    }
+                    when 20 {
+                        tmpVar21 = tmpVars[i];
+                    }
+                    when 21 {
+                        tmpVar22 = tmpVars[i];
+                    }
+                    when 22 {
+                        tmpVar23 = tmpVars[i];
+                    }
+                    when 23 {
+                        tmpVar24 = tmpVars[i];
+                    }
+                    when 24 {
+                        tmpVar25 = tmpVars[i];
+                    }
+                    when 25 {
+                        tmpVar26 = tmpVars[i];
+                    }
+                    when 26 {
+                        tmpVar27 = tmpVars[i];
+                    }
+                    when 27 {
+                        tmpVar28 = tmpVars[i];
+                    }
+                    when 28 {
+                        tmpVar29 = tmpVars[i];
+                    }
+                    when 29 {
+                        tmpVar30 = tmpVars[i];
+                    }
+                    when else {
+                    }
+                }
+            }
+            return Database.query(query);
+        }
+    }
+
+    private class SObjectQuery extends Query {
+        private List<SObject> objectList { get; set; }
+
+        private ObjectSelectManager selectManager { get; set; }
+        private ObjectFilterManager filterManager { get; set; }
+        private ObjectOrderManager orderManager { get; set; }
+        private ObjectGroupManager groupManager { get; set; }
+
+        private SObjectQuery(List<SObject> objectList) {
+            this.objectList = objectList;
+            this.selectManager = new ObjectSelectManager();
+            this.filterManager = new ObjectFilterManager();
+            this.orderManager = new ObjectOrderManager();
+            this.groupManager = new ObjectGroupManager();
+        }
+
+        private override SelectManager getSelectManager() {
+            return this.selectManager;
+        }
+
+        private override FilterManager getFilterManager() {
+            return this.filterManager;
+        }
+
+        private override IOrderManager getOrderManager() {
+            return this.orderManager;
+        }
+
+        private override IGroupManager getGroupManager() {
+            return this.groupManager;
+        }
+
+        // prettier-ignore
+        public override Object run() {
+            List<SObject> newObjectList = new List<SObject>();
+            for (SObject obj : this.objectList) {
+                if (this.filterManager.check(obj)) {
+                    newObjectList.add(obj);
+                }
+            }
+
+            if (!this.groupManager.isEmpty()) {
+                return this.groupManager.summerize(newObjectList);
+            }
+
+            return this.orderManager.sort(newObjectList);
+        }
+    }
+
+    private class CollectionQuery extends Query {
+        private List<Object> collection { get; set; }
+
+        private CollectionSelectManager selectManager { get; set; }
+        private CollectionFilterManager filterManager { get; set; }
+        private CollectionOrderManager orderManager { get; set; }
+
+        private CollectionQuery(List<Object> collection) {
+            this.collection = collection;
+            this.selectManager = new CollectionSelectManager();
+            this.filterManager = new CollectionFilterManager();
+            this.orderManager = new CollectionOrderManager();
+        }
+
+        private override SelectManager getSelectManager() {
+            return this.selectManager;
+        }
+
+        private override FilterManager getFilterManager() {
+            return this.filterManager;
+        }
+
+        private override IOrderManager getOrderManager() {
+            return this.orderManager;
+        }
+
+        // prettier-ignore
+        public override Object run() {
+            List<String> commonPathNames = getCommonPathNames();
+            System.debug(commonPathNames);
+            List<Map<String, Object>> subCollection = this.getSubCollection(collection, commonPathNames);
+            System.debug(subCollection);
+            this.trimCommonPathNames(commonPathNames);
+
+            List<Map<String, Object>> newCollection = new List<Map<String, Object>>();
+            for (Map<String, Object> obj : subCollection) {
+                if(this.filterManager.check(obj)) {
+                    newCollection.add(obj);
+                }
+            }
+            return this.orderManager.sort(newCollection);
+        }
+        private void trimCommonPathNames(List<String> commonPathNames) {
+            String commonFieldName = String.join(commonPathNames, '.');
+            System.debug(commonFieldName);
+
+            this.selectManager.trimFieldName(commonFieldName);
+            this.filterManager.trimFieldName(commonFieldName);
+            this.orderManager.trimFieldName(commonFieldName);
+        }
+
+        private List<String> getCommonPathNames() {
+            Set<String> namePaths = new Set<String>(this.selectManager.fieldNames);
+            namePaths.addAll(this.filterManager.getFieldNames());
+            namePaths.addAll(this.orderManager.getFieldNames());
+
+            List<String> commonPathNames;
+            Integer index = 0;
+            for (String path : namePaths) {
+                List<String> fieldNames = path.split('\\.');
+                if (index == 0) {
+                    commonPathNames = fieldNames;
+                    index++;
+                    continue;
+                }
+
+                List<String> newCommonPathNames = new List<String>();
+                Integer size = Math.min(commonPathNames.size(), fieldNames.size());
+                for (Integer i = 0; i < size; i++) {
+                    if (commonPathNames[i] == fieldNames[i]) {
+                        newCommonPathNames.add(commonPathNames[i]);
+                    } else {
+                        break;
+                    }
+                }
+                commonPathNames = newCommonPathNames;
+                index++;
+            }
+            return commonPathNames;
+        }
+
+        private List<Map<String, Object>> getSubCollection(List<Object> collection, List<String> fieldNames) {
+            List<Object> newValues = collection;
+
+            Integer index = 0;
+            while (fieldNames.size() > index) {
+                List<Object> tmpValues = new List<Object>();
+                String fieldName = null;
+                for (Object value : newValues) {
+                    if (value instanceof List<Object>) {
+                        tmpValues.addAll((List<Object>) value);
+                        continue;
+                    }
+
+                    if (fieldName == null) {
+                        fieldName = fieldNames[index];
+                        index++;
+                    }
+                    if (value instanceof Map<String, Object>) {
+                        Object tmpValue = ((Map<String, Object>) value).get(fieldName);
+                        tmpValues.add(tmpValue);
+                    }
+                }
+                newValues = tmpValues;
+            }
+
+            // reaching the leaf node of nested array
+            Boolean isArrayNode = true;
+            while (isArrayNode) {
+                List<Object> tmpValues = new List<Object>();
+                for (Object value : newValues) {
+                    if (value instanceof List<Object>) {
+                        tmpValues.addAll((List<Object>) value);
+                    } else {
+                        isArrayNode = false;
+                        break;
+                    }
+                }
+
+                if (isArrayNode) {
+                    newValues = tmpValues;
+                }
+            }
+
+            List<Map<String, Object>> newCollection = new List<Map<String, Object>>();
+            for (Object newValue : newValues) {
+                newCollection.add((Map<String, Object>) newValue);
+            }
+            return newCollection;
+        }
+    }
+
+    // #endregion
+    // =============
+
+    // ============
+    // #region MISC
+    public Query offset(Integer n) {
+        this.offset = n;
+        return this;
+    }
+
+    public Query limitx(Integer n) {
+        this.limitx = n;
+        return this;
+    }
+
+    public Query forView() {
+        this.forView = true;
+        return this;
+    }
+
+    public Query forReference() {
+        this.forReference = true;
+        return this;
+    }
+
+    public Query forUpdate() {
+        this.forUpdate = true;
+        return this;
+    }
+
+    // #endregion
+    // ============
+
+    // ==============
+    // #region Select
+    private abstract class SelectManager {
+        private List<String> fieldNames { get; set; }
+
+        {
+            fieldNames = new List<String>();
+        }
+
+        public void addAll(List<String> names) {
+            this.fieldNames.addAll(names);
+        }
+    }
+
+    private class SOQLQuerySelectManager extends SelectManager {
+        private Map<String, SoqlQuery> subQueries { get; set; }
+
+        {
+            this.subQueries = new Map<String, SoqlQuery>();
+        }
+
+        private void add(String relationName, SoqlQuery query) {
+            this.subQueries.put(relationName, query);
+        }
+
+        private void build(List<String> fragments, List<List<Object>> tmpVars) {
+            Boolean isFirst = true;
+            for (String fieldName : this.fieldNames) {
+                if (isFirst) {
+                    fragments.add('SELECT ');
+                } else {
+                    fragments.add(', ');
+                }
+                isFirst = false;
+                fragments.add(fieldName);
+            }
+
+            for (String relationName : this.subQueries.keySet()) {
+                fragments.add(', ');
+                fragments.add('(');
+                this.subQueries.get(relationName).buildSoql(relationName, fragments, tmpVars);
+                fragments.add(')');
+            }
+        }
+    }
+
+    private class ObjectSelectManager extends SelectManager {
+    }
+
+    private class CollectionSelectManager extends SelectManager {
+        private List<List<String>> fieldPaths { get; set; }
+
+        {
+            fieldPaths = new List<List<String>>();
+        }
+
+        public void trimFieldName(String commonName) {
+            for (String fieldName : this.fieldNames) {
+                this.fieldPaths.add(getPathNames(fieldName, commonName));
+            }
+        }
+    }
+
+    public Query selectWithAll() {
+        return this;
+    }
+
+    public Query selectWith(String name) {
+        return selectWith(new List<String>{ name });
+    }
+
+    public Query selectWith(String name1, String name2) {
+        return selectWith(new List<String>{ name1, name2 });
+    }
+
+    public Query selectWith(String name1, String name2, String name3) {
+        return selectWith(new List<String>{ name1, name2, name3 });
+    }
+
+    public Query selectWith(String name1, String name2, String name3, String name4) {
+        return selectWith(new List<String>{ name1, name2, name3, name4 });
+    }
+
+    public Query selectWith(String name1, String name2, String name3, String name4, String name5) {
+        return selectWith(new List<String>{ name1, name2, name3, name4, name5 });
+    }
+    public Query selectWith(List<String> names) {
+        this.getSelectManager().addAll(names);
+        return this;
+    }
+
+    public Query selectWith(String relationName, Query query) {
+        if (this instanceof SoqlQuery && query instanceof SoqlQuery) {
+            ((SoqlQuery) this).selectManager.add(relationName, (SoqlQuery) query);
+        }
+        return this;
+    }
+
+    // #endregion
+    // ==============
+
+    // ==============
+    // #region Filter
+    public interface Filterable {
+    }
+
+    public interface FilterableList extends Filterable {
+        FilterableList add(Filterable filter);
+    }
+
+    private interface InnerFilterable {
+        void build(List<String> fragments, List<List<Object>> tmpVars);
+        Boolean check(SObject obj);
+        Set<String> getFieldNames();
+        void trimFieldName(String commonName);
+        Boolean check(Map<String, Object> obj);
+    }
+
+    private abstract class FilterManager implements InnerFilterable {
+        private InnerFilterable filter { get; set; }
+
+        private void add(Filterable filter) {
+            this.filter = (InnerFilterable) filter;
+        }
+
+        public virtual Set<String> getFieldNames() {
+            return this.filter.getFieldNames();
+        }
+
+        public virtual void trimFieldName(String commonName) {
+            this.filter.trimFieldName(commonName);
+        }
+
+        public virtual void build(List<String> fragments, List<List<Object>> tmpVars) {
+        }
+
+        public virtual Boolean check(SObject obj) {
+            return true;
+        }
+
+        public virtual Boolean check(Map<String, Object> obj) {
+            return true;
+        }
+    }
+
+    private class SOQLQueryFilterManager extends FilterManager {
+        public override void build(List<String> fragments, List<List<Object>> tmpVars) {
+            if (this.filter != null) {
+                fragments.add(' WHERE ');
+                filter.build(fragments, tmpVars);
+            }
+        }
+    }
+
+    private class ObjectFilterManager extends FilterManager {
+        public override Boolean check(SObject obj) {
+            if (filter != null) {
+                return filter.check(obj);
+            }
+            return true;
+        }
+    }
+
+    private class CollectionFilterManager extends FilterManager {
+        public override Boolean check(Map<String, Object> obj) {
+            if (filter != null) {
+                return filter.check(obj);
+            }
+            return true;
+        }
+    }
+
+    private abstract class LogicalExpression implements FilterableList, InnerFilterable {
+        private List<InnerFilterable> filters { get; set; }
+        private String operator { get; set; }
+
+        private LogicalExpression(String operator) {
+            this.filters = new List<InnerFilterable>();
+            this.operator = operator;
+        }
+
+        public Set<String> getFieldNames() {
+            Set<String> fieldNames = new Set<String>();
+            for (InnerFilterable filter : filters) {
+                fieldNames.addAll(filter.getFieldNames());
+            }
+
+            return fieldNames;
+        }
+
+        public void trimFieldName(String commonName) {
+            for (InnerFilterable filter : filters) {
+                filter.trimFieldName(commonName);
+            }
+        }
+
+        public FilterableList add(Filterable filter) {
+            this.filters.add((InnerFilterable) filter);
+            return this;
+        }
+
+        public void build(List<String> fragments, List<List<Object>> tmpVars) {
+            if (this.filters.size() == 0) {
+                return;
+            }
+
+            fragments.add('(');
+            Integer index = 0;
+            for (InnerFilterable filter : this.filters) {
+                if (index > 0) {
+                    fragments.add(this.operator);
+                }
+                filter.build(fragments, tmpVars);
+                index++;
+            }
+            fragments.add(')');
+        }
+    }
+
+    private class AndLogicalExpression extends LogicalExpression {
+        private AndLogicalExpression() {
+            super(' AND ');
+        }
+
+        public Boolean check(SObject obj) {
+            for (InnerFilterable filter : filters) {
+                if (!filter.check(obj)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        public Boolean check(Map<String, Object> obj) {
+            for (InnerFilterable filter : filters) {
+                if (!filter.check(obj)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+    }
+
+    private class OrLogicalExpression extends LogicalExpression {
+        private OrLogicalExpression() {
+            super(' OR ');
+        }
+
+        public Boolean check(SObject obj) {
+            for (InnerFilterable filter : filters) {
+                if (filter.check(obj)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        public Boolean check(Map<String, Object> obj) {
+            for (InnerFilterable filter : filters) {
+                if (filter.check(obj)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+    }
+
+    private abstract class ComparisonExpression implements Filterable, InnerFilterable {
+        private String fieldName { get; set; }
+        private List<String> pathNames { get; set; }
+        private String operator { get; set; }
+        private Object value { get; set; }
+
+        private ComparisonExpression() {
+        }
+
+        private ComparisonExpression(String fieldName, String operator, Object value) {
+            this.fieldName = fieldName;
+            this.operator = operator;
+            this.value = value;
+        }
+
+        public Set<String> getFieldNames() {
+            return new Set<String>{ this.fieldName };
+        }
+
+        public void trimFieldName(String commonName) {
+            this.pathNames = getPathNames(this.fieldName, commonName);
+        }
+
+        public virtual void build(List<String> fragments, List<List<Object>> tmpVars) {
+            fragments.add(this.fieldName);
+            fragments.add(this.operator);
+            if (this.value instanceof List<Object>) {
+                tmpVars.add((List<Object>) this.value);
+                fragments.add(':tmpVar' + tmpVars.size());
+            } else if (this.value instanceof String || this.value instanceof Id) {
+                fragments.add('\'');
+                fragments.add(String.valueOf(this.value));
+                fragments.add('\'');
+            } else {
+                fragments.add(String.valueOf(this.value));
+            }
+        }
+    }
+
+    public Query filterBy(Filterable filter) {
+        this.getFilterManager().add(filter);
+        return this;
+    }
+
+    public static FilterableList orx() {
+        return new OrLogicalExpression();
+    }
+
+    public static FilterableList andx() {
+        return new AndLogicalExpression();
+    }
+
+    // #endregion
+    // ==================
+
+    // =============
+    // #region =, !=
+    private class EQ extends ComparisonExpression {
+        private EQ(String fieldName, Object value) {
+            super(fieldName, ' = ', value);
+        }
+
+        public Boolean check(SObject obj) {
+            return obj.get(this.fieldName) == this.value;
+        }
+
+        public Boolean check(Map<String, Object> obj) {
+            return getPathValue(obj, this.pathNames) == this.value;
+        }
+    }
+
+    private class NE extends ComparisonExpression {
+        private NE(String fieldName, Object value) {
+            super(fieldName, ' != ', value);
+        }
+
+        public Boolean check(SObject obj) {
+            return obj.get(this.fieldName) == this.value;
+        }
+
+        public Boolean check(Map<String, Object> obj) {
+            return getPathValue(obj, this.pathNames) != this.value;
+        }
+    }
+
+    public static Filterable eq(String name, Object value) {
+        return new EQ(name, value);
+    }
+
+    public static Filterable ne(String name, Object value) {
+        return new NE(name, value);
+    }
+    // #endregion
+    // =============
+
+    // =========
+    // #region >
+    private abstract class GT extends ComparisonExpression {
+        private GT(String fieldName, Object value) {
+            super(fieldName, ' > ', value);
+        }
+    }
+
+    private class GT_Integer extends GT {
+        private Integer value { get; set; }
+
+        private GT_Integer(String fieldName, Integer value) {
+            super(fieldName, value);
+            this.value = value;
+        }
+
+        public Boolean check(SObject obj) {
+            return ((Decimal) obj.get(this.fieldName)) > this.value;
+        }
+
+        public Boolean check(Map<String, Object> obj) {
+            return ((Decimal) getPathValue(obj, this.pathNames)) > this.value;
+        }
+    }
+
+    private class GT_Long extends GT {
+        private Long value { get; set; }
+
+        private GT_Long(String fieldName, Long value) {
+            super(fieldName, value);
+            this.value = value;
+        }
+
+        public Boolean check(SObject obj) {
+            return ((Decimal) obj.get(this.fieldName)) > this.value;
+        }
+
+        public Boolean check(Map<String, Object> obj) {
+            return ((Decimal) getPathValue(obj, this.pathNames)) > this.value;
+        }
+    }
+
+    private class GT_Double extends GT {
+        private Double value { get; set; }
+
+        private GT_Double(String fieldName, Double value) {
+            super(fieldName, value);
+            this.value = value;
+        }
+
+        public Boolean check(SObject obj) {
+            return ((Decimal) obj.get(this.fieldName)) > this.value;
+        }
+
+        public Boolean check(Map<String, Object> obj) {
+            return ((Decimal) getPathValue(obj, this.pathNames)) > this.value;
+        }
+    }
+
+    private class GT_Decimal extends GT {
+        private Decimal value { get; set; }
+
+        private GT_Decimal(String fieldName, Decimal value) {
+            super(fieldName, value);
+            this.value = value;
+        }
+
+        public Boolean check(SObject obj) {
+            return ((Decimal) obj.get(this.fieldName)) > this.value;
+        }
+
+        public Boolean check(Map<String, Object> obj) {
+            return ((Decimal) getPathValue(obj, this.pathNames)) > this.value;
+        }
+    }
+
+    private class GT_Date extends GT {
+        private Date value { get; set; }
+
+        private GT_Date(String fieldName, Date value) {
+            super(fieldName, value);
+            this.value = value;
+        }
+
+        public Boolean check(SObject obj) {
+            return ((Date) obj.get(this.fieldName)) > this.value;
+        }
+
+        public Boolean check(Map<String, Object> obj) {
+            return ((Date) getPathValue(obj, this.pathNames)) > this.value;
+        }
+    }
+
+    private class GT_Datetime extends GT {
+        private Datetime value { get; set; }
+
+        private GT_Datetime(String fieldName, Datetime value) {
+            super(fieldName, value);
+            this.value = value;
+        }
+
+        public Boolean check(SObject obj) {
+            return ((Datetime) obj.get(this.fieldName)) > this.value;
+        }
+
+        public Boolean check(Map<String, Object> obj) {
+            return ((Datetime) getPathValue(obj, this.pathNames)) > this.value;
+        }
+    }
+
+    private class GT_Time extends GT {
+        private Time value { get; set; }
+
+        private GT_Time(String fieldName, Time value) {
+            super(fieldName, value);
+            this.value = value;
+        }
+
+        public Boolean check(SObject obj) {
+            return ((Time) obj.get(this.fieldName)) > this.value;
+        }
+
+        public Boolean check(Map<String, Object> obj) {
+            return ((Time) getPathValue(obj, this.pathNames)) > this.value;
+        }
+    }
+
+    private class GT_Id extends GT {
+        private Id value { get; set; }
+
+        private GT_Id(String fieldName, Id value) {
+            super(fieldName, value);
+            this.value = value;
+        }
+
+        public Boolean check(SObject obj) {
+            return ((Id) obj.get(this.fieldName)) > this.value;
+        }
+
+        public Boolean check(Map<String, Object> obj) {
+            return ((Id) getPathValue(obj, this.pathNames)) > this.value;
+        }
+    }
+
+    private class GT_String extends GT {
+        private String value { get; set; }
+
+        private GT_String(String fieldName, String value) {
+            super(fieldName, value);
+            this.value = value;
+        }
+
+        public Boolean check(SObject obj) {
+            return ((String) obj.get(this.fieldName)) > this.value;
+        }
+
+        public Boolean check(Map<String, Object> obj) {
+            return ((String) getPathValue(obj, this.pathNames)) > this.value;
+        }
+    }
+
+    public static Filterable gt(String name, Integer value) {
+        return new GT_Integer(name, value);
+    }
+
+    public static Filterable gt(String name, Long value) {
+        return new GT_Long(name, value);
+    }
+
+    public static Filterable gt(String name, Decimal value) {
+        return new GT_Decimal(name, value);
+    }
+
+    public static Filterable gt(String name, Date value) {
+        return new GT_Date(name, value);
+    }
+
+    public static Filterable gt(String name, Datetime value) {
+        return new GT_Datetime(name, value);
+    }
+
+    public static Filterable gt(String name, Time value) {
+        return new GT_Time(name, value);
+    }
+
+    public static Filterable gt(String name, Id value) {
+        return new GT_Id(name, value);
+    }
+
+    public static Filterable gt(String name, String value) {
+        return new GT_String(name, value);
+    }
+
+    // #endregion
+    // ==========
+
+    // ==========
+    // #region >=
+    private abstract class GTE extends ComparisonExpression {
+        private GTE(String fieldName, Object value) {
+            super(fieldName, ' >= ', value);
+        }
+    }
+
+    private class GTE_Integer extends GTE {
+        private Integer value { get; set; }
+
+        private GTE_Integer(String fieldName, Integer value) {
+            super(fieldName, value);
+            this.value = value;
+        }
+
+        public Boolean check(SObject obj) {
+            return ((Decimal) obj.get(this.fieldName)) >= this.value;
+        }
+
+        public Boolean check(Map<String, Object> obj) {
+            return ((Decimal) getPathValue(obj, this.pathNames)) >= this.value;
+        }
+    }
+
+    private class GTE_Long extends GTE {
+        private Long value { get; set; }
+
+        private GTE_Long(String fieldName, Long value) {
+            super(fieldName, value);
+            this.value = value;
+        }
+
+        public Boolean check(SObject obj) {
+            return ((Decimal) obj.get(this.fieldName)) >= this.value;
+        }
+
+        public Boolean check(Map<String, Object> obj) {
+            return ((Decimal) getPathValue(obj, this.pathNames)) >= this.value;
+        }
+    }
+
+    private class GTE_Double extends GTE {
+        private Double value { get; set; }
+
+        private GTE_Double(String fieldName, Double value) {
+            super(fieldName, value);
+            this.value = value;
+        }
+
+        public Boolean check(SObject obj) {
+            return ((Decimal) obj.get(this.fieldName)) >= this.value;
+        }
+
+        public Boolean check(Map<String, Object> obj) {
+            return ((Decimal) getPathValue(obj, this.pathNames)) >= this.value;
+        }
+    }
+
+    private class GTE_Decimal extends GTE {
+        private Decimal value { get; set; }
+
+        private GTE_Decimal(String fieldName, Decimal value) {
+            super(fieldName, value);
+            this.value = value;
+        }
+
+        public Boolean check(SObject obj) {
+            return ((Decimal) obj.get(this.fieldName)) >= this.value;
+        }
+
+        public Boolean check(Map<String, Object> obj) {
+            return ((Decimal) getPathValue(obj, this.pathNames)) >= this.value;
+        }
+    }
+
+    private class GTE_Date extends GTE {
+        private Date value { get; set; }
+
+        private GTE_Date(String fieldName, Date value) {
+            super(fieldName, value);
+            this.value = value;
+        }
+
+        public Boolean check(SObject obj) {
+            return ((Date) obj.get(this.fieldName)) >= this.value;
+        }
+
+        public Boolean check(Map<String, Object> obj) {
+            return ((Date) getPathValue(obj, this.pathNames)) >= this.value;
+        }
+    }
+
+    private class GTE_Datetime extends GTE {
+        private Datetime value { get; set; }
+
+        private GTE_Datetime(String fieldName, Datetime value) {
+            super(fieldName, value);
+            this.value = value;
+        }
+
+        public Boolean check(SObject obj) {
+            return ((Datetime) obj.get(this.fieldName)) >= this.value;
+        }
+
+        public Boolean check(Map<String, Object> obj) {
+            return ((Datetime) getPathValue(obj, this.pathNames)) >= this.value;
+        }
+    }
+
+    private class GTE_Time extends GTE {
+        private Time value { get; set; }
+
+        private GTE_Time(String fieldName, Time value) {
+            super(fieldName, value);
+            this.value = value;
+        }
+
+        public Boolean check(SObject obj) {
+            return ((Time) obj.get(this.fieldName)) >= this.value;
+        }
+
+        public Boolean check(Map<String, Object> obj) {
+            return ((Time) getPathValue(obj, this.pathNames)) >= this.value;
+        }
+    }
+
+    private class GTE_Id extends GTE {
+        private Id value { get; set; }
+
+        private GTE_Id(String fieldName, Id value) {
+            super(fieldName, value);
+            this.value = value;
+        }
+
+        public Boolean check(SObject obj) {
+            return ((Id) obj.get(this.fieldName)) >= this.value;
+        }
+
+        public Boolean check(Map<String, Object> obj) {
+            return ((Id) getPathValue(obj, this.pathNames)) >= this.value;
+        }
+    }
+
+    private class GTE_String extends GTE {
+        private String value { get; set; }
+
+        private GTE_String(String fieldName, String value) {
+            super(fieldName, value);
+            this.value = value;
+        }
+
+        public Boolean check(SObject obj) {
+            return ((String) obj.get(this.fieldName)) >= this.value;
+        }
+
+        public Boolean check(Map<String, Object> obj) {
+            return ((String) getPathValue(obj, this.pathNames)) >= this.value;
+        }
+    }
+
+    public static Filterable gte(String name, Integer value) {
+        return new GTE_Integer(name, value);
+    }
+
+    public static Filterable gte(String name, Long value) {
+        return new GTE_Long(name, value);
+    }
+
+    public static Filterable gte(String name, Decimal value) {
+        return new GTE_Decimal(name, value);
+    }
+
+    public static Filterable gte(String name, Date value) {
+        return new GTE_Date(name, value);
+    }
+
+    public static Filterable gte(String name, Datetime value) {
+        return new GTE_Datetime(name, value);
+    }
+
+    public static Filterable gte(String name, Time value) {
+        return new GTE_Time(name, value);
+    }
+
+    public static Filterable gte(String name, Id value) {
+        return new GTE_Id(name, value);
+    }
+
+    public static Filterable gte(String name, String value) {
+        return new GTE_String(name, value);
+    }
+
+    // #endregion
+    // ===========
+
+    // ==========
+    // #region <
+    private abstract class LT extends ComparisonExpression {
+        private LT(String fieldName, Object value) {
+            super(fieldName, ' < ', value);
+        }
+    }
+
+    private class LT_Integer extends LT {
+        private Integer value { get; set; }
+        private LT_Integer(String fieldName, Integer value) {
+            super(fieldName, value);
+            this.value = value;
+        }
+
+        public Boolean check(SObject obj) {
+            return ((Decimal) obj.get(this.fieldName)) < this.value;
+        }
+
+        public Boolean check(Map<String, Object> obj) {
+            return ((Decimal) getPathValue(obj, this.pathNames)) < this.value;
+        }
+    }
+
+    private class LT_Long extends LT {
+        private Long value { get; set; }
+        private LT_Long(String fieldName, Long value) {
+            super(fieldName, value);
+            this.value = value;
+        }
+
+        public Boolean check(SObject obj) {
+            return ((Decimal) obj.get(this.fieldName)) < this.value;
+        }
+
+        public Boolean check(Map<String, Object> obj) {
+            return ((Decimal) getPathValue(obj, this.pathNames)) < this.value;
+        }
+    }
+
+    private class LT_Double extends LT {
+        private Double value { get; set; }
+        private LT_Double(String fieldName, Double value) {
+            super(fieldName, value);
+            this.value = value;
+        }
+
+        public Boolean check(SObject obj) {
+            return ((Decimal) obj.get(this.fieldName)) < this.value;
+        }
+
+        public Boolean check(Map<String, Object> obj) {
+            return ((Decimal) getPathValue(obj, this.pathNames)) < this.value;
+        }
+    }
+
+    private class LT_Decimal extends LT {
+        private Decimal value { get; set; }
+        private LT_Decimal(String fieldName, Decimal value) {
+            super(fieldName, value);
+            this.value = value;
+        }
+
+        public Boolean check(SObject obj) {
+            return ((Decimal) obj.get(this.fieldName)) < this.value;
+        }
+
+        public Boolean check(Map<String, Object> obj) {
+            return ((Decimal) getPathValue(obj, this.pathNames)) < this.value;
+        }
+    }
+
+    private class LT_Date extends LT {
+        private Date value { get; set; }
+        private LT_Date(String fieldName, Date value) {
+            super(fieldName, value);
+            this.value = value;
+        }
+
+        public Boolean check(SObject obj) {
+            return ((Date) obj.get(this.fieldName)) < this.value;
+        }
+
+        public Boolean check(Map<String, Object> obj) {
+            return ((Date) getPathValue(obj, this.pathNames)) < this.value;
+        }
+    }
+
+    private class LT_Datetime extends LT {
+        private Datetime value { get; set; }
+        private LT_Datetime(String fieldName, Datetime value) {
+            super(fieldName, value);
+            this.value = value;
+        }
+
+        public Boolean check(SObject obj) {
+            return ((Datetime) obj.get(this.fieldName)) < this.value;
+        }
+
+        public Boolean check(Map<String, Object> obj) {
+            return ((Datetime) getPathValue(obj, this.pathNames)) < this.value;
+        }
+    }
+
+    private class LT_Time extends LT {
+        private Time value { get; set; }
+        private LT_Time(String fieldName, Time value) {
+            super(fieldName, value);
+            this.value = value;
+        }
+
+        public Boolean check(SObject obj) {
+            return ((Time) obj.get(this.fieldName)) < this.value;
+        }
+
+        public Boolean check(Map<String, Object> obj) {
+            return ((Time) getPathValue(obj, this.pathNames)) < this.value;
+        }
+    }
+
+    private class LT_Id extends LT {
+        private Id value { get; set; }
+        private LT_Id(String fieldName, Id value) {
+            super(fieldName, value);
+            this.value = value;
+        }
+
+        public Boolean check(SObject obj) {
+            return ((Id) obj.get(this.fieldName)) > this.value;
+        }
+
+        public Boolean check(Map<String, Object> obj) {
+            return ((Id) getPathValue(obj, this.pathNames)) < this.value;
+        }
+    }
+
+    private class LT_String extends LT {
+        private String value { get; set; }
+        private LT_String(String fieldName, String value) {
+            super(fieldName, value);
+            this.value = value;
+        }
+
+        public Boolean check(SObject obj) {
+            return ((String) obj.get(this.fieldName)) > this.value;
+        }
+
+        public Boolean check(Map<String, Object> obj) {
+            return ((String) getPathValue(obj, this.pathNames)) < this.value;
+        }
+    }
+
+    public static Filterable lt(String name, Integer value) {
+        return new LT_Integer(name, value);
+    }
+
+    public static Filterable lt(String name, Long value) {
+        return new LT_Long(name, value);
+    }
+
+    public static Filterable lt(String name, Double value) {
+        return new LT_Double(name, value);
+    }
+
+    public static Filterable lt(String name, Decimal value) {
+        return new LT_Decimal(name, value);
+    }
+
+    public static Filterable lt(String name, Date value) {
+        return new LT_Date(name, value);
+    }
+
+    public static Filterable lt(String name, Datetime value) {
+        return new LT_Datetime(name, value);
+    }
+
+    public static Filterable lt(String name, Time value) {
+        return new LT_Time(name, value);
+    }
+
+    public static Filterable lt(String name, Id value) {
+        return new LT_Id(name, value);
+    }
+
+    public static Filterable lt(String name, String value) {
+        return new LT_String(name, value);
+    }
+    // #endregion
+    // ==========
+
+    // ==========
+    // #region <=
+    private abstract class LTE extends ComparisonExpression {
+        private Object value { get; set; }
+        private LTE(String fieldName, Object value) {
+            super(fieldName, ' <= ', value);
+            this.value = value;
+        }
+    }
+
+    private class LTE_Integer extends LTE {
+        private Integer value { get; set; }
+        private LTE_Integer(String fieldName, Integer value) {
+            super(fieldName, value);
+            this.value = value;
+        }
+
+        public Boolean check(SObject obj) {
+            return ((Decimal) obj.get(this.fieldName)) <= this.value;
+        }
+
+        public Boolean check(Map<String, Object> obj) {
+            return ((Decimal) getPathValue(obj, this.pathNames)) <= this.value;
+        }
+    }
+
+    private class LTE_Long extends LTE {
+        private Long value { get; set; }
+        private LTE_Long(String fieldName, Long value) {
+            super(fieldName, value);
+            this.value = value;
+        }
+
+        public Boolean check(SObject obj) {
+            return ((Decimal) obj.get(this.fieldName)) <= this.value;
+        }
+
+        public Boolean check(Map<String, Object> obj) {
+            return ((Decimal) getPathValue(obj, this.pathNames)) <= this.value;
+        }
+    }
+
+    private class LTE_Double extends LTE {
+        private Double value { get; set; }
+        private LTE_Double(String fieldName, Double value) {
+            super(fieldName, value);
+            this.value = value;
+        }
+
+        public Boolean check(SObject obj) {
+            return ((Decimal) obj.get(this.fieldName)) <= this.value;
+        }
+
+        public Boolean check(Map<String, Object> obj) {
+            return ((Decimal) getPathValue(obj, this.pathNames)) <= this.value;
+        }
+    }
+
+    private class LTE_Decimal extends LTE {
+        private Decimal value { get; set; }
+        private LTE_Decimal(String fieldName, Decimal value) {
+            super(fieldName, value);
+            this.value = value;
+        }
+
+        public Boolean check(SObject obj) {
+            return ((Decimal) obj.get(this.fieldName)) <= this.value;
+        }
+
+        public Boolean check(Map<String, Object> obj) {
+            return ((Decimal) getPathValue(obj, this.pathNames)) <= this.value;
+        }
+    }
+
+    private class LTE_Date extends LTE {
+        private Date value { get; set; }
+        private LTE_Date(String fieldName, Date value) {
+            super(fieldName, value);
+            this.value = value;
+        }
+
+        public Boolean check(SObject obj) {
+            return ((Date) obj.get(this.fieldName)) <= this.value;
+        }
+
+        public Boolean check(Map<String, Object> obj) {
+            return ((Date) getPathValue(obj, this.pathNames)) <= this.value;
+        }
+    }
+
+    private class LTE_Datetime extends LTE {
+        private Datetime value { get; set; }
+        private LTE_Datetime(String fieldName, Datetime value) {
+            super(fieldName, value);
+            this.value = value;
+        }
+
+        public Boolean check(SObject obj) {
+            return ((Datetime) obj.get(this.fieldName)) <= this.value;
+        }
+
+        public Boolean check(Map<String, Object> obj) {
+            return ((Datetime) getPathValue(obj, this.pathNames)) <= this.value;
+        }
+    }
+
+    private class LTE_Time extends LTE {
+        private Time value { get; set; }
+        private LTE_Time(String fieldName, Time value) {
+            super(fieldName, value);
+            this.value = value;
+        }
+
+        public Boolean check(SObject obj) {
+            return ((Time) obj.get(this.fieldName)) <= this.value;
+        }
+
+        public Boolean check(Map<String, Object> obj) {
+            return ((Time) getPathValue(obj, this.pathNames)) <= this.value;
+        }
+    }
+
+    private class LTE_Id extends LTE {
+        private Id value { get; set; }
+        private LTE_Id(String fieldName, Id value) {
+            super(fieldName, value);
+            this.value = value;
+        }
+
+        public Boolean check(SObject obj) {
+            return ((Id) obj.get(this.fieldName)) <= this.value;
+        }
+
+        public Boolean check(Map<String, Object> obj) {
+            return ((Id) getPathValue(obj, this.pathNames)) <= this.value;
+        }
+    }
+
+    private class LTE_String extends LTE {
+        private String value { get; set; }
+        private LTE_String(String fieldName, String value) {
+            super(fieldName, value);
+            this.value = value;
+        }
+
+        public Boolean check(SObject obj) {
+            return ((String) obj.get(this.fieldName)) <= this.value;
+        }
+
+        public Boolean check(Map<String, Object> obj) {
+            return ((String) getPathValue(obj, this.pathNames)) <= this.value;
+        }
+    }
+
+    public static Filterable lte(String name, Integer value) {
+        return new LTE_Integer(name, value);
+    }
+
+    public static Filterable lte(String name, Long value) {
+        return new LTE_Long(name, value);
+    }
+
+    public static Filterable lte(String name, Double value) {
+        return new LTE_Double(name, value);
+    }
+
+    public static Filterable lte(String name, Decimal value) {
+        return new LTE_Decimal(name, value);
+    }
+
+    public static Filterable lte(String name, Date value) {
+        return new LTE_Date(name, value);
+    }
+
+    public static Filterable lte(String name, Datetime value) {
+        return new LTE_Datetime(name, value);
+    }
+
+    public static Filterable lte(String name, Time value) {
+        return new LTE_Time(name, value);
+    }
+
+    public static Filterable lte(String name, Id value) {
+        return new LTE_Id(name, value);
+    }
+
+    public static Filterable lte(String name, String value) {
+        return new LTE_String(name, value);
+    }
+    // #endregion
+    // ==========
+
+    // ===============
+    // #region between
+    private abstract class Between extends ComparisonExpression {
+        private GTE gteFromValue { get; set; }
+        private LTE lteToValue { get; set; }
+
+        public override void build(List<String> fragments, List<List<Object>> tmpVars) {
+            this.gteFromValue.build(fragments, tmpVars);
+            fragments.add(' AND ');
+            this.lteToValue.build(fragments, tmpVars);
+        }
+    }
+
+    private class Between_Integer extends Between {
+        private Integer fromValue { get; set; }
+        private Integer toValue { get; set; }
+
+        private Between_Integer(String fieldName, Integer fromValue, Integer toValue) {
+            this.fromValue = fromValue;
+            this.toValue = toValue;
+            this.gteFromValue = new GTE_Integer(fieldName, fromValue);
+            this.lteToValue = new LTE_Integer(fieldName, toValue);
+        }
+
+        public Boolean check(SObject obj) {
+            Decimal objValue = (Decimal) obj.get(this.fieldName);
+            return objValue >= this.fromValue && objValue <= this.toValue;
+        }
+
+        public Boolean check(Map<String, Object> obj) {
+            Decimal objValue = (Decimal) getPathValue(obj, this.pathNames);
+            return objValue >= this.fromValue && objValue <= this.toValue;
+        }
+    }
+
+    private class Between_Long extends Between {
+        private Long fromValue { get; set; }
+        private Long toValue { get; set; }
+
+        private Between_Long(String fieldName, Long fromValue, Long toValue) {
+            this.fromValue = fromValue;
+            this.toValue = toValue;
+            this.gteFromValue = new GTE_Long(fieldName, fromValue);
+            this.lteToValue = new LTE_Long(fieldName, toValue);
+        }
+
+        public Boolean check(SObject obj) {
+            Decimal objValue = (Decimal) obj.get(this.fieldName);
+            return objValue >= this.fromValue && objValue <= this.toValue;
+        }
+
+        public Boolean check(Map<String, Object> obj) {
+            Decimal objValue = (Decimal) getPathValue(obj, this.pathNames);
+            return objValue >= this.fromValue && objValue <= this.toValue;
+        }
+    }
+
+    private class Between_Double extends Between {
+        private Double fromValue { get; set; }
+        private Double toValue { get; set; }
+
+        private Between_Double(String fieldName, Double fromValue, Double toValue) {
+            this.fromValue = fromValue;
+            this.toValue = toValue;
+            this.gteFromValue = new GTE_Double(fieldName, fromValue);
+            this.lteToValue = new LTE_Double(fieldName, toValue);
+        }
+
+        public Boolean check(SObject obj) {
+            Decimal objValue = (Decimal) obj.get(this.fieldName);
+            return objValue >= this.fromValue && objValue <= this.toValue;
+        }
+
+        public Boolean check(Map<String, Object> obj) {
+            Decimal objValue = (Decimal) getPathValue(obj, this.pathNames);
+            return objValue >= this.fromValue && objValue <= this.toValue;
+        }
+    }
+
+    private class Between_Decimal extends Between {
+        private Decimal fromValue { get; set; }
+        private Decimal toValue { get; set; }
+
+        private Between_Decimal(String fieldName, Decimal fromValue, Decimal toValue) {
+            this.fromValue = fromValue;
+            this.toValue = toValue;
+            this.gteFromValue = new GTE_Decimal(fieldName, fromValue);
+            this.lteToValue = new LTE_Decimal(fieldName, toValue);
+        }
+
+        public Boolean check(SObject obj) {
+            Decimal objValue = (Decimal) obj.get(this.fieldName);
+            return objValue >= this.fromValue && objValue <= this.toValue;
+        }
+
+        public Boolean check(Map<String, Object> obj) {
+            Decimal objValue = (Decimal) getPathValue(obj, this.pathNames);
+            return objValue >= this.fromValue && objValue <= this.toValue;
+        }
+    }
+
+    private class Between_Date extends Between {
+        private Date fromValue { get; set; }
+        private Date toValue { get; set; }
+
+        private Between_Date(String fieldName, Date fromValue, Date toValue) {
+            this.fromValue = fromValue;
+            this.toValue = toValue;
+            this.gteFromValue = new GTE_Date(fieldName, fromValue);
+            this.lteToValue = new LTE_Date(fieldName, toValue);
+        }
+
+        public Boolean check(SObject obj) {
+            Date objValue = (Date) obj.get(this.fieldName);
+            return objValue >= this.fromValue && objValue <= this.toValue;
+        }
+
+        public Boolean check(Map<String, Object> obj) {
+            Date objValue = (Date) getPathValue(obj, this.pathNames);
+            return objValue >= this.fromValue && objValue <= this.toValue;
+        }
+    }
+
+    private class Between_Datetime extends Between {
+        private Datetime fromValue { get; set; }
+        private Datetime toValue { get; set; }
+
+        private Between_Datetime(String fieldName, Datetime fromValue, Datetime toValue) {
+            this.fromValue = fromValue;
+            this.toValue = toValue;
+            this.gteFromValue = new GTE_Datetime(fieldName, fromValue);
+            this.lteToValue = new LTE_Datetime(fieldName, toValue);
+        }
+
+        public Boolean check(SObject obj) {
+            Datetime objValue = (Datetime) obj.get(this.fieldName);
+            return objValue >= this.fromValue && objValue <= this.toValue;
+        }
+
+        public Boolean check(Map<String, Object> obj) {
+            Datetime objValue = (Datetime) getPathValue(obj, this.pathNames);
+            return objValue >= this.fromValue && objValue <= this.toValue;
+        }
+    }
+
+    private class Between_Time extends Between {
+        private Time fromValue { get; set; }
+        private Time toValue { get; set; }
+
+        private Between_Time(String fieldName, Time fromValue, Time toValue) {
+            this.fromValue = fromValue;
+            this.toValue = toValue;
+            this.gteFromValue = new GTE_Time(fieldName, fromValue);
+            this.lteToValue = new LTE_Time(fieldName, toValue);
+        }
+
+        public Boolean check(SObject obj) {
+            Time objValue = (Time) obj.get(this.fieldName);
+            return objValue >= this.fromValue && objValue <= this.toValue;
+        }
+
+        public Boolean check(Map<String, Object> obj) {
+            Time objValue = (Time) getPathValue(obj, this.pathNames);
+            return objValue >= this.fromValue && objValue <= this.toValue;
+        }
+    }
+
+    private class Between_Id extends Between {
+        private Id fromValue { get; set; }
+        private Id toValue { get; set; }
+
+        private Between_Id(String fieldName, Id fromValue, Id toValue) {
+            this.fromValue = fromValue;
+            this.toValue = toValue;
+            this.gteFromValue = new GTE_Id(fieldName, fromValue);
+            this.lteToValue = new LTE_Id(fieldName, toValue);
+        }
+
+        public Boolean check(SObject obj) {
+            Id objValue = (Id) obj.get(this.fieldName);
+            return objValue >= this.fromValue && objValue <= this.toValue;
+        }
+
+        public Boolean check(Map<String, Object> obj) {
+            Id objValue = (Id) getPathValue(obj, this.pathNames);
+            return objValue >= this.fromValue && objValue <= this.toValue;
+        }
+    }
+
+    private class Between_String extends Between {
+        private String fromValue { get; set; }
+        private String toValue { get; set; }
+
+        private Between_String(String fieldName, String fromValue, String toValue) {
+            this.fromValue = fromValue;
+            this.toValue = toValue;
+            this.gteFromValue = new GTE_String(fieldName, fromValue);
+            this.lteToValue = new LTE_String(fieldName, toValue);
+        }
+
+        public Boolean check(SObject obj) {
+            String objValue = (String) obj.get(this.fieldName);
+            return objValue >= this.fromValue && objValue <= this.toValue;
+        }
+
+        public Boolean check(Map<String, Object> obj) {
+            String objValue = (String) getPathValue(obj, this.pathNames);
+            return objValue >= this.fromValue && objValue <= this.toValue;
+        }
+    }
+    // prettier-ignore
+    public static Filterable between(String name, Integer fromValue, Integer toValue) {
+        return new Between_Integer(name, fromValue, toValue);
+    }
+    // prettier-ignore
+    public static Filterable between(String name, Long fromValue, Long toValue) {
+        return new Between_Long(name, fromValue, toValue);
+    }
+    // prettier-ignore
+    public static Filterable between(String name, Double fromValue, Double toValue) {
+        return new Between_Double(name, fromValue, toValue);
+    }
+    // prettier-ignore
+    public static Filterable between(String name, Decimal fromValue, Decimal toValue) {
+        return new Between_Decimal(name, fromValue, toValue);
+    }
+    // prettier-ignore
+    public static Filterable between(String name, Date fromValue, Date toValue) {
+        return new Between_Date(name, fromValue, toValue);
+    }
+    // prettier-ignore
+    public static Filterable between(String name, Datetime fromValue, Datetime toValue) {
+        return new Between_Datetime(name, fromValue, toValue);
+    }
+    // prettier-ignore
+    public static Filterable between(String name, Time fromValue, Time toValue) {
+        return new Between_Time(name, fromValue, toValue);
+    }
+    // prettier-ignore
+    public static Filterable between(String name, Id fromValue, Id toValue) {
+        return new Between_Id(name, fromValue, toValue);
+    }
+    // prettier-ignore
+    public static Filterable between(String name, String fromValue, String toValue) {
+        return new Between_String(name, fromValue, toValue);
+    }
+    // #endregion
+    // ===============
+
+    // ============
+    // #region like
+    private class LikeX extends ComparisonExpression {
+        private LikeX(String fieldName, String value) {
+            super(fieldName, 'LIKE', value);
+        }
+
+        public Boolean check(SObject obj) {
+            return true;
+        }
+
+        public Boolean check(Map<String, Object> obj) {
+            return true;
+        }
+    }
+
+    private class NLike extends ComparisonExpression {
+        private NLike(String fieldName, String value) {
+            super(fieldName, 'LIKE', value);
+        }
+
+        public Boolean check(SObject obj) {
+            return true;
+        }
+
+        public Boolean check(Map<String, Object> obj) {
+            return true;
+        }
+
+        public override void build(List<String> fragments, List<List<Object>> tmpVars) {
+            fragments.add('(NOT ');
+            super.build(fragments, tmpVars);
+            fragments.add(')');
+        }
+    }
+
+    public static Filterable likex(String name, String value) {
+        return new LikeX(name, value);
+    }
+
+    public static Filterable nlike(String name, String value) {
+        return new NLike(name, value);
+    }
+    // #endregion
+    // ============
+
+    // ================
+    // #region distance
+
+    public class Distance {
+        private String fieldName { get; set; }
+        private Geolocation geo { get; set; }
+        private Unit unit { get; set; }
+
+        private Distance(String fieldName, Geolocation geo, Unit unit) {
+            this.fieldName = fieldName;
+            this.geo = geo;
+            this.unit = unit;
+        }
+    }
+
+    public class Geolocation {
+        private Decimal latitude { get; set; }
+        private Decimal longitude { get; set; }
+
+        private geolocation(Decimal latitude, Decimal longitude) {
+            this.latitude = latitude;
+            this.longitude = longitude;
+        }
+    }
+
+    public enum Unit {
+        MILE,
+        KILOMETER
+    }
+
+    public static Distance distance(String fieldName, Geolocation geo, Unit unit) {
+        return new Distance(fieldName, geo, unit);
+    }
+
+    public static Geolocation geolocation(Decimal latitude, Decimal longitude) {
+        return new Geolocation(latitude, longitude);
+    }
+
+    // #endregion
+    // ================
+
+    // ====================================
+    // #region inx, nin, includes, excludes
+    private class Includes extends ComparisonExpression {
+        private Includes(String fieldName, List<Object> values) {
+            super(fieldName, 'INCLUDES', values);
+        }
+
+        public Boolean check(SObject obj) {
+            return true;
+        }
+
+        public Boolean check(Map<String, Object> obj) {
+            return true;
+        }
+    }
+
+    private class Excludes extends ComparisonExpression {
+        private Excludes(String fieldName, List<Object> values) {
+            super(fieldName, 'EXCLUDES', values);
+        }
+
+        public Boolean check(SObject obj) {
+            return true;
+        }
+
+        public Boolean check(Map<String, Object> obj) {
+            return true;
+        }
+    }
+
+    private class INX extends ComparisonExpression {
+        private INX(String fieldName, List<Object> values) {
+            super(fieldName, ' IN ', values);
+        }
+
+        public Boolean check(SObject obj) {
+            return true;
+        }
+
+        public Boolean check(Map<String, Object> obj) {
+            return true;
+        }
+    }
+
+    private class NIN extends ComparisonExpression {
+        private NIN(String fieldName, List<Object> values) {
+            super(fieldName, 'NOT IN', values);
+        }
+
+        public Boolean check(SObject obj) {
+            return true;
+        }
+
+        public Boolean check(Map<String, Object> obj) {
+            return true;
+        }
+    }
+
+    private virtual class INX_Query extends ComparisonExpression {
+        private INX_Query(String fieldName, Boolean isNot, Query query) {
+            super(fieldName, isNot ? 'NOT IN' : 'IN', query);
+        }
+
+        public Boolean check(SObject obj) {
+            return true;
+        }
+
+        public Boolean check(Map<String, Object> obj) {
+            return true;
+        }
+
+        public override void build(List<String> fragments, List<List<Object>> tmpVars) {
+            if (this.value instanceof SoqlQuery) {
+                fragments.add(this.fieldName);
+                fragments.add(' ');
+                fragments.add(this.operator);
+                fragments.add(' ');
+                fragments.add('(');
+                ((SoqlQuery) this.value).buildSoql(fragments, tmpVars);
+                fragments.add(')');
+            }
+        }
+    }
+
+    public static Filterable anyOf(String name, Filterable filter) {
+        return null;
+    }
+
+    public static Filterable includes(String name, List<Object> values) {
+        return new Includes(name, values);
+    }
+
+    public static Filterable excludes(String name, List<Object> query) {
+        return new Excludes(name, query);
+    }
+
+    public static Filterable inx(String name, List<Object> values) {
+        return new INX(name, values);
+    }
+
+    public static Filterable inx(String name, Query query) {
+        return new INX_Query(name, false, query);
+    }
+
+    public static Filterable nin(String name, List<Object> values) {
+        return new NIN(name, values);
+    }
+
+    public static Filterable nin(String name, Query query) {
+        return new INX_Query(name, true, query);
+    }
+
+    // #endregion
+    // ====================================
+
+    // =====================
+    // #region Date Literals
+
+    public class DateLiteral {
+        public final String YESTERDAY = 'YESTERDAY';
+        public final String TODAY = 'TODAY';
+        public final String TOMORROW = 'TOMORROW';
+        public final String LAST_WEEK = 'LAST_WEEK';
+        public final String THIS_WEEK = 'THIS_WEEK';
+        public final String NEXT_WEEK = 'NEXT_WEEK';
+        public final String LAST_MONTH = 'LAST_MONTH';
+        public final String THIS_MONTH = 'THIS_MONTH';
+        public final String NEXT_MONTH = 'NEXT_MONTH';
+        public final String LAST_90_DAYS = 'LAST_90_DAYS';
+        public final String NEXT_90_DAYS = 'NEXT_90_DAYS';
+        public final String THIS_QUARTER = 'THIS_QUARTER';
+        public final String LAST_QUARTER = 'LAST_QUARTER';
+        public final String NEXT_QUARTER = 'NEXT_QUARTER';
+        public final String THIS_YEAR = 'THIS_YEAR';
+        public final String LAST_YEAR = 'LAST_YEAR';
+        public final String NEXT_YEAR = 'NEXT_YEAR';
+        public final String THIS_FISCAL_QUARTER = 'THIS_FISCAL_QUARTER';
+        public final String LAST_FISCAL_QUARTER = 'LAST_FISCAL_QUARTER';
+        public final String NEXT_FISCAL_QUARTER = 'NEXT_FISCAL_QUARTER';
+        public final String THIS_FISCAL_YEAR = 'THIS_FISCAL_YEAR';
+        public final String LAST_FISCAL_YEAR = 'LAST_FISCAL_YEAR';
+        public final String NEXT_FISCAL_YEAR = 'NEXT_FISCAL_YEAR';
+
+        public String LAST_N_DAYS(Integer n) {
+            return 'LAST_N_DAYS:' + n;
+        }
+
+        public String NEXT_N_DAYS(Integer n) {
+            return 'NEXT_N_DAYS:' + n;
+        }
+
+        public String N_DAYS_AGO(Integer n) {
+            return 'N_DAYS_AGO:' + n;
+        }
+
+        public String NEXT_N_WEEKS(Integer n) {
+            return 'NEXT_N_WEEKS:' + n;
+        }
+
+        public String LAST_N_WEEKS(Integer n) {
+            return 'LAST_N_WEEKS:' + n;
+        }
+
+        public String N_WEEKS_AGO(Integer n) {
+            return 'N_WEEKS_AGO:' + n;
+        }
+
+        public String NEXT_N_MONTHS(Integer n) {
+            return 'NEXT_N_MONTHS:' + n;
+        }
+
+        public String LAST_N_MONTHS(Integer n) {
+            return 'LAST_N_MONTHS:' + n;
+        }
+
+        public String N_MONTHS_AGO(Integer n) {
+            return 'N_MONTHS_AGO:' + n;
+        }
+
+        public String NEXT_N_QUARTERS(Integer n) {
+            return 'NEXT_N_QUARTERS:' + n;
+        }
+
+        public String LAST_N_QUARTERS(Integer n) {
+            return 'LAST_N_QUARTERS:' + n;
+        }
+
+        public String N_QUARTERS_AGO(Integer n) {
+            return 'N_QUARTERS_AGO:' + n;
+        }
+
+        public String NEXT_N_YEARS(Integer n) {
+            return 'NEXT_N_YEARS:' + n;
+        }
+
+        public String LAST_N_YEARS(Integer n) {
+            return 'LAST_N_YEARS:' + n;
+        }
+
+        public String N_YEARS_AGO(Integer n) {
+            return 'N_YEARS_AGO:' + n;
+        }
+
+        public String NEXT_N_FISCAL_QUARTERS(Integer n) {
+            return 'NEXT_N_FISCAL_QUARTERS:' + n;
+        }
+
+        public String N_FISCAL_QUARTERS_AGO(Integer n) {
+            return 'N_FISCAL_QUARTERS_AGO:' + n;
+        }
+
+        public String NEXT_N_FISCAL_YEARS(Integer n) {
+            return 'NEXT_N_FISCAL_YEARS:' + n;
+        }
+
+        public String LAST_N_FISCAL_YEARS(Integer n) {
+            return 'LAST_N_FISCAL_YEARS:' + n;
+        }
+
+        public String N_FISCAL_YEARS_AGO(Integer n) {
+            return 'N_FISCAL_YEARS_AGO:' + n;
+        }
+    }
+
+    // #endregion
+    // =====================
+
+    // ================
+    // #region Order By
+
+    private virtual class OrderByClause {
+        private String fieldName { get; set; }
+        private List<String> pathNames { get; set; }
+        private Boolean ascending { get; set; }
+        private Boolean nullFirst { get; set; }
+
+        private OrderByClause(String fieldName) {
+            this.fieldName = fieldName;
+            this.ascending = true;
+            this.nullFirst = true;
+        }
+    }
+
+    public class FilterableOrderByClause extends OrderByClause {
+        private InnerFilterable filter { get; set; }
+        private String valueFieldName { get; set; }
+
+        private FilterableOrderByClause(String fieldName, Filterable filter, String valueFieldName) {
+            super(fieldName);
+            this.filter = (InnerFilterable) filter;
+            this.valueFieldName = valueFieldName;
+        }
+    }
+
+    private interface IOrderManager {
+        void addClause(OrderByClause clause);
+        void setFieldNames(List<String> names);
+        void setAscending(Boolean ascending);
+        void setNullFirst(Boolean nullFirst);
+        Object sort(Object objectList);
+        Set<String> getFieldNames();
+        void trimFieldName(String commonName);
+    }
+
+    private abstract class OrderManager implements IOrderManager {
+        private List<OrderByClause> orderByClauses { get; set; }
+        private Integer batchSize { get; set; }
+
+        private OrderManager() {
+            this.orderByClauses = new List<OrderByClause>();
+            this.batchSize = 0;
+        }
+
+        public Set<String> getFieldNames() {
+            Set<String> fieldNames = new Set<String>();
+            for (OrderByClause clause : orderByClauses) {
+                fieldNames.add(clause.fieldName);
+            }
+            return fieldNames;
+        }
+
+        public void trimFieldName(String commonName) {
+            for (OrderByClause clause : orderByClauses) {
+                clause.pathNames = getPathNames(clause.fieldName, commonName);
+            }
+        }
+
+        public void setFieldNames(List<String> fieldNames) {
+            this.batchSize = fieldNames.size();
+            for (String fieldName : fieldNames) {
+                this.orderByClauses.add(new OrderByClause(fieldName));
+            }
+        }
+
+        public void addClause(OrderByClause clause) {
+            this.batchSize = 1;
+            this.orderByClauses.add(clause);
+        }
+
+        public void setAscending(Boolean ascending) {
+            if (this.orderByClauses.size() >= this.batchSize) {
+                for (Integer i = this.batchSize; i > 0; i--) {
+                    this.orderByClauses[this.orderByClauses.size() - i].ascending = ascending;
+                }
+            }
+        }
+        public void setNullFirst(Boolean nullFirst) {
+            if (this.orderByClauses.size() >= this.batchSize) {
+                for (Integer i = this.batchSize; i > 0; i--) {
+                    this.orderByClauses[this.orderByClauses.size() - i].nullFirst = nullFirst;
+                }
+            }
+        }
+    }
+
+    private class SOQLQueryOrderManager extends OrderManager {
+        public Object sort(Object objects) {
+            return objects;
+        }
+
+        private void build(List<String> fragments) {
+            Boolean isFirst = true;
+            for (OrderByClause clause : orderByClauses) {
+                if (isFirst) {
+                    fragments.add(' ORDER BY ');
+                } else {
+                    fragments.add(', ');
+                }
+                isFirst = false;
+
+                fragments.add(clause.fieldName);
+
+                if (!clause.ascending) {
+                    fragments.add(' DESC');
+                }
+
+                if (!clause.nullFirst) {
+                    fragments.add(' NULLS LAST');
+                }
+            }
+        }
+
+        private void build(List<String> fragments, Map<String, AggregateOperation> operationByAliasName) {
+            Boolean isFirst = true;
+            for (OrderByClause clause : this.orderByClauses) {
+                if (isFirst) {
+                    fragments.add(' ORDER BY ');
+                } else {
+                    fragments.add(', ');
+                }
+                isFirst = false;
+
+                if (operationByAliasName.containsKey(clause.fieldName)) {
+                    AggregateOperation operation = operationByAliasName.get(clause.fieldName);
+                    fragments.add(operation.operation);
+                    fragments.add('(');
+                    fragments.add(operation.fieldName);
+                    fragments.add(')');
+                } else {
+                    fragments.add(clause.fieldName);
+                }
+
+                if (!clause.ascending) {
+                    fragments.add(' DESC');
+                }
+
+                if (!clause.nullFirst) {
+                    fragments.add(' NULLS LAST');
+                }
+            }
+        }
+    }
+
+    private class ObjectOrderManager extends OrderManager {
+        public Object sort(Object objects) {
+            List<SObject> objectList = (List<SObject>) objects;
+            if (this.orderByClauses.size() == 0) {
+                return objectList;
+            }
+
+            List<ComparableSObject> comparableSObjects = new List<ComparableSObject>();
+            for (SObject obj : objectList) {
+                comparableSObjects.add(new ComparableSObject(obj, this.orderByClauses));
+            }
+
+            comparableSObjects.sort();
+
+            List<SObject> newObjectList = new List<SObject>();
+            for (ComparableSObject obj : comparableSObjects) {
+                newObjectList.add(obj.currentObj);
+            }
+            return newObjectList;
+        }
+    }
+
+    private class ComparableSObject implements Comparable {
+        private SObject currentObj { get; set; }
+        private List<OrderByClause> orderByClauses { get; set; }
+
+        private ComparableSObject(SObject currentObj, List<OrderByClause> orderByClauses) {
+            this.currentObj = currentObj;
+            this.orderByClauses = orderByClauses;
+        }
+
+        public Integer compareTo(Object compareTo) {
+            SObject compareObj = ((ComparableSObject) compareTo).currentObj;
+            for (OrderByClause clause : this.orderByClauses) {
+                Object currentValue = currentObj.get(clause.fieldName);
+                Object compareValue = compareObj.get(clause.fieldName);
+
+                if (currentValue == compareValue) {
+                    continue;
+                }
+
+                if (currentValue == null) {
+                    return clause.nullFirst ? 1 : -1;
+                }
+
+                if (currentValue instanceof Decimal && (Decimal) currentValue > (Decimal) compareValue) {
+                    return clause.ascending ? 1 : -1;
+                } else {
+                    return clause.ascending ? -1 : 1;
+                }
+            }
+
+            return 0;
+        }
+    }
+
+    private class CollectionOrderManager extends OrderManager {
+        public Object sort(Object objects) {
+            List<Map<String, Object>> objectList = (List<Map<String, Object>>) objects;
+            if (this.orderByClauses.size() == 0) {
+                return objectList;
+            }
+
+            List<ComparableMap> comparableSObjects = new List<ComparableMap>();
+            for (Map<String, Object> obj : objectList) {
+                comparableSObjects.add(new ComparableMap(obj, this.orderByClauses));
+            }
+
+            comparableSObjects.sort();
+
+            List<Map<String, Object>> newObjectList = new List<Map<String, Object>>();
+            for (ComparableMap obj : comparableSObjects) {
+                newObjectList.add(obj.currentObj);
+            }
+            return newObjectList;
+        }
+    }
+
+    private class ComparableMap implements Comparable {
+        private Map<String, Object> currentObj { get; set; }
+        private List<OrderByClause> orderByClauses { get; set; }
+
+        private ComparableMap(Map<String, Object> currentObj, List<OrderByClause> orderByClauses) {
+            this.currentObj = currentObj;
+            this.orderByClauses = orderByClauses;
+        }
+
+        public Integer compareTo(Object compareTo) {
+            Map<String, Object> compareObj = ((ComparableMap) compareTo).currentObj;
+            for (OrderByClause clause : this.orderByClauses) {
+                Object currentValue = getPathValue(currentObj, clause.pathNames);
+                Object compareValue = getPathValue(compareObj, clause.pathNames);
+
+                if (currentValue == compareValue) {
+                    continue;
+                }
+
+                if (currentValue == null) {
+                    return clause.nullFirst ? 1 : -1;
+                }
+
+                if (currentValue instanceof Decimal && (Decimal) currentValue > (Decimal) compareValue) {
+                    return clause.ascending ? 1 : -1;
+                } else {
+                    return clause.ascending ? -1 : 1;
+                }
+            }
+
+            return 0;
+        }
+    }
+
+    public static FilterableOrderByClause firstOf(String fieldName, Filterable filter, String valueFieldName) {
+        return new FilterableOrderByClause(fieldName, filter, valueFieldName);
+    }
+
+    public static FilterableOrderByClause lastOf(String fieldName, Filterable filter, String valueFieldName) {
+        return new FilterableOrderByClause(fieldName, filter, valueFieldName);
+    }
+
+    public static FilterableOrderByClause minOf(String fieldName, Filterable filter, String valueFieldName) {
+        return new FilterableOrderByClause(fieldName, filter, valueFieldName);
+    }
+
+    public static FilterableOrderByClause maxOf(String fieldName, Filterable filter, String valueFieldName) {
+        return new FilterableOrderByClause(fieldName, filter, valueFieldName);
+    }
+
+    public static FilterableOrderByClause avgOf(String fieldName, Filterable filter, String valueFieldName) {
+        return new FilterableOrderByClause(fieldName, filter, valueFieldName);
+    }
+
+    public static FilterableOrderByClause sumOf(String fieldName, Filterable filter, String valueFieldName) {
+        return new FilterableOrderByClause(fieldName, filter, valueFieldName);
+    }
+
+    public Query orderBy(FilterableOrderByClause clause) {
+        this.getOrderManager().addClause(clause);
+        return this;
+    }
+
+    public Query orderBy(String name) {
+        this.orderBy(new List<String>{ name });
+        return this;
+    }
+    public Query orderBy(String name1, String name2) {
+        this.orderBy(new List<String>{ name1, name2 });
+        return this;
+    }
+    public Query orderBy(String name1, String name2, String name3) {
+        this.orderBy(new List<String>{ name1, name2, name3 });
+        return this;
+    }
+    public Query orderBy(String name1, String name2, String name3, String name4) {
+        this.orderBy(new List<String>{ name1, name2, name3, name4 });
+        return this;
+    }
+    public Query orderBy(String name1, String name2, String name3, String name4, String name5) {
+        this.orderBy(new List<String>{ name1, name2, name3, name4, name5 });
+        return this;
+    }
+    public Query orderBy(List<String> names) {
+        this.getOrderManager().setFieldNames(names);
+        return this;
+    }
+
+    public Query ascending() {
+        return this;
+    }
+
+    public Query descending() {
+        this.getOrderManager().setAscending(false);
+        return this;
+    }
+
+    public Query nullsFirst() {
+        return this;
+    }
+
+    public Query nullsLast() {
+        this.getOrderManager().setNullFirst(false);
+        return this;
+    }
+    // #endregion
+    // ================
+
+    // ================
+    // #region Group By
+
+    private interface IGroupManager {
+        void add(AggregateOperation operation);
+        void add(List<String> fieldNames);
+        Boolean isEmpty();
+        void setRollup(Boolean rollup);
+        void setCube(Boolean cube);
+    }
+
+    private abstract class GroupManager implements IGroupManager {
+        private List<AggregateOperation> operations { get; set; }
+        private Map<String, AggregateOperation> operationByAliasName { get; set; }
+        private Integer aliasIndex { get; set; }
+
+        private List<String> fieldNames { get; set; }
+        private Boolean rollup { get; set; }
+        private Boolean cube { get; set; }
+
+        {
+            this.operations = new List<AggregateOperation>();
+            this.operationByAliasName = new Map<String, AggregateOperation>();
+            this.aliasIndex = 0;
+
+            this.fieldNames = new List<String>();
+            this.rollup = false;
+            this.cube = false;
+        }
+
+        public Boolean isEmpty() {
+            return this.operations.size() == 0 || this.fieldNames.size() == 0;
+        }
+
+        public void add(AggregateOperation operation) {
+            if (String.isBlank(operation.aliasName)) {
+                operation.aliasName = 'expr' + this.aliasIndex;
+                this.aliasIndex++;
+            }
+            this.operations.add(operation);
+            this.operationByAliasName.put(operation.aliasName, operation);
+        }
+
+        public void add(List<String> fieldNames) {
+            this.fieldNames.addAll(fieldNames);
+        }
+
+        public void setRollup(Boolean rollup) {
+            this.rollup = rollup;
+        }
+
+        public void setCube(Boolean cube) {
+            this.cube = cube;
+        }
+    }
+
+    private class SOQLQueryGroupManager extends GroupManager {
+        public void buildSelect(List<String> fragments) {
+            fragments.add('SELECT ');
+            Boolean isFirst = true;
+            for (String fieldName : this.fieldNames) {
+                if (!isFirst) {
+                    fragments.add(', ');
+                }
+                isFirst = false;
+                fragments.add(fieldName);
+            }
+
+            for (AggregateOperation operation : this.operations) {
+                if (!isFirst) {
+                    fragments.add(', ');
+                }
+                isFirst = false;
+                operation.build(fragments);
+            }
+        }
+
+        public void build(List<String> fragments) {
+            Boolean isFirst = true;
+            for (String fieldName : this.fieldNames) {
+                if (isFirst) {
+                    fragments.add(' GROUP BY ');
+                    if (this.rollup) {
+                        fragments.add('ROLLUP(');
+                    } else if (this.cube) {
+                        fragments.add('CUBE(');
+                    }
+                } else {
+                    fragments.add(', ');
+                }
+                isFirst = false;
+                fragments.add(fieldName);
+            }
+            if (this.rollup || this.cube) {
+                fragments.add(')');
+            }
+        }
+    }
+
+    private class ObjectGroupManager extends GroupManager {
+        private List<GroupByResult> summerize(List<SObject> objectList) {
+            Map<String, GroupByResult> results = new Map<String, GroupByResult>();
+
+            for (SObject obj : objectList) {
+                String key = '';
+                Map<String, Object> fieldValues = new Map<String, Object>();
+                for (String fieldName : this.fieldNames) {
+                    key += String.valueOf(obj.get(fieldName));
+                    fieldValues.put(fieldName, obj.get(fieldName));
+                }
+
+                if (!results.containsKey(key)) {
+                    results.put(key, new GroupByResult(fieldValues));
+                }
+                GroupByResult result = results.get(key);
+                result.sobjects.add(obj);
+            }
+
+            for (GroupByResult result : results.values()) {
+                result.compute(this.operations);
+            }
+
+            return results.values();
+        }
+    }
+
+    public class GroupByResult implements Comparable {
+        private List<OrderByClause> orderByClauses { get; set; }
+        private Map<String, Object> fieldValues { get; set; }
+        private Map<String, Object> results { get; set; }
+        private List<Object> elements { get; set; }
+        private List<SObject> sobjects { get; set; }
+
+        {
+            results = new Map<String, Object>();
+            elements = new List<Object>();
+            sobjects = new List<SObject>();
+        }
+
+        private GroupByResult(Map<String, Object> fieldValues) {
+            this.fieldValues = fieldValues;
+        }
+
+        public Object get(String name) {
+            return results.get(name);
+        }
+
+        public List<SObject> getSObjects() {
+            return this.sobjects;
+        }
+
+        public List<Object> getElements() {
+            return this.elements;
+        }
+
+        private void compute(List<AggregateOperation> operations) {
+            for (AggregateOperation operation : operations) {
+                results.put(operation.aliasName, operation.compute(sobjects));
+            }
+
+            results.putAll(this.fieldValues);
+        }
+
+        public Integer compareTo(Object compareTo) {
+            GroupByResult that = (GroupByResult) compareTo;
+            for (OrderByClause clause : this.orderByClauses) {
+                Object currentValue = this.get(clause.fieldName);
+                Object compareValue = that.get(clause.fieldName);
+
+                if (currentValue == compareValue) {
+                    continue;
+                }
+
+                if (currentValue == null) {
+                    return clause.nullFirst ? 1 : -1;
+                }
+
+                if (currentValue instanceof Decimal && (Decimal) currentValue > (Decimal) compareValue) {
+                    return clause.ascending ? 1 : -1;
+                } else {
+                    return clause.ascending ? -1 : 1;
+                }
+            }
+            return 0;
+        }
+    }
+
+    private abstract class AggregateOperation {
+        private String operation { get; set; }
+        private String fieldName { get; set; }
+        private String aliasName { get; set; }
+
+        private void build(List<String> fragments) {
+            fragments.add(this.operation);
+            fragments.add('(');
+            fragments.add(this.fieldName);
+            fragments.add(')');
+            if (String.isNotBlank(this.aliasName) && !this.aliasName.startsWithIgnoreCase('expr')) {
+                fragments.add(' ');
+                fragments.add(this.aliasName);
+            }
+        }
+
+        private abstract Object compute(List<SObject> objectList);
+    }
+
+    private class Grouping extends AggregateOperation {
+        private Grouping(String fieldName) {
+            this.operation = 'GROUPING';
+            this.fieldName = fieldName;
+        }
+
+        private Grouping(String fieldName, String aliasName) {
+            this.operation = 'GROUPING';
+            this.fieldName = fieldName;
+            this.aliasName = aliasName;
+        }
+
+        private override Object compute(List<SObject> objectList) {
+            for (SObject obj : objectList) {
+            }
+
+            return 0;
+        }
+    }
+
+    private class SUM extends AggregateOperation {
+        private SUM(String fieldName) {
+            this.operation = 'SUM';
+            this.fieldName = fieldName;
+        }
+
+        private SUM(String fieldName, String aliasName) {
+            this.operation = 'SUM';
+            this.fieldName = fieldName;
+            this.aliasName = aliasName;
+        }
+
+        private override Object compute(List<SObject> objectList) {
+            Decimal value = 0;
+            for (SObject obj : objectList) {
+                value += (Decimal) obj.get(this.fieldName);
+            }
+
+            return value;
+        }
+    }
+
+    private class AVG extends AggregateOperation {
+        private AVG(String fieldName) {
+            this.operation = 'AVG';
+            this.fieldName = fieldName;
+        }
+
+        private AVG(String fieldName, String aliasName) {
+            this.operation = 'AVG';
+            this.fieldName = fieldName;
+            this.aliasName = aliasName;
+        }
+
+        private override Object compute(List<SObject> objectList) {
+            Decimal value = 0;
+            for (SObject obj : objectList) {
+                value += (Decimal) obj.get(this.fieldName);
+            }
+            return value / objectList.size();
+        }
+    }
+
+    private class MAX extends AggregateOperation {
+        private MAX(String fieldName) {
+            this.operation = 'MAX';
+            this.fieldName = fieldName;
+        }
+
+        private MAX(String fieldName, String aliasName) {
+            this.operation = 'MAX';
+            this.fieldName = fieldName;
+            this.aliasName = aliasName;
+        }
+
+        private override Object compute(List<SObject> objectList) {
+            Object value;
+            for (SObject obj : objectList) {
+                Object newValue = obj.get(this.fieldName);
+                if (value == null) {
+                    value = newValue;
+                }
+
+                if (newValue != null) {
+                    if (newValue instanceof String || newValue instanceof Id) {
+                        value = String.valueOf(newValue) > String.valueOf(value) ? newValue : value;
+                    } else {
+                        value = Math.max((Decimal) value, (Decimal) newValue);
+                    }
+                }
+            }
+            return value;
+        }
+    }
+
+    private class MIN extends AggregateOperation {
+        private MIN(String fieldName) {
+            this.operation = 'MIN';
+            this.fieldName = fieldName;
+        }
+
+        private MIN(String fieldName, String aliasName) {
+            this.operation = 'MIN';
+            this.fieldName = fieldName;
+            this.aliasName = aliasName;
+        }
+
+        private override Object compute(List<SObject> objectList) {
+            Object value;
+            for (SObject obj : objectList) {
+                Object newValue = obj.get(this.fieldName);
+                if (value == null) {
+                    value = newValue;
+                }
+
+                if (newValue != null) {
+                    if (newValue instanceof String || newValue instanceof Id) {
+                        value = String.valueOf(newValue) < String.valueOf(value) ? newValue : value;
+                    } else {
+                        value = Math.min((Decimal) value, (Decimal) newValue);
+                    }
+                }
+            }
+            return value;
+        }
+    }
+
+    public Query grouping(String name) {
+        this.getGroupManager().add(new Grouping(name));
+        return this;
+    }
+
+    public Query sum(String name) {
+        this.getGroupManager().add(new SUM(name));
+        return this;
+    }
+
+    public Query avg(String name) {
+        this.getGroupManager().add(new AVG(name));
+        return this;
+    }
+
+    public Query max(String name) {
+        this.getGroupManager().add(new MAX(name));
+        return this;
+    }
+
+    public Query min(String name) {
+        this.getGroupManager().add(new MIN(name));
+        return this;
+    }
+
+    public Query grouping(String name, String alias) {
+        this.getGroupManager().add(new Grouping(name, alias));
+        return this;
+    }
+
+    public Query sum(String name, String alias) {
+        this.getGroupManager().add(new SUM(name, alias));
+        return this;
+    }
+
+    public Query avg(String name, String alias) {
+        this.getGroupManager().add(new AVG(name, alias));
+        return this;
+    }
+
+    public Query max(String name, String alias) {
+        this.getGroupManager().add(new MAX(name, alias));
+        return this;
+    }
+
+    public Query min(String name, String alias) {
+        this.getGroupManager().add(new MIN(name, alias));
+        return this;
+    }
+
+    public Query groupBy(String name) {
+        return groupBy(new List<String>{ name });
+    }
+
+    public Query groupBy(String name1, String name2) {
+        return groupBy(new List<String>{ name1, name2 });
+    }
+
+    public Query groupBy(String name1, String name2, String name3) {
+        return groupBy(new List<String>{ name1, name2, name3 });
+    }
+
+    public Query groupBy(String name1, String name2, String name3, String name4) {
+        return groupBy(new List<String>{ name1, name2, name3, name4 });
+    }
+
+    public Query groupBy(String name1, String name2, String name3, String name4, String name5) {
+        return groupBy(new List<String>{ name1, name2, name3, name4, name5 });
+    }
+
+    public Query groupBy(List<String> names) {
+        this.getGroupManager().add(names);
+        return this;
+    }
+
+    public Query rollup() {
+        this.getGroupManager().setRollup(true);
+        return this;
+    }
+
+    public Query cube() {
+        this.getGroupManager().setCube(true);
+        return this;
+    }
+    // #endregion
+    // ================
+
+    // prettier-ignore
+    public interface Querable {
+        // Group By
+        Query grouping(String name);
+        Query sum(String name);
+        Query avg(String name);
+        Query max(String name);
+        Query min(String name);
+        Query grouping(String name, String alias);
+        Query sum(String name, String alias);
+        Query avg(String name, String alias);
+        Query max(String name, String alias);
+        Query min(String name, String alias);
+
+        Query groupBy(String name);
+        Query groupBy(String name1, String name2);
+        Query groupBy(String name1, String name2, String name3);
+        Query groupBy(String name1, String name2, String name3, String name4);
+        Query groupBy(String name1, String name2, String name3, String name4, String name5);
+        Query groupBy(List<String> names);
+        Query rollup();
+        Query cube();
+
+        // Select
+        Query selectWithAll();
+        Query selectWith(String name);
+        Query selectWith(String name1, String name2);
+        Query selectWith(String name1, String name2, String name3);
+        Query selectWith(String name1, String name2, String name3, String name4);
+        Query selectWith(String name1, String name2, String name3, String name4, String name5);
+        Query selectWith(List<String> names);
+        Query selectWith(String name, Query query);
+
+
+        // Order By
+        Query orderBy(String name);
+        Query orderBy(String name1, String name2);
+        Query orderBy(String name1, String name2, String name3);
+        Query orderBy(String name1, String name2, String name3, String name4);
+        Query orderBy(String name1, String name2, String name3, String name4, String name5);
+        Query orderBy(List<String> names);
+        Query orderBy(FilterableOrderByClause clause);
+        Query ascending();
+        Query descending();
+        Query nullsFirst();
+        Query nullsLast();
+
+        // Misc
+        Query offset(Integer n);
+        Query limitx(Integer n);
+        Query forView();
+        Query forReference();
+        Query forUpdate();
+
+        Query filterBy(Filterable filter);
+        Object run();
+    }
+}
