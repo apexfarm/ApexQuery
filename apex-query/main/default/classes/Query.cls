@@ -17,9 +17,8 @@
 
 public abstract class Query implements Querable {
     private SObjectType objectType { get; set; }
-    private List<SObjectField> selectFields { get; set; }
-    private Map<String, QueryBuilder> subQueries { get; set; }
-    private Filter whereFilter { get; set; }
+    private SelectorImpl rootSelector { get; set; }
+    private Filter rootFilter { get; set; }
     private List<OrderByField> orderByFields { get; set; }
 
     private Map<String, Aggregation> aggregationsByAlias { get; set; }
@@ -35,10 +34,8 @@ public abstract class Query implements Querable {
     private Boolean forUpdate { get; set; }
 
     {
-        this.selectFields = new List<SObjectField>();
-        this.subQueries = new Map<String, QueryBuilder>();
+        this.rootSelector = new SelectorImpl();
         this.orderByFields = new List<OrderByField>();
-
         this.aggregationsByAlias = new Map<String, Aggregation>();
         this.aggregations = new List<Aggregation>();
         this.groupByFields = new List<SObjectField>();
@@ -53,9 +50,25 @@ public abstract class Query implements Querable {
 
         Query that = (Query) obj;
 
-        return this.objectType == that.objectType &&
-            this.selectFields == that.selectFields &&
-            this.whereFilter == that.whereFilter;
+        if (this.aggregations.isEmpty() && this.groupByFields.isEmpty()) {
+            return this.objectType == that.objectType &&
+                this.rootSelector == that.rootSelector &&
+                this.rootFilter == that.rootFilter &&
+                this.orderByFields == that.orderByFields &&
+                this.limitx == that.limitx &&
+                this.offset == that.offset &&
+                this.forView == that.forView &&
+                this.forReference == that.forReference &&
+                this.forUpdate == that.forUpdate;
+        } else {
+            return this.objectType == that.objectType &&
+                this.groupByFields == that.groupByFields &&
+                this.aggregations == that.aggregations &&
+                this.orderByFields == that.orderByFields &&
+                this.rollup == that.rollup &&
+                this.cube == that.cube &&
+                this.limitx == that.limitx;
+        }
     }
 
     public static Query of(SObjectType objectType) {
@@ -70,12 +83,35 @@ public abstract class Query implements Querable {
         return null;
     }
 
-    public virtual Object run() {
+    protected virtual String build(Map<String, Object> tmpVars) {
         return null;
     }
 
-    public virtual Object run(AccessLevel accessLevel) {
-        return null;
+    public Integer getCount() {
+        return getCount(AccessLevel.SYSTEM_MODE);
+    }
+
+    public Integer getCount(AccessLevel accessLevel) {
+        Map<String, Object> tmpVars = new Map<String, Object>();
+        return Database.countQueryWithBinds(this.build(tmpVars), tmpVars, accessLevel);
+    }
+
+    public Object run() {
+        return this.run(AccessLevel.SYSTEM_MODE);
+    }
+
+    public Object run(AccessLevel accessLevel) {
+        Map<String, Object> tmpVars = new Map<String, Object>();
+        return Database.queryWithBinds(this.build(tmpVars), tmpVars, accessLevel);
+    }
+
+    public Database.QueryLocator getLocator() {
+        return this.getLocator(AccessLevel.SYSTEM_MODE);
+    }
+
+    public Database.QueryLocator getLocator(AccessLevel accessLevel) {
+        Map<String, Object> tmpVars = new Map<String, Object>();
+        return Database.getQueryLocatorWithBinds(this.build(tmpVars), tmpVars, accessLevel);
     }
 
     // =============
@@ -98,9 +134,9 @@ public abstract class Query implements Querable {
             return this.groupManager;
         }
 
-        private void buildSelect(List<String> fragments, List<Object> tmpVars) {
+        private void buildSelect(List<String> fragments, Map<String, Object> tmpVars) {
             Boolean isFirst = true;
-            for (SObjectField field : this.selectFields) {
+            for (SObjectField field : this.rootSelector.fields) {
                 if (isFirst) {
                     fragments.add('SELECT ');
                 } else {
@@ -110,10 +146,10 @@ public abstract class Query implements Querable {
                 fragments.add(String.valueOf(field));
             }
 
-            for (String relationName : this.subQueries.keySet()) {
+            for (String relationName : this.rootSelector.queries.keySet()) {
                 fragments.add(', ');
                 fragments.add('(');
-                this.subQueries.get(relationName).buildSoql(relationName, fragments, tmpVars);
+                this.rootSelector.queries.get(relationName).buildSoql(relationName, fragments, tmpVars);
                 fragments.add(')');
             }
         }
@@ -211,7 +247,7 @@ public abstract class Query implements Querable {
             }
         }
 
-        private void buildSoql(String fromObjectName, List<String> fragments, List<Object> tmpVars) {
+        private void buildSoql(String fromObjectName, List<String> fragments, Map<String, Object> tmpVars) {
             if (this.aggregations.size() > 0) {
                 this.buildGroupBySelect(fragments);
             } else {
@@ -221,9 +257,9 @@ public abstract class Query implements Querable {
             fragments.add(fromObjectName);
 
             // Build Filters
-            if (this.whereFilter != null) {
+            if (this.rootFilter != null) {
                 fragments.add(' WHERE ');
-                whereFilter.build(fragments, tmpVars);
+                rootFilter.build(fragments, tmpVars);
             }
 
             this.buildGroupBy(fragments);
@@ -234,256 +270,35 @@ public abstract class Query implements Querable {
                 buildOrderBy(fragments);
             }
 
+            if (this.limitx != null) {
+                fragments.add(' LIMIT ');
+                fragments.add(String.valueOf(this.limitx));
+            }
+
             if (this.offset != null) {
                 fragments.add(' OFFSET ');
                 fragments.add(String.valueOf(this.offset));
             }
 
-            if (this.offset != null) {
-                fragments.add(' LIMIT ');
-                fragments.add(String.valueOf(this.offset));
-            }
-
             if (this.forView == true) {
                 fragments.add(' FOR VIEW');
-            }
-
-            if (this.forReference == true) {
+            } else if (this.forReference == true) {
                 fragments.add(' FOR REFERENCE');
-            }
-
-            if (this.forUpdate == true) {
+            } else if (this.forUpdate == true) {
                 fragments.add(' FOR UPDATE');
             }
         }
 
-        private void buildSoql(List<String> fragments, List<Object> tmpVars) {
+        private void buildSoql(List<String> fragments, Map<String, Object> tmpVars) {
             this.buildSoql(this.objectType.getDescribe().getName(), fragments, tmpVars);
         }
 
-        public override Object run() {
-            return this.run(null);
-        }
-
-        public override Object run(AccessLevel accessLevel) {
+        protected override String build(Map<String, Object> tmpVars) {
             List<String> fragments = new List<String>();
-            List<Object> tmpVars = new List<Object>();
             buildSoql(fragments, tmpVars);
             String query = String.join(fragments, '');
             System.debug(query);
-
-            Object tmpVar1;
-            Object tmpVar2;
-            Object tmpVar3;
-            Object tmpVar4;
-            Object tmpVar5;
-            Object tmpVar6;
-            Object tmpVar7;
-            Object tmpVar8;
-            Object tmpVar9;
-            Object tmpVar10;
-            Object tmpVar11;
-            Object tmpVar12;
-            Object tmpVar13;
-            Object tmpVar14;
-            Object tmpVar15;
-            Object tmpVar16;
-            Object tmpVar17;
-            Object tmpVar18;
-            Object tmpVar19;
-            Object tmpVar20;
-            Object tmpVar21;
-            Object tmpVar22;
-            Object tmpVar23;
-            Object tmpVar24;
-            Object tmpVar25;
-            Object tmpVar26;
-            Object tmpVar27;
-            Object tmpVar28;
-            Object tmpVar29;
-            Object tmpVar30;
-            Object tmpVar31;
-            Object tmpVar32;
-            Object tmpVar33;
-            Object tmpVar34;
-            Object tmpVar35;
-            Object tmpVar36;
-            Object tmpVar37;
-            Object tmpVar38;
-            Object tmpVar39;
-            Object tmpVar40;
-            Object tmpVar41;
-            Object tmpVar42;
-            Object tmpVar43;
-            Object tmpVar44;
-            Object tmpVar45;
-            Object tmpVar46;
-            Object tmpVar47;
-            Object tmpVar48;
-            Object tmpVar49;
-            Object tmpVar50;
-
-            for (Integer i = 0; i < tmpVars.size(); i++) {
-                switch on i {
-                    when 0 {
-                        tmpVar1 = tmpVars[i];
-                    }
-                    when 1 {
-                        tmpVar2 = tmpVars[i];
-                    }
-                    when 2 {
-                        tmpVar3 = tmpVars[i];
-                    }
-                    when 3 {
-                        tmpVar4 = tmpVars[i];
-                    }
-                    when 4 {
-                        tmpVar5 = tmpVars[i];
-                    }
-                    when 5 {
-                        tmpVar6 = tmpVars[i];
-                    }
-                    when 6 {
-                        tmpVar7 = tmpVars[i];
-                    }
-                    when 7 {
-                        tmpVar8 = tmpVars[i];
-                    }
-                    when 8 {
-                        tmpVar9 = tmpVars[i];
-                    }
-                    when 9 {
-                        tmpVar10 = tmpVars[i];
-                    }
-                    when 10 {
-                        tmpVar11 = tmpVars[i];
-                    }
-                    when 11 {
-                        tmpVar12 = tmpVars[i];
-                    }
-                    when 12 {
-                        tmpVar13 = tmpVars[i];
-                    }
-                    when 13 {
-                        tmpVar14 = tmpVars[i];
-                    }
-                    when 14 {
-                        tmpVar15 = tmpVars[i];
-                    }
-                    when 15 {
-                        tmpVar16 = tmpVars[i];
-                    }
-                    when 16 {
-                        tmpVar17 = tmpVars[i];
-                    }
-                    when 17 {
-                        tmpVar18 = tmpVars[i];
-                    }
-                    when 18 {
-                        tmpVar19 = tmpVars[i];
-                    }
-                    when 19 {
-                        tmpVar20 = tmpVars[i];
-                    }
-                    when 20 {
-                        tmpVar21 = tmpVars[i];
-                    }
-                    when 21 {
-                        tmpVar22 = tmpVars[i];
-                    }
-                    when 22 {
-                        tmpVar23 = tmpVars[i];
-                    }
-                    when 23 {
-                        tmpVar24 = tmpVars[i];
-                    }
-                    when 24 {
-                        tmpVar25 = tmpVars[i];
-                    }
-                    when 25 {
-                        tmpVar26 = tmpVars[i];
-                    }
-                    when 26 {
-                        tmpVar27 = tmpVars[i];
-                    }
-                    when 27 {
-                        tmpVar28 = tmpVars[i];
-                    }
-                    when 28 {
-                        tmpVar29 = tmpVars[i];
-                    }
-                    when 29 {
-                        tmpVar30 = tmpVars[i];
-                    }
-                    when 30 {
-                        tmpVar31 = tmpVars[i];
-                    }
-                    when 31 {
-                        tmpVar32 = tmpVars[i];
-                    }
-                    when 32 {
-                        tmpVar33 = tmpVars[i];
-                    }
-                    when 33 {
-                        tmpVar34 = tmpVars[i];
-                    }
-                    when 34 {
-                        tmpVar35 = tmpVars[i];
-                    }
-                    when 35 {
-                        tmpVar36 = tmpVars[i];
-                    }
-                    when 36 {
-                        tmpVar37 = tmpVars[i];
-                    }
-                    when 37 {
-                        tmpVar38 = tmpVars[i];
-                    }
-                    when 38 {
-                        tmpVar39 = tmpVars[i];
-                    }
-                    when 39 {
-                        tmpVar40 = tmpVars[i];
-                    }
-                    when 40 {
-                        tmpVar41 = tmpVars[i];
-                    }
-                    when 41 {
-                        tmpVar42 = tmpVars[i];
-                    }
-                    when 42 {
-                        tmpVar43 = tmpVars[i];
-                    }
-                    when 43 {
-                        tmpVar44 = tmpVars[i];
-                    }
-                    when 44 {
-                        tmpVar45 = tmpVars[i];
-                    }
-                    when 45 {
-                        tmpVar46 = tmpVars[i];
-                    }
-                    when 46 {
-                        tmpVar47 = tmpVars[i];
-                    }
-                    when 47 {
-                        tmpVar48 = tmpVars[i];
-                    }
-                    when 48 {
-                        tmpVar49 = tmpVars[i];
-                    }
-                    when 49 {
-                        tmpVar50 = tmpVars[i];
-                    }
-                    when else {
-                        // TODO: Exception Handling
-                    }
-                }
-            }
-            if (accessLevel == null) {
-                return Database.query(query);
-            }
-            return Database.query(query, accessLevel);
+            return query;
         }
     }
     // #endregion
@@ -521,7 +336,102 @@ public abstract class Query implements Querable {
 
     // ==============
     // #region Select
+
+    public interface Selector {
+        Selector add(SObjectField field);
+        Selector add(SObjectField field1, SObjectField field2);
+        Selector add(SObjectField field1, SObjectField field2, SObjectField field3);
+        Selector add(SObjectField field1, SObjectField field2, SObjectField field3, SObjectField field4);
+        Selector add(
+            SObjectField field1,
+            SObjectField field2,
+            SObjectField field3,
+            SObjectField field4,
+            SObjectField field5
+        );
+        Selector add(List<SObjectField> fields);
+        Selector add(String relationName, Query query);
+    }
+
+    private class SelectorImpl implements Selector {
+        private List<SObjectField> fields { get; set; }
+        private Map<String, QueryBuilder> queries { get; set; }
+
+        private SelectorImpl() {
+            this.fields = new List<SObjectField>();
+            this.queries = new Map<String, QueryBuilder>();
+        }
+
+        public Boolean equals(Object obj) {
+            if (this === obj) {
+                return true;
+            }
+
+            SelectorImpl that = (SelectorImpl) obj;
+            return this.fields == that.fields && this.queries == that.queries;
+        }
+
+        public Selector add(SObjectField field) {
+            this.fields.add(field);
+            return this;
+        }
+
+        public Selector add(SObjectField field1, SObjectField field2) {
+            this.fields.add(field1);
+            this.fields.add(field2);
+            return this;
+        }
+
+        public Selector add(SObjectField field1, SObjectField field2, SObjectField field3) {
+            this.fields.add(field1);
+            this.fields.add(field2);
+            this.fields.add(field3);
+            return this;
+        }
+
+        public Selector add(SObjectField field1, SObjectField field2, SObjectField field3, SObjectField field4) {
+            this.add(new List<SObjectField>{ field1, field2, field3, field4 });
+            return this;
+        }
+
+        public Selector add(
+            SObjectField field1,
+            SObjectField field2,
+            SObjectField field3,
+            SObjectField field4,
+            SObjectField field5
+        ) {
+            this.add(new List<SObjectField>{ field1, field2, field3, field4, field5 });
+            return this;
+        }
+
+        public Selector add(List<SObjectField> fields) {
+            this.fields.addAll(fields);
+            return this;
+        }
+
+        public Selector add(String relationName, Query query) {
+            this.queries.put(relationName, (QueryBuilder) query);
+            return this;
+        }
+
+        private Selector addAll(Selector selector) {
+            this.fields.addAll(((SelectorImpl) selector).fields);
+            this.queries.putAll(((SelectorImpl) selector).queries);
+            return this;
+        }
+    }
+
+    public static Selector selector() {
+        return new SelectorImpl();
+    }
+
     public Query selectAll() {
+        return this;
+    }
+
+    public Query selectBy(Selector selector) {
+        this.rootSelector.addAll(selector);
         return this;
     }
 
@@ -551,12 +461,12 @@ public abstract class Query implements Querable {
         return selectBy(new List<SObjectField>{ field1, field2, field3, field4, field5 });
     }
     public Query selectBy(List<SObjectField> fields) {
-        this.selectFields.addAll(fields);
+        this.rootSelector.fields.addAll(fields);
         return this;
     }
 
     public Query selectBy(String relationName, Query query) {
-        this.subQueries.put(relationName, (QueryBuilder) query);
+        this.rootSelector.queries.put(relationName, (QueryBuilder) query);
         return this;
     }
 
@@ -709,16 +619,29 @@ public abstract class Query implements Querable {
         private String operation { get; set; }
         private SOBjectField field { get; set; }
         private String alias { get; set; }
+        private Integer tag { get; set; }
 
         private void build(List<String> fragments) {
             fragments.add(this.operation);
             fragments.add('(');
-            fragments.add(String.valueOf(this.field));
+            if (this.field != null) {
+                fragments.add(String.valueOf(this.field));
+            }
             fragments.add(')');
             if (String.isNotBlank(this.alias) && !this.alias.startsWithIgnoreCase('expr')) {
                 fragments.add(' ');
                 fragments.add(this.alias);
             }
+        }
+
+        public Boolean equals(Object obj) {
+            if (this === obj) {
+                return true;
+            }
+
+            Aggregation that = (Aggregation) obj;
+
+            return this.tag == that.tag && this.field == that.field;
         }
     }
 
@@ -726,12 +649,34 @@ public abstract class Query implements Querable {
         private Grouping(SObjectField field) {
             this.operation = 'GROUPING';
             this.field = field;
+            this.tag = GROUPING_TAG;
         }
 
         private Grouping(SObjectField field, String alias) {
             this.operation = 'GROUPING';
             this.field = field;
             this.alias = alias;
+            this.tag = GROUPING_TAG;
+        }
+    }
+
+    private class Count extends Aggregation {
+        private Count() {
+            this.operation = 'COUNT';
+            this.tag = COUNT_TAG;
+        }
+
+        private Count(SObjectField field) {
+            this.operation = 'COUNT';
+            this.field = field;
+            this.tag = COUNT_TAG;
+        }
+
+        private Count(SObjectField field, String alias) {
+            this.operation = 'COUNT';
+            this.field = field;
+            this.alias = alias;
+            this.tag = COUNT_TAG;
         }
     }
 
@@ -739,12 +684,14 @@ public abstract class Query implements Querable {
         private SUM(SObjectField field) {
             this.operation = 'SUM';
             this.field = field;
+            this.tag = SUM_TAG;
         }
 
         private SUM(SObjectField field, String alias) {
             this.operation = 'SUM';
             this.field = field;
             this.alias = alias;
+            this.tag = SUM_TAG;
         }
     }
 
@@ -752,12 +699,14 @@ public abstract class Query implements Querable {
         private AVG(SObjectField field) {
             this.operation = 'AVG';
             this.field = field;
+            this.tag = AVG_TAG;
         }
 
         private AVG(SObjectField field, String alias) {
             this.operation = 'AVG';
             this.field = field;
             this.alias = alias;
+            this.tag = AVG_TAG;
         }
     }
 
@@ -765,12 +714,14 @@ public abstract class Query implements Querable {
         private MAX(SObjectField field) {
             this.operation = 'MAX';
             this.field = field;
+            this.tag = MAX_TAG;
         }
 
         private MAX(SObjectField field, String alias) {
             this.operation = 'MAX';
             this.field = field;
             this.alias = alias;
+            this.tag = MAX_TAG;
         }
     }
 
@@ -778,12 +729,14 @@ public abstract class Query implements Querable {
         private MIN(SObjectField field) {
             this.operation = 'MIN';
             this.field = field;
+            this.tag = MIN_TAG;
         }
 
         private MIN(SObjectField field, String alias) {
             this.operation = 'MIN';
             this.field = field;
             this.alias = alias;
+            this.tag = MIN_TAG;
         }
     }
 
@@ -792,28 +745,28 @@ public abstract class Query implements Querable {
         return this;
     }
 
-    public Query sum(SObjectField field) {
-        this.getGroupManager().add(new SUM(field));
-        return this;
-    }
-
-    public Query avg(SObjectField field) {
-        this.getGroupManager().add(new AVG(field));
-        return this;
-    }
-
-    public Query max(SObjectField field) {
-        this.getGroupManager().add(new MAX(field));
-        return this;
-    }
-
-    public Query min(SObjectField field) {
-        this.getGroupManager().add(new MIN(field));
-        return this;
-    }
-
     public Query grouping(SObjectField field, String alias) {
         this.getGroupManager().add(new Grouping(field, alias));
+        return this;
+    }
+
+    public Query count() {
+        this.getGroupManager().add(new Count());
+        return this;
+    }
+
+    public Query count(SObjectField field) {
+        this.getGroupManager().add(new Count(field));
+        return this;
+    }
+
+    public Query count(SObjectField field, String alias) {
+        this.getGroupManager().add(new Count(field, alias));
+        return this;
+    }
+
+    public Query sum(SObjectField field) {
+        this.getGroupManager().add(new SUM(field));
         return this;
     }
 
@@ -822,13 +775,28 @@ public abstract class Query implements Querable {
         return this;
     }
 
+    public Query avg(SObjectField field) {
+        this.getGroupManager().add(new AVG(field));
+        return this;
+    }
+
     public Query avg(SObjectField field, String alias) {
         this.getGroupManager().add(new AVG(field, alias));
         return this;
     }
 
+    public Query max(SObjectField field) {
+        this.getGroupManager().add(new MAX(field));
+        return this;
+    }
+
     public Query max(SObjectField field, String alias) {
         this.getGroupManager().add(new MAX(field, alias));
+        return this;
+    }
+
+    public Query min(SObjectField field) {
+        this.getGroupManager().add(new MIN(field));
         return this;
     }
 
@@ -883,7 +851,7 @@ public abstract class Query implements Querable {
     // ==============
     // #region Filter
     public interface Filter {
-        void build(List<String> fragments, List<Object> tmpVars);
+        void build(List<String> fragments, Map<String, Object> tmpVars);
     }
 
     public interface CompositeFilter extends Filter {
@@ -910,7 +878,7 @@ public abstract class Query implements Querable {
             return this;
         }
 
-        public void build(List<String> fragments, List<Object> tmpVars) {
+        public void build(List<String> fragments, Map<String, Object> tmpVars) {
             if (this.filters.size() == 0) {
                 return;
             }
@@ -964,7 +932,7 @@ public abstract class Query implements Querable {
             this.value = value;
         }
 
-        public virtual void build(List<String> fragments, List<Object> tmpVars) {
+        public virtual void build(List<String> fragments, Map<String, Object> tmpVars) {
             fragments.add(String.valueOf(this.field));
             fragments.add(this.operator);
             if (
@@ -973,8 +941,10 @@ public abstract class Query implements Querable {
                 this.value instanceof Date ||
                 this.value instanceof Time
             ) {
-                tmpVars.add(this.value);
-                fragments.add(':tmpVar' + tmpVars.size());
+                String var = 'tmpVar' + tmpVars.size() + 1;
+                tmpVars.put(var, this.value);
+                fragments.add(':');
+                fragments.add(var);
             } else if (this.value instanceof String) {
                 fragments.add('\'');
                 fragments.add(String.escapeSingleQuotes(String.valueOf(this.value)));
@@ -1002,8 +972,8 @@ public abstract class Query implements Querable {
         }
     }
 
-    public Query whereBy(Filter filter) {
-        this.whereFilter = filter;
+    public Query filterBy(Filter filter) {
+        this.rootFilter = filter;
         return this;
     }
 
@@ -1336,7 +1306,7 @@ public abstract class Query implements Querable {
             this.tag = NLIKE_TAG;
         }
 
-        public override void build(List<String> fragments, List<Object> tmpVars) {
+        public override void build(List<String> fragments, Map<String, Object> tmpVars) {
             fragments.add('(NOT ');
             super.build(fragments, tmpVars);
             fragments.add(')');
@@ -1389,7 +1359,7 @@ public abstract class Query implements Querable {
             this.tag = INX_Query_TAG;
         }
 
-        public override void build(List<String> fragments, List<Object> tmpVars) {
+        public override void build(List<String> fragments, Map<String, Object> tmpVars) {
             if (this.value instanceof QueryBuilder) {
                 fragments.add(String.valueOf(this.field));
                 fragments.add(' ');
@@ -1487,7 +1457,7 @@ public abstract class Query implements Querable {
             this.tag = DISTANCE_TAG;
         }
 
-        public override void build(List<String> fragments, List<Object> tmpVars) {
+        public override void build(List<String> fragments, Map<String, Object> tmpVars) {
             fragments.add(this.distance.build());
             fragments.add(this.operator);
             fragments.add(String.valueOf(this.value));
@@ -1810,12 +1780,32 @@ public abstract class Query implements Querable {
     private static final Integer DISTANCE_TAG = 14;
     private static final Integer AND_TAG = 15;
     private static final Integer OR_TAG = 16;
+    private static final Integer GROUPING_TAG = 17;
+    private static final Integer COUNT_TAG = 18;
+    private static final Integer SUM_TAG = 19;
+    private static final Integer AVG_TAG = 20;
+    private static final Integer MAX_TAG = 21;
+    private static final Integer MIN_TAG = 22;
 
     // prettier-ignore
     public interface Querable {
+        // Select
+        Query selectAll();
+        Query selectBy(Selector selector);
+        Query selectBy(SObjectField field);
+        Query selectBy(SObjectField field1, SObjectField field2);
+        Query selectBy(SObjectField field1, SObjectField field2, SObjectField field3);
+        Query selectBy(SObjectField field1, SObjectField field2, SObjectField field3, SObjectField field4);
+        Query selectBy(SObjectField field1, SObjectField field2, SObjectField field3, SObjectField field4, SObjectField field5);
+        Query selectBy(List<SObjectField> fields);
+        Query selectBy(String relationName, Query query);
+
         // Group By
         Query grouping(SObjectField field);
         Query grouping(SObjectField field, String alias);
+        Query count();
+        Query count(SObjectField field);
+        Query count(SObjectField field, String alias);
         Query sum(SObjectField field);
         Query sum(SObjectField field, String alias);
         Query avg(SObjectField field);
@@ -1833,16 +1823,6 @@ public abstract class Query implements Querable {
         Query groupBy(List<SObjectField> fields);
         Query rollup();
         Query cube();
-
-        // Select
-        Query selectAll();
-        Query selectBy(SObjectField field);
-        Query selectBy(SObjectField field1, SObjectField field2);
-        Query selectBy(SObjectField field1, SObjectField field2, SObjectField field3);
-        Query selectBy(SObjectField field1, SObjectField field2, SObjectField field3, SObjectField field4);
-        Query selectBy(SObjectField field1, SObjectField field2, SObjectField field3, SObjectField field4, SObjectField field5);
-        Query selectBy(List<SObjectField> fields);
-        Query selectBy(String relationName, Query query);
 
         // Order By
         Query orderBy(String name);
@@ -1869,8 +1849,12 @@ public abstract class Query implements Querable {
         Query forReference();
         Query forUpdate();
 
-        Query whereBy(Filter filter);
+        Query filterBy(Filter filter);
         Object run();
         Object run(AccessLevel accessLevel);
+        Integer getCount();
+        Integer getCount(AccessLevel accessLevel);
+        Database.QueryLocator getLocator();
+        Database.QueryLocator getLocator(AccessLevel accessLevel);
     }
 }
