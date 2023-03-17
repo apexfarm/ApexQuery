@@ -1,22 +1,65 @@
-public with sharing abstract class Query implements Querable {
-    public static DateLiteral d = new DateLiteral();
+/**
+ * Copyright 2023 Jeff Jin
+ * https://github.com/apexfarm/ApexQuery
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-    public Integer offset { get; set; }
-    public Integer limitx { get; set; }
-    public Boolean forView { get; set; }
-    public Boolean forReference { get; set; }
-    public Boolean forUpdate { get; set; }
+public abstract class Query implements Querable {
+    private SObjectType objectType { get; set; }
+    private List<SObjectField> selectFields { get; set; }
+    private Map<String, QueryBuilder> subQueries { get; set; }
+    private Filter whereFilter { get; set; }
+    private List<OrderByField> orderByFields { get; set; }
+
+    private Map<String, Aggregation> aggregationsByAlias { get; set; }
+    private List<Aggregation> aggregations { get; set; }
+    private List<SObjectField> groupByFields { get; set; }
+    private Boolean rollup { get; set; }
+    private Boolean cube { get; set; }
+
+    private Integer offset { get; set; }
+    private Integer limitx { get; set; }
+    private Boolean forView { get; set; }
+    private Boolean forReference { get; set; }
+    private Boolean forUpdate { get; set; }
+
+    {
+        this.selectFields = new List<SObjectField>();
+        this.subQueries = new Map<String, QueryBuilder>();
+        this.orderByFields = new List<OrderByField>();
+
+        this.aggregationsByAlias = new Map<String, Aggregation>();
+        this.aggregations = new List<Aggregation>();
+        this.groupByFields = new List<SObjectField>();
+        this.rollup = false;
+        this.cube = false;
+    }
+
+    public Boolean equals(Object obj) {
+        if (this === obj) {
+            return true;
+        }
+
+        Query that = (Query) obj;
+
+        return this.objectType == that.objectType &&
+            this.selectFields == that.selectFields &&
+            this.whereFilter == that.whereFilter;
+    }
 
     public static Query of(SObjectType objectType) {
-        return new SoqlQuery(objectType);
-    }
-
-    private virtual SelectManager getSelectManager() {
-        return null;
-    }
-
-    private virtual FilterManager getFilterManager() {
-        return null;
+        return new QueryBuilder(objectType);
     }
 
     private virtual IOrderManager getOrderManager() {
@@ -31,35 +74,20 @@ public with sharing abstract class Query implements Querable {
         return null;
     }
 
-    // =============
-    // #region Query
-    private interface FragmentBuilder {
-        void build(List<String> fragments, List<List<Object>> tmpVars);
-        // TODO: a builder interface;
+    public virtual Object run(AccessLevel accessLevel) {
+        return null;
     }
 
-    private class SoqlQuery extends Query {
-        private SObjectType objectType { get; set; }
+    // =============
+    // #region Query
+    private class QueryBuilder extends Query {
+        private OrderManager orderManager { get; set; }
+        private GroupManager groupManager { get; set; }
 
-        private SOQLQuerySelectManager selectManager { get; set; }
-        private SOQLQueryFilterManager filterManager { get; set; }
-        private SOQLQueryOrderManager orderManager { get; set; }
-        private SOQLQueryGroupManager groupManager { get; set; }
-
-        private SoqlQuery(SObjectType objectType) {
+        private QueryBuilder(SObjectType objectType) {
             this.objectType = objectType;
-            this.selectManager = new SOQLQuerySelectManager();
-            this.filterManager = new SOQLQueryFilterManager();
-            this.orderManager = new SOQLQueryOrderManager();
-            this.groupManager = new SOQLQueryGroupManager();
-        }
-
-        private override SelectManager getSelectManager() {
-            return this.selectManager;
-        }
-
-        private override FilterManager getFilterManager() {
-            return this.filterManager;
+            this.orderManager = new OrderManager(this);
+            this.groupManager = new GroupManager(this);
         }
 
         private override IOrderManager getOrderManager() {
@@ -70,22 +98,140 @@ public with sharing abstract class Query implements Querable {
             return this.groupManager;
         }
 
-        private void buildSoql(String fromObjectName, List<String> fragments, List<List<Object>> tmpVars) {
-            if (!this.groupManager.isEmpty()) {
-                this.groupManager.buildSelect(fragments);
+        private void buildSelect(List<String> fragments, List<Object> tmpVars) {
+            Boolean isFirst = true;
+            for (SObjectField field : this.selectFields) {
+                if (isFirst) {
+                    fragments.add('SELECT ');
+                } else {
+                    fragments.add(', ');
+                }
+                isFirst = false;
+                fragments.add(String.valueOf(field));
+            }
+
+            for (String relationName : this.subQueries.keySet()) {
+                fragments.add(', ');
+                fragments.add('(');
+                this.subQueries.get(relationName).buildSoql(relationName, fragments, tmpVars);
+                fragments.add(')');
+            }
+        }
+
+        private void buildOrderBy(List<String> fragments) {
+            Boolean isFirst = true;
+            for (OrderByField clause : orderByFields) {
+                if (isFirst) {
+                    fragments.add(' ORDER BY ');
+                } else {
+                    fragments.add(', ');
+                }
+                isFirst = false;
+
+                fragments.add(clause.fieldName);
+
+                if (!clause.ascending) {
+                    fragments.add(' DESC');
+                }
+
+                if (!clause.nullFirst) {
+                    fragments.add(' NULLS LAST');
+                }
+            }
+        }
+
+        private void buildOrderByForGroup(List<String> fragments) {
+            Boolean isFirst = true;
+            for (OrderByField clause : this.orderByFields) {
+                if (isFirst) {
+                    fragments.add(' ORDER BY ');
+                } else {
+                    fragments.add(', ');
+                }
+                isFirst = false;
+
+                if (this.aggregationsByAlias.containsKey(clause.fieldName)) {
+                    Aggregation operation = this.aggregationsByAlias.get(clause.fieldName);
+                    fragments.add(operation.operation);
+                    fragments.add('(');
+                    fragments.add(String.valueOf(operation.field));
+                    fragments.add(')');
+                } else {
+                    fragments.add(clause.fieldName);
+                }
+
+                if (!clause.ascending) {
+                    fragments.add(' DESC');
+                }
+
+                if (!clause.nullFirst) {
+                    fragments.add(' NULLS LAST');
+                }
+            }
+        }
+
+        public void buildGroupBySelect(List<String> fragments) {
+            fragments.add('SELECT ');
+            Boolean isFirst = true;
+            for (SObjectField field : this.groupByFields) {
+                if (!isFirst) {
+                    fragments.add(', ');
+                }
+                isFirst = false;
+                fragments.add(String.valueOf(field));
+            }
+
+            for (Aggregation operation : this.aggregations) {
+                if (!isFirst) {
+                    fragments.add(', ');
+                }
+                isFirst = false;
+                operation.build(fragments);
+            }
+        }
+
+        public void buildGroupBy(List<String> fragments) {
+            Boolean isFirst = true;
+            for (SObjectField field : this.groupByFields) {
+                if (isFirst) {
+                    fragments.add(' GROUP BY ');
+                    if (this.rollup) {
+                        fragments.add('ROLLUP(');
+                    } else if (this.cube) {
+                        fragments.add('CUBE(');
+                    }
+                } else {
+                    fragments.add(', ');
+                }
+                isFirst = false;
+                fragments.add(String.valueOf(field));
+            }
+            if (this.rollup || this.cube) {
+                fragments.add(')');
+            }
+        }
+
+        private void buildSoql(String fromObjectName, List<String> fragments, List<Object> tmpVars) {
+            if (this.aggregations.size() > 0) {
+                this.buildGroupBySelect(fragments);
             } else {
-                this.selectManager.build(fragments, tmpVars);
+                this.buildSelect(fragments, tmpVars);
             }
             fragments.add(' FROM ');
             fragments.add(fromObjectName);
 
-            this.filterManager.build(fragments, tmpVars);
-            this.groupManager.build(fragments);
+            // Build Filters
+            if (this.whereFilter != null) {
+                fragments.add(' WHERE ');
+                whereFilter.build(fragments, tmpVars);
+            }
 
-            if (!this.groupManager.isEmpty()) {
-                this.orderManager.build(fragments, this.groupManager.operationByAliasName);
+            this.buildGroupBy(fragments);
+
+            if (this.aggregations.size() > 0) {
+                buildOrderByForGroup(fragments);
             } else {
-                this.orderManager.build(fragments);
+                buildOrderBy(fragments);
             }
 
             if (this.offset != null) {
@@ -111,47 +257,71 @@ public with sharing abstract class Query implements Querable {
             }
         }
 
-        private void buildSoql(List<String> fragments, List<List<Object>> tmpVars) {
+        private void buildSoql(List<String> fragments, List<Object> tmpVars) {
             this.buildSoql(this.objectType.getDescribe().getName(), fragments, tmpVars);
         }
 
         public override Object run() {
+            return this.run(null);
+        }
+
+        public override Object run(AccessLevel accessLevel) {
             List<String> fragments = new List<String>();
-            List<List<Object>> tmpVars = new List<List<Object>>();
+            List<Object> tmpVars = new List<Object>();
             buildSoql(fragments, tmpVars);
             String query = String.join(fragments, '');
             System.debug(query);
 
-            List<Object> tmpVar1;
-            List<Object> tmpVar2;
-            List<Object> tmpVar3;
-            List<Object> tmpVar4;
-            List<Object> tmpVar5;
-            List<Object> tmpVar6;
-            List<Object> tmpVar7;
-            List<Object> tmpVar8;
-            List<Object> tmpVar9;
-            List<Object> tmpVar10;
-            List<Object> tmpVar11;
-            List<Object> tmpVar12;
-            List<Object> tmpVar13;
-            List<Object> tmpVar14;
-            List<Object> tmpVar15;
-            List<Object> tmpVar16;
-            List<Object> tmpVar17;
-            List<Object> tmpVar18;
-            List<Object> tmpVar19;
-            List<Object> tmpVar20;
-            List<Object> tmpVar21;
-            List<Object> tmpVar22;
-            List<Object> tmpVar23;
-            List<Object> tmpVar24;
-            List<Object> tmpVar25;
-            List<Object> tmpVar26;
-            List<Object> tmpVar27;
-            List<Object> tmpVar28;
-            List<Object> tmpVar29;
-            List<Object> tmpVar30;
+            Object tmpVar1;
+            Object tmpVar2;
+            Object tmpVar3;
+            Object tmpVar4;
+            Object tmpVar5;
+            Object tmpVar6;
+            Object tmpVar7;
+            Object tmpVar8;
+            Object tmpVar9;
+            Object tmpVar10;
+            Object tmpVar11;
+            Object tmpVar12;
+            Object tmpVar13;
+            Object tmpVar14;
+            Object tmpVar15;
+            Object tmpVar16;
+            Object tmpVar17;
+            Object tmpVar18;
+            Object tmpVar19;
+            Object tmpVar20;
+            Object tmpVar21;
+            Object tmpVar22;
+            Object tmpVar23;
+            Object tmpVar24;
+            Object tmpVar25;
+            Object tmpVar26;
+            Object tmpVar27;
+            Object tmpVar28;
+            Object tmpVar29;
+            Object tmpVar30;
+            Object tmpVar31;
+            Object tmpVar32;
+            Object tmpVar33;
+            Object tmpVar34;
+            Object tmpVar35;
+            Object tmpVar36;
+            Object tmpVar37;
+            Object tmpVar38;
+            Object tmpVar39;
+            Object tmpVar40;
+            Object tmpVar41;
+            Object tmpVar42;
+            Object tmpVar43;
+            Object tmpVar44;
+            Object tmpVar45;
+            Object tmpVar46;
+            Object tmpVar47;
+            Object tmpVar48;
+            Object tmpVar49;
+            Object tmpVar50;
 
             for (Integer i = 0; i < tmpVars.size(); i++) {
                 switch on i {
@@ -245,11 +415,75 @@ public with sharing abstract class Query implements Querable {
                     when 29 {
                         tmpVar30 = tmpVars[i];
                     }
+                    when 30 {
+                        tmpVar31 = tmpVars[i];
+                    }
+                    when 31 {
+                        tmpVar32 = tmpVars[i];
+                    }
+                    when 32 {
+                        tmpVar33 = tmpVars[i];
+                    }
+                    when 33 {
+                        tmpVar34 = tmpVars[i];
+                    }
+                    when 34 {
+                        tmpVar35 = tmpVars[i];
+                    }
+                    when 35 {
+                        tmpVar36 = tmpVars[i];
+                    }
+                    when 36 {
+                        tmpVar37 = tmpVars[i];
+                    }
+                    when 37 {
+                        tmpVar38 = tmpVars[i];
+                    }
+                    when 38 {
+                        tmpVar39 = tmpVars[i];
+                    }
+                    when 39 {
+                        tmpVar40 = tmpVars[i];
+                    }
+                    when 40 {
+                        tmpVar41 = tmpVars[i];
+                    }
+                    when 41 {
+                        tmpVar42 = tmpVars[i];
+                    }
+                    when 42 {
+                        tmpVar43 = tmpVars[i];
+                    }
+                    when 43 {
+                        tmpVar44 = tmpVars[i];
+                    }
+                    when 44 {
+                        tmpVar45 = tmpVars[i];
+                    }
+                    when 45 {
+                        tmpVar46 = tmpVars[i];
+                    }
+                    when 46 {
+                        tmpVar47 = tmpVars[i];
+                    }
+                    when 47 {
+                        tmpVar48 = tmpVars[i];
+                    }
+                    when 48 {
+                        tmpVar49 = tmpVars[i];
+                    }
+                    when 49 {
+                        tmpVar50 = tmpVars[i];
+                    }
                     when else {
+                        // TODO: Exception Handling
                     }
                 }
             }
-            return Database.query(query);
+            if (accessLevel == null) {
+                return Database.query(query);
+            }
+            return Database.query(query, accessLevel);
         }
     }
     // #endregion
@@ -287,82 +521,42 @@ public with sharing abstract class Query implements Querable {
 
     // ==============
     // #region Select
-    private abstract class SelectManager {
-        private List<String> fieldNames { get; set; }
-
-        {
-            fieldNames = new List<String>();
-        }
-
-        public void addAll(List<String> names) {
-            this.fieldNames.addAll(names);
-        }
-    }
-
-    private class SOQLQuerySelectManager extends SelectManager {
-        private Map<String, SoqlQuery> subQueries { get; set; }
-
-        {
-            this.subQueries = new Map<String, SoqlQuery>();
-        }
-
-        private void add(String relationName, SoqlQuery query) {
-            this.subQueries.put(relationName, query);
-        }
-
-        private void build(List<String> fragments, List<List<Object>> tmpVars) {
-            Boolean isFirst = true;
-            for (String fieldName : this.fieldNames) {
-                if (isFirst) {
-                    fragments.add('SELECT ');
-                } else {
-                    fragments.add(', ');
-                }
-                isFirst = false;
-                fragments.add(fieldName);
-            }
-
-            for (String relationName : this.subQueries.keySet()) {
-                fragments.add(', ');
-                fragments.add('(');
-                this.subQueries.get(relationName).buildSoql(relationName, fragments, tmpVars);
-                fragments.add(')');
-            }
-        }
-    }
-
     public Query selectAll() {
         return this;
     }
 
-    public Query selectWith(String name) {
-        return selectWith(new List<String>{ name });
+    public Query selectBy(SObjectField field) {
+        return selectBy(new List<SObjectField>{ field });
     }
 
-    public Query selectWith(String name1, String name2) {
-        return selectWith(new List<String>{ name1, name2 });
+    public Query selectBy(SObjectField field1, SObjectField field2) {
+        return selectBy(new List<SObjectField>{ field1, field2 });
     }
 
-    public Query selectWith(String name1, String name2, String name3) {
-        return selectWith(new List<String>{ name1, name2, name3 });
+    public Query selectBy(SObjectField field1, SObjectField field2, SObjectField field3) {
+        return selectBy(new List<SObjectField>{ field1, field2, field3 });
     }
 
-    public Query selectWith(String name1, String name2, String name3, String name4) {
-        return selectWith(new List<String>{ name1, name2, name3, name4 });
+    public Query selectBy(SObjectField field1, SObjectField field2, SObjectField field3, SObjectField field4) {
+        return selectBy(new List<SObjectField>{ field1, field2, field3, field4 });
     }
 
-    public Query selectWith(String name1, String name2, String name3, String name4, String name5) {
-        return selectWith(new List<String>{ name1, name2, name3, name4, name5 });
+    public Query selectBy(
+        SObjectField field1,
+        SObjectField field2,
+        SObjectField field3,
+        SObjectField field4,
+        SObjectField field5
+    ) {
+        return selectBy(new List<SObjectField>{ field1, field2, field3, field4, field5 });
     }
-    public Query selectWith(List<String> names) {
-        this.getSelectManager().addAll(names);
+    public Query selectBy(List<SObjectField> fields) {
+        this.selectFields.addAll(fields);
         return this;
     }
 
-    public Query selectWith(String relationName, Query query) {
-        if (this instanceof SoqlQuery && query instanceof SoqlQuery) {
-            ((SoqlQuery) this).selectManager.add(relationName, (SoqlQuery) query);
-        }
+    public Query selectBy(String relationName, Query query) {
+        this.subQueries.put(relationName, (QueryBuilder) query);
         return this;
     }
 
@@ -372,111 +566,67 @@ public with sharing abstract class Query implements Querable {
     // ================
     // #region Order By
 
-    private virtual class OrderByClause {
+    private virtual class OrderByField {
         private String fieldName { get; set; }
-        private List<String> pathNames { get; set; }
         private Boolean ascending { get; set; }
         private Boolean nullFirst { get; set; }
 
-        private OrderByClause(String fieldName) {
+        private OrderByField(String fieldName) {
             this.fieldName = fieldName;
             this.ascending = true;
             this.nullFirst = true;
         }
+
+        public Boolean equals(Object obj) {
+            if (this === obj) {
+                return true;
+            }
+
+            OrderByField that = (OrderByField) obj;
+            return this.fieldName == that.fieldName &&
+                this.ascending == that.ascending &&
+                this.nullFirst == that.nullFirst;
+        }
     }
 
     private interface IOrderManager {
-        void setFieldNames(List<String> names);
+        void setFieldNames(List<String> fieldNames);
         void setAscending(Boolean ascending);
         void setNullFirst(Boolean nullFirst);
-        Object sort(Object objectList);
     }
 
-    private abstract class OrderManager implements IOrderManager {
-        private List<OrderByClause> orderByClauses { get; set; }
+    private class OrderManager implements IOrderManager {
+        private Query query { get; set; }
         private Integer batchSize { get; set; }
+        private List<OrderByField> clauses {
+            get {
+                return this.query.orderByFields;
+            }
+        }
 
-        private OrderManager() {
-            this.orderByClauses = new List<OrderByClause>();
+        private OrderManager(Query query) {
+            this.query = query;
             this.batchSize = 0;
         }
 
         public void setFieldNames(List<String> fieldNames) {
             this.batchSize = fieldNames.size();
             for (String fieldName : fieldNames) {
-                this.orderByClauses.add(new OrderByClause(fieldName));
+                this.clauses.add(new OrderByField(fieldName));
             }
         }
 
         public void setAscending(Boolean ascending) {
-            if (this.orderByClauses.size() >= this.batchSize) {
+            if (this.clauses.size() >= this.batchSize) {
                 for (Integer i = this.batchSize; i > 0; i--) {
-                    this.orderByClauses[this.orderByClauses.size() - i].ascending = ascending;
+                    this.clauses[this.clauses.size() - i].ascending = ascending;
                 }
             }
         }
         public void setNullFirst(Boolean nullFirst) {
-            if (this.orderByClauses.size() >= this.batchSize) {
+            if (this.clauses.size() >= this.batchSize) {
                 for (Integer i = this.batchSize; i > 0; i--) {
-                    this.orderByClauses[this.orderByClauses.size() - i].nullFirst = nullFirst;
-                }
-            }
-        }
-    }
-
-    private class SOQLQueryOrderManager extends OrderManager {
-        public Object sort(Object objects) {
-            return objects;
-        }
-
-        private void build(List<String> fragments) {
-            Boolean isFirst = true;
-            for (OrderByClause clause : orderByClauses) {
-                if (isFirst) {
-                    fragments.add(' ORDER BY ');
-                } else {
-                    fragments.add(', ');
-                }
-                isFirst = false;
-
-                fragments.add(clause.fieldName);
-
-                if (!clause.ascending) {
-                    fragments.add(' DESC');
-                }
-
-                if (!clause.nullFirst) {
-                    fragments.add(' NULLS LAST');
-                }
-            }
-        }
-
-        private void build(List<String> fragments, Map<String, AggregateOperation> operationByAliasName) {
-            Boolean isFirst = true;
-            for (OrderByClause clause : this.orderByClauses) {
-                if (isFirst) {
-                    fragments.add(' ORDER BY ');
-                } else {
-                    fragments.add(', ');
-                }
-                isFirst = false;
-
-                if (operationByAliasName.containsKey(clause.fieldName)) {
-                    AggregateOperation operation = operationByAliasName.get(clause.fieldName);
-                    fragments.add(operation.operation);
-                    fragments.add('(');
-                    fragments.add(operation.fieldName);
-                    fragments.add(')');
-                } else {
-                    fragments.add(clause.fieldName);
-                }
-
-                if (!clause.ascending) {
-                    fragments.add(' DESC');
-                }
-
-                if (!clause.nullFirst) {
-                    fragments.add(' NULLS LAST');
+                    this.clauses[this.clauses.size() - i].nullFirst = nullFirst;
                 }
             }
         }
@@ -508,6 +658,7 @@ public with sharing abstract class Query implements Querable {
     }
 
     public Query ascending() {
+        // default to true
         return this;
     }
 
@@ -517,6 +668,7 @@ public with sharing abstract class Query implements Querable {
     }
 
     public Query nullsFirst() {
+        // default to true
         return this;
     }
 
@@ -531,329 +683,198 @@ public with sharing abstract class Query implements Querable {
     // #region Group By
 
     private interface IGroupManager {
-        void add(AggregateOperation operation);
-        void add(List<String> fieldNames);
-        Boolean isEmpty();
-        void setRollup(Boolean rollup);
-        void setCube(Boolean cube);
+        void add(Aggregation operation);
     }
 
-    private abstract class GroupManager implements IGroupManager {
-        private List<AggregateOperation> operations { get; set; }
-        private Map<String, AggregateOperation> operationByAliasName { get; set; }
+    private class GroupManager implements IGroupManager {
+        private Query query { get; set; }
         private Integer aliasIndex { get; set; }
 
-        private List<String> fieldNames { get; set; }
-        private Boolean rollup { get; set; }
-        private Boolean cube { get; set; }
-
-        {
-            this.operations = new List<AggregateOperation>();
-            this.operationByAliasName = new Map<String, AggregateOperation>();
+        private GroupManager(Query query) {
+            this.query = query;
             this.aliasIndex = 0;
-
-            this.fieldNames = new List<String>();
-            this.rollup = false;
-            this.cube = false;
         }
 
-        public Boolean isEmpty() {
-            return this.operations.size() == 0 || this.fieldNames.size() == 0;
-        }
-
-        public void add(AggregateOperation operation) {
-            if (String.isBlank(operation.aliasName)) {
-                operation.aliasName = 'expr' + this.aliasIndex;
+        public void add(Aggregation operation) {
+            if (String.isBlank(operation.alias)) {
+                operation.alias = 'expr' + this.aliasIndex;
                 this.aliasIndex++;
             }
-            this.operations.add(operation);
-            this.operationByAliasName.put(operation.aliasName, operation);
-        }
-
-        public void add(List<String> fieldNames) {
-            this.fieldNames.addAll(fieldNames);
-        }
-
-        public void setRollup(Boolean rollup) {
-            this.rollup = rollup;
-        }
-
-        public void setCube(Boolean cube) {
-            this.cube = cube;
+            this.query.aggregations.add(operation);
+            this.query.aggregationsByAlias.put(operation.alias, operation);
         }
     }
 
-    private class SOQLQueryGroupManager extends GroupManager {
-        public void buildSelect(List<String> fragments) {
-            fragments.add('SELECT ');
-            Boolean isFirst = true;
-            for (String fieldName : this.fieldNames) {
-                if (!isFirst) {
-                    fragments.add(', ');
-                }
-                isFirst = false;
-                fragments.add(fieldName);
-            }
-
-            for (AggregateOperation operation : this.operations) {
-                if (!isFirst) {
-                    fragments.add(', ');
-                }
-                isFirst = false;
-                operation.build(fragments);
-            }
-        }
-
-        public void build(List<String> fragments) {
-            Boolean isFirst = true;
-            for (String fieldName : this.fieldNames) {
-                if (isFirst) {
-                    fragments.add(' GROUP BY ');
-                    if (this.rollup) {
-                        fragments.add('ROLLUP(');
-                    } else if (this.cube) {
-                        fragments.add('CUBE(');
-                    }
-                } else {
-                    fragments.add(', ');
-                }
-                isFirst = false;
-                fragments.add(fieldName);
-            }
-            if (this.rollup || this.cube) {
-                fragments.add(')');
-            }
-        }
-    }
-
-    private abstract class AggregateOperation {
+    private abstract class Aggregation {
         private String operation { get; set; }
-        private String fieldName { get; set; }
-        private String aliasName { get; set; }
+        private SOBjectField field { get; set; }
+        private String alias { get; set; }
 
         private void build(List<String> fragments) {
             fragments.add(this.operation);
             fragments.add('(');
-            fragments.add(this.fieldName);
+            fragments.add(String.valueOf(this.field));
             fragments.add(')');
-            if (String.isNotBlank(this.aliasName) && !this.aliasName.startsWithIgnoreCase('expr')) {
+            if (String.isNotBlank(this.alias) && !this.alias.startsWithIgnoreCase('expr')) {
                 fragments.add(' ');
-                fragments.add(this.aliasName);
+                fragments.add(this.alias);
             }
         }
-
-        private abstract Object compute(List<SObject> objectList);
     }
 
-    private class Grouping extends AggregateOperation {
-        private Grouping(String fieldName) {
+    private class Grouping extends Aggregation {
+        private Grouping(SObjectField field) {
             this.operation = 'GROUPING';
-            this.fieldName = fieldName;
+            this.field = field;
         }
 
-        private Grouping(String fieldName, String aliasName) {
+        private Grouping(SObjectField field, String alias) {
             this.operation = 'GROUPING';
-            this.fieldName = fieldName;
-            this.aliasName = aliasName;
-        }
-
-        private override Object compute(List<SObject> objectList) {
-            for (SObject obj : objectList) {
-            }
-
-            return 0;
+            this.field = field;
+            this.alias = alias;
         }
     }
 
-    private class SUM extends AggregateOperation {
-        private SUM(String fieldName) {
+    private class SUM extends Aggregation {
+        private SUM(SObjectField field) {
             this.operation = 'SUM';
-            this.fieldName = fieldName;
+            this.field = field;
         }
 
-        private SUM(String fieldName, String aliasName) {
+        private SUM(SObjectField field, String alias) {
             this.operation = 'SUM';
-            this.fieldName = fieldName;
-            this.aliasName = aliasName;
-        }
-
-        private override Object compute(List<SObject> objectList) {
-            Decimal value = 0;
-            for (SObject obj : objectList) {
-                value += (Decimal) obj.get(this.fieldName);
-            }
-
-            return value;
+            this.field = field;
+            this.alias = alias;
         }
     }
 
-    private class AVG extends AggregateOperation {
-        private AVG(String fieldName) {
+    private class AVG extends Aggregation {
+        private AVG(SObjectField field) {
             this.operation = 'AVG';
-            this.fieldName = fieldName;
+            this.field = field;
         }
 
-        private AVG(String fieldName, String aliasName) {
+        private AVG(SObjectField field, String alias) {
             this.operation = 'AVG';
-            this.fieldName = fieldName;
-            this.aliasName = aliasName;
-        }
-
-        private override Object compute(List<SObject> objectList) {
-            Decimal value = 0;
-            for (SObject obj : objectList) {
-                value += (Decimal) obj.get(this.fieldName);
-            }
-            return value / objectList.size();
+            this.field = field;
+            this.alias = alias;
         }
     }
 
-    private class MAX extends AggregateOperation {
-        private MAX(String fieldName) {
+    private class MAX extends Aggregation {
+        private MAX(SObjectField field) {
             this.operation = 'MAX';
-            this.fieldName = fieldName;
+            this.field = field;
         }
 
-        private MAX(String fieldName, String aliasName) {
+        private MAX(SObjectField field, String alias) {
             this.operation = 'MAX';
-            this.fieldName = fieldName;
-            this.aliasName = aliasName;
-        }
-
-        private override Object compute(List<SObject> objectList) {
-            Object value;
-            for (SObject obj : objectList) {
-                Object newValue = obj.get(this.fieldName);
-                if (value == null) {
-                    value = newValue;
-                }
-
-                if (newValue != null) {
-                    if (newValue instanceof String || newValue instanceof Id) {
-                        value = String.valueOf(newValue) > String.valueOf(value) ? newValue : value;
-                    } else {
-                        value = Math.max((Decimal) value, (Decimal) newValue);
-                    }
-                }
-            }
-            return value;
+            this.field = field;
+            this.alias = alias;
         }
     }
 
-    private class MIN extends AggregateOperation {
-        private MIN(String fieldName) {
+    private class MIN extends Aggregation {
+        private MIN(SObjectField field) {
             this.operation = 'MIN';
-            this.fieldName = fieldName;
+            this.field = field;
         }
 
-        private MIN(String fieldName, String aliasName) {
+        private MIN(SObjectField field, String alias) {
             this.operation = 'MIN';
-            this.fieldName = fieldName;
-            this.aliasName = aliasName;
-        }
-
-        private override Object compute(List<SObject> objectList) {
-            Object value;
-            for (SObject obj : objectList) {
-                Object newValue = obj.get(this.fieldName);
-                if (value == null) {
-                    value = newValue;
-                }
-
-                if (newValue != null) {
-                    if (newValue instanceof String || newValue instanceof Id) {
-                        value = String.valueOf(newValue) < String.valueOf(value) ? newValue : value;
-                    } else {
-                        value = Math.min((Decimal) value, (Decimal) newValue);
-                    }
-                }
-            }
-            return value;
+            this.field = field;
+            this.alias = alias;
         }
     }
 
-    public Query grouping(String name) {
-        this.getGroupManager().add(new Grouping(name));
+    public Query grouping(SObjectField field) {
+        this.getGroupManager().add(new Grouping(field));
         return this;
     }
 
-    public Query sum(String name) {
-        this.getGroupManager().add(new SUM(name));
+    public Query sum(SObjectField field) {
+        this.getGroupManager().add(new SUM(field));
         return this;
     }
 
-    public Query avg(String name) {
-        this.getGroupManager().add(new AVG(name));
+    public Query avg(SObjectField field) {
+        this.getGroupManager().add(new AVG(field));
         return this;
     }
 
-    public Query max(String name) {
-        this.getGroupManager().add(new MAX(name));
+    public Query max(SObjectField field) {
+        this.getGroupManager().add(new MAX(field));
         return this;
     }
 
-    public Query min(String name) {
-        this.getGroupManager().add(new MIN(name));
+    public Query min(SObjectField field) {
+        this.getGroupManager().add(new MIN(field));
         return this;
     }
 
-    public Query grouping(String name, String alias) {
-        this.getGroupManager().add(new Grouping(name, alias));
+    public Query grouping(SObjectField field, String alias) {
+        this.getGroupManager().add(new Grouping(field, alias));
         return this;
     }
 
-    public Query sum(String name, String alias) {
-        this.getGroupManager().add(new SUM(name, alias));
+    public Query sum(SObjectField field, String alias) {
+        this.getGroupManager().add(new SUM(field, alias));
         return this;
     }
 
-    public Query avg(String name, String alias) {
-        this.getGroupManager().add(new AVG(name, alias));
+    public Query avg(SObjectField field, String alias) {
+        this.getGroupManager().add(new AVG(field, alias));
         return this;
     }
 
-    public Query max(String name, String alias) {
-        this.getGroupManager().add(new MAX(name, alias));
+    public Query max(SObjectField field, String alias) {
+        this.getGroupManager().add(new MAX(field, alias));
         return this;
     }
 
-    public Query min(String name, String alias) {
-        this.getGroupManager().add(new MIN(name, alias));
+    public Query min(SObjectField field, String alias) {
+        this.getGroupManager().add(new MIN(field, alias));
         return this;
     }
 
-    public Query groupBy(String name) {
-        return groupBy(new List<String>{ name });
+    public Query groupBy(SObjectField field) {
+        return groupBy(new List<SObjectField>{ field });
     }
 
-    public Query groupBy(String name1, String name2) {
-        return groupBy(new List<String>{ name1, name2 });
+    public Query groupBy(SObjectField field1, SObjectField field2) {
+        return groupBy(new List<SObjectField>{ field1, field2 });
     }
 
-    public Query groupBy(String name1, String name2, String name3) {
-        return groupBy(new List<String>{ name1, name2, name3 });
+    public Query groupBy(SObjectField field1, SObjectField field2, SObjectField field3) {
+        return groupBy(new List<SObjectField>{ field1, field2, field3 });
     }
 
-    public Query groupBy(String name1, String name2, String name3, String name4) {
-        return groupBy(new List<String>{ name1, name2, name3, name4 });
+    public Query groupBy(SObjectField field1, SObjectField field2, SObjectField field3, SObjectField field4) {
+        return groupBy(new List<SObjectField>{ field1, field2, field3, field4 });
     }
 
-    public Query groupBy(String name1, String name2, String name3, String name4, String name5) {
-        return groupBy(new List<String>{ name1, name2, name3, name4, name5 });
+    public Query groupBy(
+        SObjectField field1,
+        SObjectField field2,
+        SObjectField field3,
+        SObjectField field4,
+        SObjectField field5
+    ) {
+        return groupBy(new List<SObjectField>{ field1, field2, field3, field4, field5 });
     }
 
-    public Query groupBy(List<String> names) {
-        this.getGroupManager().add(names);
+    public Query groupBy(List<SObjectField> fields) {
+        this.groupByFields.addAll(fields);
         return this;
     }
 
     public Query rollup() {
-        this.getGroupManager().setRollup(true);
+        this.rollup = true;
         return this;
     }
 
     public Query cube() {
-        this.getGroupManager().setCube(true);
+        this.cube = true;
         return this;
     }
     // #endregion
@@ -861,53 +882,42 @@ public with sharing abstract class Query implements Querable {
 
     // ==============
     // #region Filter
-    public interface FilterExpression {
-        void build(List<String> fragments, List<List<Object>> tmpVars);
+    public interface Filter {
+        void build(List<String> fragments, List<Object> tmpVars);
     }
 
-    public interface CompositeFilterExpression extends FilterExpression {
-        CompositeFilterExpression add(FilterExpression filter);
+    public interface CompositeFilter extends Filter {
+        CompositeFilter add(Filter filter);
     }
 
-    private abstract class FilterManager implements FilterExpression {
-        private FilterExpression filter { get; set; }
-
-        private void add(FilterExpression filter) {
-            this.filter = filter;
-        }
-    }
-
-    private class SOQLQueryFilterManager extends FilterManager {
-        public void build(List<String> fragments, List<List<Object>> tmpVars) {
-            if (this.filter != null) {
-                fragments.add(' WHERE ');
-                filter.build(fragments, tmpVars);
-            }
-        }
-    }
-
-    private abstract class LogicalExpression implements CompositeFilterExpression {
-        private List<FilterExpression> filters { get; set; }
+    private abstract class LogicalExpression implements CompositeFilter {
+        private List<Filter> filters { get; set; }
         private String operator { get; set; }
+        private Integer tag { get; set; }
 
         private LogicalExpression(String operator) {
-            this.filters = new List<FilterExpression>();
+            this.filters = new List<Filter>();
             this.operator = operator;
         }
 
-        public CompositeFilterExpression add(FilterExpression filter) {
-            this.filters.add((FilterExpression) filter);
+        public CompositeFilter add(Filter filter) {
+            this.filters.add(filter);
             return this;
         }
 
-        public void build(List<String> fragments, List<List<Object>> tmpVars) {
+        public CompositeFilter add(List<Filter> filters) {
+            this.filters.addAll(filters);
+            return this;
+        }
+
+        public void build(List<String> fragments, List<Object> tmpVars) {
             if (this.filters.size() == 0) {
                 return;
             }
 
             fragments.add('(');
             Integer index = 0;
-            for (FilterExpression filter : this.filters) {
+            for (Filter filter : this.filters) {
                 if (index > 0) {
                     fragments.add(this.operator);
                 }
@@ -916,42 +926,60 @@ public with sharing abstract class Query implements Querable {
             }
             fragments.add(')');
         }
+
+        public Boolean equals(Object obj) {
+            if (this === obj) {
+                return true;
+            }
+
+            LogicalExpression that = (LogicalExpression) obj;
+            return this.tag == that.tag && this.filters == that.filters;
+        }
     }
 
     private class AndLogicalExpression extends LogicalExpression {
         private AndLogicalExpression() {
             super(' AND ');
+            this.tag = AND_TAG;
         }
     }
 
     private class OrLogicalExpression extends LogicalExpression {
         private OrLogicalExpression() {
             super(' OR ');
+            this.tag = OR_TAG;
         }
     }
 
-    private abstract class ComparisonExpression implements FilterExpression {
-        private String fieldName { get; set; }
-        private List<String> pathNames { get; set; }
+    private abstract class ComparisonExpression implements Filter {
+        private SObjectField field { get; set; }
         private String operator { get; set; }
         private Object value { get; set; }
+        private Distance distance { get; set; } // used by DistanceComparison
+        private Integer tag { get; set; } // used to distinguish each implementation.
 
-        private ComparisonExpression() {
-        }
-
-        private ComparisonExpression(String fieldName, String operator, Object value) {
-            this.fieldName = fieldName;
+        private ComparisonExpression(SObjectField field, String operator, Object value) {
+            this.field = field;
             this.operator = operator;
             this.value = value;
         }
 
-        public virtual void build(List<String> fragments, List<List<Object>> tmpVars) {
-            fragments.add(this.fieldName);
+        public virtual void build(List<String> fragments, List<Object> tmpVars) {
+            fragments.add(String.valueOf(this.field));
             fragments.add(this.operator);
-            if (this.value instanceof List<Object>) {
-                tmpVars.add((List<Object>) this.value);
+            if (
+                this.value instanceof List<Object> ||
+                this.value instanceof Datetime ||
+                this.value instanceof Date ||
+                this.value instanceof Time
+            ) {
+                tmpVars.add(this.value);
                 fragments.add(':tmpVar' + tmpVars.size());
-            } else if (this.value instanceof String || this.value instanceof Id) {
+            } else if (this.value instanceof String) {
+                fragments.add('\'');
+                fragments.add(String.escapeSingleQuotes(String.valueOf(this.value)));
+                fragments.add('\'');
+            } else if (this.value instanceof Id) {
                 fragments.add('\'');
                 fragments.add(String.valueOf(this.value));
                 fragments.add('\'');
@@ -959,19 +987,118 @@ public with sharing abstract class Query implements Querable {
                 fragments.add(String.valueOf(this.value));
             }
         }
+
+        public Boolean equals(Object obj) {
+            if (this === obj) {
+                return true;
+            }
+
+            ComparisonExpression that = (ComparisonExpression) obj;
+
+            return (this.field == that.field &&
+            this.tag == that.tag &&
+            this.value == that.value &&
+            this.distance == that.distance);
+        }
     }
 
-    public Query filterBy(FilterExpression filter) {
-        this.getFilterManager().add(filter);
+    public Query whereBy(Filter filter) {
+        this.whereFilter = filter;
         return this;
     }
 
-    public static CompositeFilterExpression orx() {
+    public static CompositeFilter orx() {
         return new OrLogicalExpression();
     }
 
-    public static CompositeFilterExpression andx() {
+    public static CompositeFilter andx() {
         return new AndLogicalExpression();
+    }
+
+    public static CompositeFilter orx(Filter filter1, Filter filter2) {
+        return orx(new List<Filter>{ filter1, filter2 });
+    }
+
+    public static CompositeFilter orx(Filter filter1, Filter filter2, Filter filter3) {
+        return orx(new List<Filter>{ filter1, filter2, filter3 });
+    }
+
+    public static CompositeFilter orx(Filter filter1, Filter filter2, Filter filter3, Filter filter4) {
+        return orx(new List<Filter>{ filter1, filter2, filter3, filter4 });
+    }
+
+    public static CompositeFilter orx(Filter filter1, Filter filter2, Filter filter3, Filter filter4, Filter filter5) {
+        return orx(new List<Filter>{ filter1, filter2, filter3, filter4, filter5 });
+    }
+
+    public static CompositeFilter orx(
+        Filter filter1,
+        Filter filter2,
+        Filter filter3,
+        Filter filter4,
+        Filter filter5,
+        Filter filter6
+    ) {
+        return orx(new List<Filter>{ filter1, filter2, filter3, filter4, filter5, filter6 });
+    }
+
+    public static CompositeFilter orx(
+        Filter filter1,
+        Filter filter2,
+        Filter filter3,
+        Filter filter4,
+        Filter filter5,
+        Filter filter6,
+        Filter filter7
+    ) {
+        return orx(new List<Filter>{ filter1, filter2, filter3, filter4, filter5, filter6, filter7 });
+    }
+
+    public static CompositeFilter orx(List<Filter> filters) {
+        return new OrLogicalExpression().add(filters);
+    }
+
+    public static CompositeFilter andx(Filter filter1, Filter filter2) {
+        return andx(new List<Filter>{ filter1, filter2 });
+    }
+
+    public static CompositeFilter andx(Filter filter1, Filter filter2, Filter filter3) {
+        return andx(new List<Filter>{ filter1, filter2, filter3 });
+    }
+
+    public static CompositeFilter andx(Filter filter1, Filter filter2, Filter filter3, Filter filter4) {
+        return andx(new List<Filter>{ filter1, filter2, filter3, filter4 });
+    }
+
+    public static CompositeFilter andx(Filter filter1, Filter filter2, Filter filter3, Filter filter4, Filter filter5) {
+        return andx(new List<Filter>{ filter1, filter2, filter3, filter4, filter5 });
+    }
+
+    public static CompositeFilter andx(
+        Filter filter1,
+        Filter filter2,
+        Filter filter3,
+        Filter filter4,
+        Filter filter5,
+        Filter filter6
+    ) {
+        return andx(new List<Filter>{ filter1, filter2, filter3, filter4, filter5, filter6 });
+    }
+
+    public static CompositeFilter andx(
+        Filter filter1,
+        Filter filter2,
+        Filter filter3,
+        Filter filter4,
+        Filter filter5,
+        Filter filter6,
+        Filter filter7
+    ) {
+        return andx(new List<Filter>{ filter1, filter2, filter3, filter4, filter5, filter6, filter7 });
+    }
+
+    public static CompositeFilter andx(List<Filter> filters) {
+        return new AndLogicalExpression().add(filters);
     }
 
     // #endregion
@@ -980,93 +1107,64 @@ public with sharing abstract class Query implements Querable {
     // =============
     // #region =, !=
     private class EQ extends ComparisonExpression {
-        private EQ(String fieldName, Object value) {
-            super(fieldName, ' = ', value);
+        private EQ(SObjectField field, Object value) {
+            super(field, ' = ', value);
+            this.tag = EQ_TAG;
         }
     }
 
     private class NE extends ComparisonExpression {
-        private NE(String fieldName, Object value) {
-            super(fieldName, ' != ', value);
+        private NE(SObjectField field, Object value) {
+            super(field, ' != ', value);
+            this.tag = NE_TAG;
         }
     }
 
-    public static FilterExpression eq(String name, Object value) {
-        return new EQ(name, value);
+    public static Filter eq(SObjectField field, Object value) {
+        return new EQ(field, value);
     }
 
-    public static FilterExpression ne(String name, Object value) {
-        return new NE(name, value);
+    public static Filter ne(SObjectField field, Object value) {
+        return new NE(field, value);
     }
     // #endregion
     // =============
 
     // =========
     // #region >
-    private abstract class GT extends ComparisonExpression {
-        private GT(String fieldName, Object value) {
-            super(fieldName, ' > ', value);
+    private class GT extends ComparisonExpression {
+        private GT(SObjectField field, Object value) {
+            super(field, ' > ', value);
+            this.tag = GT_TAG;
         }
     }
 
-    private class GT_Decimal extends GT {
-        private GT_Decimal(String fieldName, Decimal value) {
-            super(fieldName, value);
-        }
+    public static Filter gt(SObjectField field, Decimal value) {
+        return new GT(field, value);
     }
 
-    private class GT_Date extends GT {
-        private GT_Date(String fieldName, Date value) {
-            super(fieldName, value);
-        }
+    public static Filter gt(SObjectField field, DateLiteral value) {
+        return new GT(field, value);
     }
 
-    private class GT_Datetime extends GT {
-        private GT_Datetime(String fieldName, Datetime value) {
-            super(fieldName, value);
-        }
+    public static Filter gt(SObjectField field, Date value) {
+        return new GT(field, value);
     }
 
-    private class GT_Time extends GT {
-        private GT_Time(String fieldName, Time value) {
-            super(fieldName, value);
-        }
+    public static Filter gt(SObjectField field, Datetime value) {
+        return new GT(field, value);
     }
 
-    private class GT_Id extends GT {
-        private GT_Id(String fieldName, Id value) {
-            super(fieldName, value);
-        }
+    public static Filter gt(SObjectField field, Time value) {
+        return new GT(field, value);
     }
 
-    private class GT_String extends GT {
-        private GT_String(String fieldName, String value) {
-            super(fieldName, value);
-        }
+    public static Filter gt(SObjectField field, Id value) {
+        return new GT(field, value);
     }
 
-    public static FilterExpression gt(String name, Decimal value) {
-        return new GT_Decimal(name, value);
-    }
-
-    public static FilterExpression gt(String name, Date value) {
-        return new GT_Date(name, value);
-    }
-
-    public static FilterExpression gt(String name, Datetime value) {
-        return new GT_Datetime(name, value);
-    }
-
-    public static FilterExpression gt(String name, Time value) {
-        return new GT_Time(name, value);
-    }
-
-    public static FilterExpression gt(String name, Id value) {
-        return new GT_Id(name, value);
-    }
-
-    public static FilterExpression gt(String name, String value) {
-        return new GT_String(name, value);
+    public static Filter gt(SObjectField field, String value) {
+        return new GT(field, value);
     }
 
     // #endregion
@@ -1074,322 +1172,151 @@ public with sharing abstract class Query implements Querable {
 
     // ==========
     // #region >=
-    private abstract class GTE extends ComparisonExpression {
-        private GTE(String fieldName, Object value) {
-            super(fieldName, ' >= ', value);
+    private class GTE extends ComparisonExpression {
+        private GTE(SObjectField field, Object value) {
+            super(field, ' >= ', value);
+            this.tag = GTE_TAG;
         }
     }
 
-    private class GTE_Decimal extends GTE {
-        private GTE_Decimal(String fieldName, Decimal value) {
-            super(fieldName, value);
-        }
+    public static Filter gte(SObjectField field, Decimal value) {
+        return new GTE(field, value);
     }
 
-    private class GTE_Date extends GTE {
-        private GTE_Date(String fieldName, Date value) {
-            super(fieldName, value);
-        }
+    public static Filter gte(SObjectField field, DateLiteral value) {
+        return new GTE(field, value);
     }
 
-    private class GTE_Datetime extends GTE {
-        private GTE_Datetime(String fieldName, Datetime value) {
-            super(fieldName, value);
-        }
+    public static Filter gte(SObjectField field, Date value) {
+        return new GTE(field, value);
     }
 
-    private class GTE_Time extends GTE {
-        private GTE_Time(String fieldName, Time value) {
-            super(fieldName, value);
-        }
+    public static Filter gte(SObjectField field, Datetime value) {
+        return new GTE(field, value);
     }
 
-    private class GTE_Id extends GTE {
-        private GTE_Id(String fieldName, Id value) {
-            super(fieldName, value);
-        }
+    public static Filter gte(SObjectField field, Time value) {
+        return new GTE(field, value);
     }
 
-    private class GTE_String extends GTE {
-        private GTE_String(String fieldName, String value) {
-            super(fieldName, value);
-        }
+    public static Filter gte(SObjectField field, Id value) {
+        return new GTE(field, value);
     }
 
-    public static FilterExpression gte(String name, Decimal value) {
-        return new GTE_Decimal(name, value);
+    public static Filter gte(SObjectField field, String value) {
+        return new GTE(field, value);
     }
-
-    public static FilterExpression gte(String name, Date value) {
-        return new GTE_Date(name, value);
-    }
-
-    public static FilterExpression gte(String name, Datetime value) {
-        return new GTE_Datetime(name, value);
-    }
-
-    public static FilterExpression gte(String name, Time value) {
-        return new GTE_Time(name, value);
-    }
-
-    public static FilterExpression gte(String name, Id value) {
-        return new GTE_Id(name, value);
-    }
-
-    public static FilterExpression gte(String name, String value) {
-        return new GTE_String(name, value);
-    }
-
     // #endregion
     // ===========
 
     // ==========
     // #region <
-    private abstract class LT extends ComparisonExpression {
-        private LT(String fieldName, Object value) {
-            super(fieldName, ' < ', value);
+    private class LT extends ComparisonExpression {
+        private LT(SObjectField field, Object value) {
+            super(field, ' < ', value);
+            this.tag = LT_TAG;
         }
     }
 
-    private class LT_Decimal extends LT {
-        private LT_Decimal(String fieldName, Decimal value) {
-            super(fieldName, value);
-        }
+    public static Filter lt(SObjectField field, Decimal value) {
+        return new LT(field, value);
     }
 
-    private class LT_Date extends LT {
-        private LT_Date(String fieldName, Date value) {
-            super(fieldName, value);
-        }
+    public static Filter lt(SObjectField field, DateLiteral value) {
+        return new LT(field, value);
     }
 
-    private class LT_Datetime extends LT {
-        private LT_Datetime(String fieldName, Datetime value) {
-            super(fieldName, value);
-        }
+    public static Filter lt(SObjectField field, Date value) {
+        return new LT(field, value);
     }
 
-    private class LT_Time extends LT {
-        private LT_Time(String fieldName, Time value) {
-            super(fieldName, value);
-        }
+    public static Filter lt(SObjectField field, Datetime value) {
+        return new LT(field, value);
     }
 
-    private class LT_Id extends LT {
-        private LT_Id(String fieldName, Id value) {
-            super(fieldName, value);
-        }
+    public static Filter lt(SObjectField field, Time value) {
+        return new LT(field, value);
     }
 
-    private class LT_String extends LT {
-        private LT_String(String fieldName, String value) {
-            super(fieldName, value);
-        }
+    public static Filter lt(SObjectField field, Id value) {
+        return new LT(field, value);
     }
 
-    public static FilterExpression lt(String name, Decimal value) {
-        return new LT_Decimal(name, value);
-    }
-
-    public static FilterExpression lt(String name, Date value) {
-        return new LT_Date(name, value);
-    }
-
-    public static FilterExpression lt(String name, Datetime value) {
-        return new LT_Datetime(name, value);
-    }
-
-    public static FilterExpression lt(String name, Time value) {
-        return new LT_Time(name, value);
-    }
-
-    public static FilterExpression lt(String name, Id value) {
-        return new LT_Id(name, value);
-    }
-
-    public static FilterExpression lt(String name, String value) {
-        return new LT_String(name, value);
+    public static Filter lt(SObjectField field, String value) {
+        return new LT(field, value);
     }
     // #endregion
     // ==========
 
     // ==========
     // #region <=
-    private abstract class LTE extends ComparisonExpression {
-        private LTE(String fieldName, Object value) {
-            super(fieldName, ' <= ', value);
+    private class LTE extends ComparisonExpression {
+        private LTE(SObjectField field, Object value) {
+            super(field, ' <= ', value);
+            this.tag = LTE_TAG;
         }
     }
 
-    private class LTE_Decimal extends LTE {
-        private LTE_Decimal(String fieldName, Decimal value) {
-            super(fieldName, value);
-        }
+    public static Filter lte(SObjectField field, Decimal value) {
+        return new LTE(field, value);
     }
 
-    private class LTE_Date extends LTE {
-        private LTE_Date(String fieldName, Date value) {
-            super(fieldName, value);
-        }
+    public static Filter lte(SObjectField field, DateLiteral value) {
+        return new LTE(field, value);
     }
 
-    private class LTE_Datetime extends LTE {
-        private LTE_Datetime(String fieldName, Datetime value) {
-            super(fieldName, value);
-        }
+    public static Filter lte(SObjectField field, Date value) {
+        return new LTE(field, value);
     }
 
-    private class LTE_Time extends LTE {
-        private LTE_Time(String fieldName, Time value) {
-            super(fieldName, value);
-        }
+    public static Filter lte(SObjectField field, Datetime value) {
+        return new LTE(field, value);
     }
 
-    private class LTE_Id extends LTE {
-        private LTE_Id(String fieldName, Id value) {
-            super(fieldName, value);
-        }
+    public static Filter lte(SObjectField field, Time value) {
+        return new LTE(field, value);
     }
 
-    private class LTE_String extends LTE {
-        private LTE_String(String fieldName, String value) {
-            super(fieldName, value);
-        }
+    public static Filter lte(SObjectField field, Id value) {
+        return new LTE(field, value);
     }
 
-    public static FilterExpression lte(String name, Decimal value) {
-        return new LTE_Decimal(name, value);
+    public static Filter lte(SObjectField field, String value) {
+        return new LTE(field, value);
     }
 
-    public static FilterExpression lte(String name, Date value) {
-        return new LTE_Date(name, value);
-    }
-
-    public static FilterExpression lte(String name, Datetime value) {
-        return new LTE_Datetime(name, value);
-    }
-
-    public static FilterExpression lte(String name, Time value) {
-        return new LTE_Time(name, value);
-    }
-
-    public static FilterExpression lte(String name, Id value) {
-        return new LTE_Id(name, value);
-    }
-
-    public static FilterExpression lte(String name, String value) {
-        return new LTE_String(name, value);
-    }
     // #endregion
     // ==========
 
     // ===============
     // #region between
-    private abstract class Between extends ComparisonExpression {
-        private GTE gteFromValue { get; set; }
-        private LTE lteToValue { get; set; }
-
-        public override void build(List<String> fragments, List<List<Object>> tmpVars) {
-            this.gteFromValue.build(fragments, tmpVars);
-            fragments.add(' AND ');
-            this.lteToValue.build(fragments, tmpVars);
-        }
-    }
-
-    private class Between_Decimal extends Between {
-        private Decimal fromValue { get; set; }
-        private Decimal toValue { get; set; }
-
-        private Between_Decimal(String fieldName, Decimal fromValue, Decimal toValue) {
-            this.fromValue = fromValue;
-            this.toValue = toValue;
-            this.gteFromValue = new GTE_Decimal(fieldName, fromValue);
-            this.lteToValue = new LTE_Decimal(fieldName, toValue);
-        }
-    }
-
-    private class Between_Date extends Between {
-        private Date fromValue { get; set; }
-        private Date toValue { get; set; }
-
-        private Between_Date(String fieldName, Date fromValue, Date toValue) {
-            this.fromValue = fromValue;
-            this.toValue = toValue;
-            this.gteFromValue = new GTE_Date(fieldName, fromValue);
-            this.lteToValue = new LTE_Date(fieldName, toValue);
-        }
-    }
-
-    private class Between_Datetime extends Between {
-        private Datetime fromValue { get; set; }
-        private Datetime toValue { get; set; }
-
-        private Between_Datetime(String fieldName, Datetime fromValue, Datetime toValue) {
-            this.fromValue = fromValue;
-            this.toValue = toValue;
-            this.gteFromValue = new GTE_Datetime(fieldName, fromValue);
-            this.lteToValue = new LTE_Datetime(fieldName, toValue);
-        }
-    }
-
-    private class Between_Time extends Between {
-        private Time fromValue { get; set; }
-        private Time toValue { get; set; }
-
-        private Between_Time(String fieldName, Time fromValue, Time toValue) {
-            this.fromValue = fromValue;
-            this.toValue = toValue;
-            this.gteFromValue = new GTE_Time(fieldName, fromValue);
-            this.lteToValue = new LTE_Time(fieldName, toValue);
-        }
-    }
-
-    private class Between_Id extends Between {
-        private Id fromValue { get; set; }
-        private Id toValue { get; set; }
-
-        private Between_Id(String fieldName, Id fromValue, Id toValue) {
-            this.fromValue = fromValue;
-            this.toValue = toValue;
-            this.gteFromValue = new GTE_Id(fieldName, fromValue);
-            this.lteToValue = new LTE_Id(fieldName, toValue);
-        }
-    }
-
-    private class Between_String extends Between {
-        private String fromValue { get; set; }
-        private String toValue { get; set; }
-
-        private Between_String(String fieldName, String fromValue, String toValue) {
-            this.fromValue = fromValue;
-            this.toValue = toValue;
-            this.gteFromValue = new GTE_String(fieldName, fromValue);
-            this.lteToValue = new LTE_String(fieldName, toValue);
-        }
+    // prettier-ignore
+    public static Filter between(SObjectField field, Decimal fromValue, Decimal toValue) {
+        return andx(gte(field, fromValue), lte(field, toValue));
     }
     // prettier-ignore
-    public static FilterExpression between(String name, Decimal fromValue, Decimal toValue) {
-        return new Between_Decimal(name, fromValue, toValue);
+    public static Filter between(SObjectField field, DateLiteral fromValue, DateLiteral toValue) {
+        return andx(gte(field, fromValue), lte(field, toValue));
     }
     // prettier-ignore
-    public static FilterExpression between(String name, Date fromValue, Date toValue) {
-        return new Between_Date(name, fromValue, toValue);
+    public static Filter between(SObjectField field, Date fromValue, Date toValue) {
+        return andx(gte(field, fromValue), lte(field, toValue));
     }
     // prettier-ignore
-    public static FilterExpression between(String name, Datetime fromValue, Datetime toValue) {
-        return new Between_Datetime(name, fromValue, toValue);
+    public static Filter between(SObjectField field, Datetime fromValue, Datetime toValue) {
+        return andx(gte(field, fromValue), lte(field, toValue));
     }
     // prettier-ignore
-    public static FilterExpression between(String name, Time fromValue, Time toValue) {
-        return new Between_Time(name, fromValue, toValue);
+    public static Filter between(SObjectField field, Time fromValue, Time toValue) {
+        return andx(gte(field, fromValue), lte(field, toValue));
     }
     // prettier-ignore
-    public static FilterExpression between(String name, Id fromValue, Id toValue) {
-        return new Between_Id(name, fromValue, toValue);
+    public static Filter between(SObjectField field, Id fromValue, Id toValue) {
+        return andx(gte(field, fromValue), lte(field, toValue));
     }
     // prettier-ignore
-    public static FilterExpression between(String name, String fromValue, String toValue) {
-        return new Between_String(name, fromValue, toValue);
+    public static Filter between(SObjectField field, String fromValue, String toValue) {
+        return andx(gte(field, fromValue), lte(field, toValue));
     }
     // #endregion
     // ===============
@@ -1397,290 +1324,525 @@ public with sharing abstract class Query implements Querable {
     // ============
     // #region like
     private class LikeX extends ComparisonExpression {
-        private LikeX(String fieldName, String value) {
-            super(fieldName, 'LIKE', value);
+        private LikeX(SObjectField field, String value) {
+            super(field, ' LIKE ', value);
+            this.tag = LIKEX_TAG;
         }
     }
 
     private class NLike extends ComparisonExpression {
-        private NLike(String fieldName, String value) {
-            super(fieldName, 'LIKE', value);
+        private NLike(SObjectField field, String value) {
+            super(field, ' LIKE ', value);
+            this.tag = NLIKE_TAG;
         }
 
-        public override void build(List<String> fragments, List<List<Object>> tmpVars) {
+        public override void build(List<String> fragments, List<Object> tmpVars) {
             fragments.add('(NOT ');
             super.build(fragments, tmpVars);
             fragments.add(')');
         }
     }
 
-    public static FilterExpression likex(String name, String value) {
-        return new LikeX(name, value);
+    public static Filter likex(SObjectField field, String value) {
+        return new LikeX(field, value);
     }
 
-    public static FilterExpression nlike(String name, String value) {
-        return new NLike(name, value);
+    public static Filter nlike(SObjectField field, String value) {
+        return new NLike(field, value);
     }
     // #endregion
     // ============
 
-    // ================
-    // #region distance
-
-    public class Distance {
-        private String fieldName { get; set; }
-        private Geolocation geo { get; set; }
-        private Unit unit { get; set; }
-
-        private Distance(String fieldName, Geolocation geo, Unit unit) {
-            this.fieldName = fieldName;
-            this.geo = geo;
-            this.unit = unit;
-        }
-    }
-
-    public class Geolocation {
-        private Decimal latitude { get; set; }
-        private Decimal longitude { get; set; }
-
-        private geolocation(Decimal latitude, Decimal longitude) {
-            this.latitude = latitude;
-            this.longitude = longitude;
-        }
-    }
-
-    public enum Unit {
-        MILE,
-        KILOMETER
-    }
-
-    public static Distance distance(String fieldName, Geolocation geo, Unit unit) {
-        return new Distance(fieldName, geo, unit);
-    }
-
-    public static Geolocation geolocation(Decimal latitude, Decimal longitude) {
-        return new Geolocation(latitude, longitude);
-    }
-
-    // #endregion
-    // ================
-
     // ====================================
     // #region inx, nin, includes, excludes
     private class Includes extends ComparisonExpression {
-        private Includes(String fieldName, List<Object> values) {
-            super(fieldName, 'INCLUDES', values);
+        private Includes(SObjectField field, List<Object> values) {
+            super(field, 'INCLUDES', values);
+            this.tag = INCLUDES_TAG;
         }
     }
 
     private class Excludes extends ComparisonExpression {
-        private Excludes(String fieldName, List<Object> values) {
-            super(fieldName, 'EXCLUDES', values);
+        private Excludes(SObjectField field, List<Object> values) {
+            super(field, 'EXCLUDES', values);
+            this.tag = EXCLUDES_TAG;
         }
     }
 
     private class INX extends ComparisonExpression {
-        private INX(String fieldName, List<Object> values) {
-            super(fieldName, ' IN ', values);
+        private INX(SObjectField field, List<Object> values) {
+            super(field, ' IN ', values);
+            this.tag = INX_TAG;
         }
     }
 
     private class NIN extends ComparisonExpression {
-        private NIN(String fieldName, List<Object> values) {
-            super(fieldName, 'NOT IN', values);
+        private NIN(SObjectField field, List<Object> values) {
+            super(field, 'NOT IN', values);
+            this.tag = NIN_TAG;
         }
     }
 
     private virtual class INX_Query extends ComparisonExpression {
-        private INX_Query(String fieldName, Boolean isNot, Query query) {
-            super(fieldName, isNot ? 'NOT IN' : 'IN', query);
+        private INX_Query(SObjectField field, Boolean isNot, Query query) {
+            super(field, isNot ? 'NOT IN' : 'IN', query);
+            this.tag = INX_Query_TAG;
         }
 
-        public override void build(List<String> fragments, List<List<Object>> tmpVars) {
-            if (this.value instanceof SoqlQuery) {
-                fragments.add(this.fieldName);
+        public override void build(List<String> fragments, List<Object> tmpVars) {
+            if (this.value instanceof QueryBuilder) {
+                fragments.add(String.valueOf(this.field));
                 fragments.add(' ');
                 fragments.add(this.operator);
                 fragments.add(' ');
                 fragments.add('(');
-                ((SoqlQuery) this.value).buildSoql(fragments, tmpVars);
+                ((QueryBuilder) this.value).buildSoql(fragments, tmpVars);
                 fragments.add(')');
             }
         }
     }
 
-    public static FilterExpression includes(String name, List<Object> values) {
-        return new Includes(name, values);
+    public static Filter includes(SObjectField field, List<Object> values) {
+        return new Includes(field, values);
     }
 
-    public static FilterExpression excludes(String name, List<Object> query) {
-        return new Excludes(name, query);
+    public static Filter excludes(SObjectField field, List<Object> values) {
+        return new Excludes(field, values);
     }
 
-    public static FilterExpression inx(String name, List<Object> values) {
-        return new INX(name, values);
+    public static Filter inx(SObjectField field, List<Object> values) {
+        return new INX(field, values);
     }
 
-    public static FilterExpression inx(String name, Query query) {
-        return new INX_Query(name, false, query);
+    public static Filter inx(SObjectField field, Query query) {
+        return new INX_Query(field, false, query);
     }
 
-    public static FilterExpression nin(String name, List<Object> values) {
-        return new NIN(name, values);
+    public static Filter nin(SObjectField field, List<Object> values) {
+        return new NIN(field, values);
     }
 
-    public static FilterExpression nin(String name, Query query) {
-        return new INX_Query(name, true, query);
+    public static Filter nin(SObjectField field, Query query) {
+        return new INX_Query(field, true, query);
     }
 
     // #endregion
     // ====================================
 
+    // ================
+    // #region distance
+
+    public class Distance {
+        private SObjectField field { get; set; }
+        private Location geo { get; set; }
+        private String unit { get; set; }
+
+        private Distance(SObjectField field, Location geo, String unit) {
+            this.field = field;
+            this.geo = geo;
+            this.unit = unit;
+        }
+
+        private String build() {
+            return 'DISTANCE(' +
+                String.valueOf(this.field) +
+                ', GEOLOCATION(' +
+                this.geo.latitude +
+                ',' +
+                this.geo.longitude +
+                '), \'' +
+                this.unit +
+                '\')';
+        }
+
+        public Boolean equals(Object obj) {
+            if (this === obj) {
+                return true;
+            }
+
+            Distance that = (Distance) obj;
+
+            return this.field == that.field &&
+                this.geo.latitude == that.geo.latitude &&
+                this.geo.longitude == that.geo.longitude &&
+                this.unit == that.unit;
+        }
+    }
+
+    private static final String DISTANCE_UNIT_KM = 'km';
+    private static final String DISTANCE_UNIT_MI = 'mi';
+
+    public static Distance DISTANCE_IN_KILOMETER(SObjectField field, Location geo) {
+        return new Distance(field, geo, DISTANCE_UNIT_KM);
+    }
+
+    public static Distance DISTANCE_IN_MILE(SObjectField field, Location geo) {
+        return new Distance(field, geo, DISTANCE_UNIT_MI);
+    }
+
+    private class DistanceComparison extends ComparisonExpression {
+        private DistanceComparison(Distance distance, String operator, Decimal value) {
+            super(distance.field, operator, value);
+            this.distance = distance;
+            this.tag = DISTANCE_TAG;
+        }
+
+        public override void build(List<String> fragments, List<Object> tmpVars) {
+            fragments.add(this.distance.build());
+            fragments.add(this.operator);
+            fragments.add(String.valueOf(this.value));
+        }
+    }
+
+    public static Filter gt(Distance distance, Decimal value) {
+        return new DistanceComparison(distance, ' > ', value);
+    }
+
+    public static Filter gte(Distance distance, Decimal value) {
+        return new DistanceComparison(distance, ' >= ', value);
+    }
+
+    public static Filter lt(Distance distance, Decimal value) {
+        return new DistanceComparison(distance, ' < ', value);
+    }
+
+    public static Filter lte(Distance distance, Decimal value) {
+        return new DistanceComparison(distance, ' <= ', value);
+    }
+
+    public static Filter between(Distance distance, Decimal fromValue, Decimal toValue) {
+        return andx(gte(distance, fromValue), lte(distance, toValue));
+    }
+
+    public Query orderBy(Distance distance) {
+        return this.orderBy(distance.build());
+    }
+
+    public Query orderBy(Distance distance1, Distance distance2) {
+        return this.orderBy(distance1.build(), distance2.build());
+    }
+
+    public Query orderBy(Distance distance1, Distance distance2, Distance distance3) {
+        return this.orderBy(distance1.build(), distance2.build(), distance3.build());
+    }
+
+    public Query orderBy(Distance distance1, Distance distance2, Distance distance3, Distance distance4) {
+        return this.orderBy(distance1.build(), distance2.build(), distance3.build(), distance4.build());
+    }
+
+    public Query orderBy(
+        Distance distance1,
+        Distance distance2,
+        Distance distance3,
+        Distance distance4,
+        Distance distance5
+    ) {
+        return this.orderBy(
+            distance1.build(),
+            distance2.build(),
+            distance3.build(),
+            distance4.build(),
+            distance5.build()
+        );
+    }
+
+    public Query orderBy(List<Distance> distances) {
+        List<String> distStrings = new List<String>();
+
+        for (Distance distance : distances) {
+            distStrings.add(distance.build());
+        }
+
+        return this.orderBy(distStrings);
+    }
+
+    // #endregion
+    // ================
+
     // =====================
     // #region Date Literals
 
     public class DateLiteral {
-        public final String YESTERDAY = 'YESTERDAY';
-        public final String TODAY = 'TODAY';
-        public final String TOMORROW = 'TOMORROW';
-        public final String LAST_WEEK = 'LAST_WEEK';
-        public final String THIS_WEEK = 'THIS_WEEK';
-        public final String NEXT_WEEK = 'NEXT_WEEK';
-        public final String LAST_MONTH = 'LAST_MONTH';
-        public final String THIS_MONTH = 'THIS_MONTH';
-        public final String NEXT_MONTH = 'NEXT_MONTH';
-        public final String LAST_90_DAYS = 'LAST_90_DAYS';
-        public final String NEXT_90_DAYS = 'NEXT_90_DAYS';
-        public final String THIS_QUARTER = 'THIS_QUARTER';
-        public final String LAST_QUARTER = 'LAST_QUARTER';
-        public final String NEXT_QUARTER = 'NEXT_QUARTER';
-        public final String THIS_YEAR = 'THIS_YEAR';
-        public final String LAST_YEAR = 'LAST_YEAR';
-        public final String NEXT_YEAR = 'NEXT_YEAR';
-        public final String THIS_FISCAL_QUARTER = 'THIS_FISCAL_QUARTER';
-        public final String LAST_FISCAL_QUARTER = 'LAST_FISCAL_QUARTER';
-        public final String NEXT_FISCAL_QUARTER = 'NEXT_FISCAL_QUARTER';
-        public final String THIS_FISCAL_YEAR = 'THIS_FISCAL_YEAR';
-        public final String LAST_FISCAL_YEAR = 'LAST_FISCAL_YEAR';
-        public final String NEXT_FISCAL_YEAR = 'NEXT_FISCAL_YEAR';
+        public String value { get; set; }
 
-        public String LAST_N_DAYS(Integer n) {
-            return 'LAST_N_DAYS:' + n;
+        private DateLiteral(String value) {
+            this.value = value;
         }
 
-        public String NEXT_N_DAYS(Integer n) {
-            return 'NEXT_N_DAYS:' + n;
+        public override String toString() {
+            return this.value;
         }
 
-        public String N_DAYS_AGO(Integer n) {
-            return 'N_DAYS_AGO:' + n;
-        }
+        public Boolean equals(Object obj) {
+            if (this === obj) {
+                return true;
+            }
 
-        public String NEXT_N_WEEKS(Integer n) {
-            return 'NEXT_N_WEEKS:' + n;
+            DateLiteral that = (DateLiteral) obj;
+            return this.value == that.value;
         }
+    }
 
-        public String LAST_N_WEEKS(Integer n) {
-            return 'LAST_N_WEEKS:' + n;
-        }
+    private class DateLiteralDictionary {
+        private final DateLiteral YESTERDAY = new DateLiteral('YESTERDAY');
+        private final DateLiteral TODAY = new DateLiteral('TODAY');
+        private final DateLiteral TOMORROW = new DateLiteral('TOMORROW');
+        private final DateLiteral LAST_WEEK = new DateLiteral('LAST_WEEK');
+        private final DateLiteral THIS_WEEK = new DateLiteral('THIS_WEEK');
+        private final DateLiteral NEXT_WEEK = new DateLiteral('NEXT_WEEK');
+        private final DateLiteral LAST_MONTH = new DateLiteral('LAST_MONTH');
+        private final DateLiteral THIS_MONTH = new DateLiteral('THIS_MONTH');
+        private final DateLiteral NEXT_MONTH = new DateLiteral('NEXT_MONTH');
+        private final DateLiteral LAST_90_DAYS = new DateLiteral('LAST_90_DAYS');
+        private final DateLiteral NEXT_90_DAYS = new DateLiteral('NEXT_90_DAYS');
+        private final DateLiteral THIS_QUARTER = new DateLiteral('THIS_QUARTER');
+        private final DateLiteral LAST_QUARTER = new DateLiteral('LAST_QUARTER');
+        private final DateLiteral NEXT_QUARTER = new DateLiteral('NEXT_QUARTER');
+        private final DateLiteral THIS_YEAR = new DateLiteral('THIS_YEAR');
+        private final DateLiteral LAST_YEAR = new DateLiteral('LAST_YEAR');
+        private final DateLiteral NEXT_YEAR = new DateLiteral('NEXT_YEAR');
+        private final DateLiteral THIS_FISCAL_QUARTER = new DateLiteral('THIS_FISCAL_QUARTER');
+        private final DateLiteral LAST_FISCAL_QUARTER = new DateLiteral('LAST_FISCAL_QUARTER');
+        private final DateLiteral NEXT_FISCAL_QUARTER = new DateLiteral('NEXT_FISCAL_QUARTER');
+        private final DateLiteral THIS_FISCAL_YEAR = new DateLiteral('THIS_FISCAL_YEAR');
+        private final DateLiteral LAST_FISCAL_YEAR = new DateLiteral('LAST_FISCAL_YEAR');
+        private final DateLiteral NEXT_FISCAL_YEAR = new DateLiteral('NEXT_FISCAL_YEAR');
+    }
 
-        public String N_WEEKS_AGO(Integer n) {
-            return 'N_WEEKS_AGO:' + n;
+    private static DateLiteralDictionary DTL {
+        get {
+            if (DTL == null) {
+                DTL = new DateLiteralDictionary();
+            }
+            return DTL;
         }
+        private set;
+    }
 
-        public String NEXT_N_MONTHS(Integer n) {
-            return 'NEXT_N_MONTHS:' + n;
-        }
+    public static DateLiteral YESTERDAY() {
+        return DTL.YESTERDAY;
+    }
 
-        public String LAST_N_MONTHS(Integer n) {
-            return 'LAST_N_MONTHS:' + n;
-        }
+    public static DateLiteral TODAY() {
+        return DTL.TODAY;
+    }
 
-        public String N_MONTHS_AGO(Integer n) {
-            return 'N_MONTHS_AGO:' + n;
-        }
+    public static DateLiteral TOMORROW() {
+        return DTL.TOMORROW;
+    }
 
-        public String NEXT_N_QUARTERS(Integer n) {
-            return 'NEXT_N_QUARTERS:' + n;
-        }
+    public static DateLiteral LAST_WEEK() {
+        return DTL.LAST_WEEK;
+    }
 
-        public String LAST_N_QUARTERS(Integer n) {
-            return 'LAST_N_QUARTERS:' + n;
-        }
+    public static DateLiteral THIS_WEEK() {
+        return DTL.THIS_WEEK;
+    }
 
-        public String N_QUARTERS_AGO(Integer n) {
-            return 'N_QUARTERS_AGO:' + n;
-        }
+    public static DateLiteral NEXT_WEEK() {
+        return DTL.NEXT_WEEK;
+    }
 
-        public String NEXT_N_YEARS(Integer n) {
-            return 'NEXT_N_YEARS:' + n;
-        }
+    public static DateLiteral LAST_MONTH() {
+        return DTL.LAST_MONTH;
+    }
 
-        public String LAST_N_YEARS(Integer n) {
-            return 'LAST_N_YEARS:' + n;
-        }
+    public static DateLiteral THIS_MONTH() {
+        return DTL.THIS_MONTH;
+    }
 
-        public String N_YEARS_AGO(Integer n) {
-            return 'N_YEARS_AGO:' + n;
-        }
+    public static DateLiteral NEXT_MONTH() {
+        return DTL.NEXT_MONTH;
+    }
 
-        public String NEXT_N_FISCAL_QUARTERS(Integer n) {
-            return 'NEXT_N_FISCAL_QUARTERS:' + n;
-        }
+    public static DateLiteral LAST_90_DAYS() {
+        return DTL.LAST_90_DAYS;
+    }
 
-        public String N_FISCAL_QUARTERS_AGO(Integer n) {
-            return 'N_FISCAL_QUARTERS_AGO:' + n;
-        }
+    public static DateLiteral NEXT_90_DAYS() {
+        return DTL.NEXT_90_DAYS;
+    }
 
-        public String NEXT_N_FISCAL_YEARS(Integer n) {
-            return 'NEXT_N_FISCAL_YEARS:' + n;
-        }
+    public static DateLiteral THIS_QUARTER() {
+        return DTL.THIS_QUARTER;
+    }
 
-        public String LAST_N_FISCAL_YEARS(Integer n) {
-            return 'LAST_N_FISCAL_YEARS:' + n;
-        }
+    public static DateLiteral LAST_QUARTER() {
+        return DTL.LAST_QUARTER;
+    }
 
-        public String N_FISCAL_YEARS_AGO(Integer n) {
-            return 'N_FISCAL_YEARS_AGO:' + n;
-        }
+    public static DateLiteral NEXT_QUARTER() {
+        return DTL.NEXT_QUARTER;
+    }
+
+    public static DateLiteral THIS_YEAR() {
+        return DTL.THIS_YEAR;
+    }
+
+    public static DateLiteral LAST_YEAR() {
+        return DTL.LAST_YEAR;
+    }
+
+    public static DateLiteral NEXT_YEAR() {
+        return DTL.NEXT_YEAR;
+    }
+
+    public static DateLiteral THIS_FISCAL_QUARTER() {
+        return DTL.THIS_FISCAL_QUARTER;
+    }
+
+    public static DateLiteral LAST_FISCAL_QUARTER() {
+        return DTL.LAST_FISCAL_QUARTER;
+    }
+
+    public static DateLiteral NEXT_FISCAL_QUARTER() {
+        return DTL.NEXT_FISCAL_QUARTER;
+    }
+
+    public static DateLiteral THIS_FISCAL_YEAR() {
+        return DTL.THIS_FISCAL_YEAR;
+    }
+
+    public static DateLiteral LAST_FISCAL_YEAR() {
+        return DTL.LAST_FISCAL_YEAR;
+    }
+
+    public static DateLiteral NEXT_FISCAL_YEAR() {
+        return DTL.NEXT_FISCAL_YEAR;
+    }
+
+    public static DateLiteral LAST_N_DAYS(Integer n) {
+        return new DateLiteral('LAST_N_DAYS:' + n);
+    }
+
+    public static DateLiteral NEXT_N_DAYS(Integer n) {
+        return new DateLiteral('NEXT_N_DAYS:' + n);
+    }
+
+    public static DateLiteral N_DAYS_AGO(Integer n) {
+        return new DateLiteral('N_DAYS_AGO:' + n);
+    }
+
+    public static DateLiteral NEXT_N_WEEKS(Integer n) {
+        return new DateLiteral('NEXT_N_WEEKS:' + n);
+    }
+
+    public static DateLiteral LAST_N_WEEKS(Integer n) {
+        return new DateLiteral('LAST_N_WEEKS:' + n);
+    }
+
+    public static DateLiteral N_WEEKS_AGO(Integer n) {
+        return new DateLiteral('N_WEEKS_AGO:' + n);
+    }
+
+    public static DateLiteral NEXT_N_MONTHS(Integer n) {
+        return new DateLiteral('NEXT_N_MONTHS:' + n);
+    }
+
+    public static DateLiteral LAST_N_MONTHS(Integer n) {
+        return new DateLiteral('LAST_N_MONTHS:' + n);
+    }
+
+    public static DateLiteral N_MONTHS_AGO(Integer n) {
+        return new DateLiteral('N_MONTHS_AGO:' + n);
+    }
+
+    public static DateLiteral NEXT_N_QUARTERS(Integer n) {
+        return new DateLiteral('NEXT_N_QUARTERS:' + n);
+    }
+
+    public static DateLiteral LAST_N_QUARTERS(Integer n) {
+        return new DateLiteral('LAST_N_QUARTERS:' + n);
+    }
+
+    public static DateLiteral N_QUARTERS_AGO(Integer n) {
+        return new DateLiteral('N_QUARTERS_AGO:' + n);
+    }
+
+    public static DateLiteral NEXT_N_YEARS(Integer n) {
+        return new DateLiteral('NEXT_N_YEARS:' + n);
+    }
+
+    public static DateLiteral LAST_N_YEARS(Integer n) {
+        return new DateLiteral('LAST_N_YEARS:' + n);
+    }
+
+    public static DateLiteral N_YEARS_AGO(Integer n) {
+        return new DateLiteral('N_YEARS_AGO:' + n);
+    }
+
+    public static DateLiteral NEXT_N_FISCAL_QUARTERS(Integer n) {
+        return new DateLiteral('NEXT_N_FISCAL_QUARTERS:' + n);
+    }
+
+    public static DateLiteral N_FISCAL_QUARTERS_AGO(Integer n) {
+        return new DateLiteral('N_FISCAL_QUARTERS_AGO:' + n);
+    }
+
+    public static DateLiteral NEXT_N_FISCAL_YEARS(Integer n) {
+        return new DateLiteral('NEXT_N_FISCAL_YEARS:' + n);
+    }
+
+    public static DateLiteral LAST_N_FISCAL_YEARS(Integer n) {
+        return new DateLiteral('LAST_N_FISCAL_YEARS:' + n);
+    }
+
+    public static DateLiteral N_FISCAL_YEARS_AGO(Integer n) {
+        return new DateLiteral('N_FISCAL_YEARS_AGO:' + n);
     }
 
     // #endregion
     // =====================
 
+    private static final Integer EQ_TAG = 1;
+    private static final Integer NE_TAG = 2;
+    private static final Integer GT_TAG = 3;
+    private static final Integer GTE_TAG = 4;
+    private static final Integer LT_TAG = 5;
+    private static final Integer LTE_TAG = 6;
+    private static final Integer LIKEX_TAG = 7;
+    private static final Integer NLIKE_TAG = 8;
+    private static final Integer INCLUDES_TAG = 9;
+    private static final Integer EXCLUDES_TAG = 10;
+    private static final Integer INX_TAG = 11;
+    private static final Integer NIN_TAG = 12;
+    private static final Integer INX_QUERY_TAG = 13;
+    private static final Integer DISTANCE_TAG = 14;
+    private static final Integer AND_TAG = 15;
+    private static final Integer OR_TAG = 16;
+
     // prettier-ignore
     public interface Querable {
         // Group By
-        Query grouping(String name);
-        Query grouping(String name, String alias);
-        Query sum(String name);
-        Query sum(String name, String alias);
-        Query avg(String name);
-        Query avg(String name, String alias);
-        Query max(String name);
-        Query max(String name, String alias);
-        Query min(String name);
-        Query min(String name, String alias);
+        Query grouping(SObjectField field);
+        Query grouping(SObjectField field, String alias);
+        Query sum(SObjectField field);
+        Query sum(SObjectField field, String alias);
+        Query avg(SObjectField field);
+        Query avg(SObjectField field, String alias);
+        Query max(SObjectField field);
+        Query max(SObjectField field, String alias);
+        Query min(SObjectField field);
+        Query min(SObjectField field, String alias);
 
-        Query groupBy(String name);
-        Query groupBy(String name1, String name2);
-        Query groupBy(String name1, String name2, String name3);
-        Query groupBy(String name1, String name2, String name3, String name4);
-        Query groupBy(String name1, String name2, String name3, String name4, String name5);
-        Query groupBy(List<String> names);
+        Query groupBy(SObjectField field);
+        Query groupBy(SObjectField field1, SObjectField field2);
+        Query groupBy(SObjectField field1, SObjectField field2, SObjectField field3);
+        Query groupBy(SObjectField field1, SObjectField field2, SObjectField field3, SObjectField field4);
+        Query groupBy(SObjectField field1, SObjectField field2, SObjectField field3, SObjectField field4, SObjectField field5);
+        Query groupBy(List<SObjectField> fields);
         Query rollup();
         Query cube();
 
         // Select
         Query selectAll();
-        Query selectWith(String name);
-        Query selectWith(String name1, String name2);
-        Query selectWith(String name1, String name2, String name3);
-        Query selectWith(String name1, String name2, String name3, String name4);
-        Query selectWith(String name1, String name2, String name3, String name4, String name5);
-        Query selectWith(List<String> names);
-        Query selectWith(String name, Query query);
-
+        Query selectBy(SObjectField field);
+        Query selectBy(SObjectField field1, SObjectField field2);
+        Query selectBy(SObjectField field1, SObjectField field2, SObjectField field3);
+        Query selectBy(SObjectField field1, SObjectField field2, SObjectField field3, SObjectField field4);
+        Query selectBy(SObjectField field1, SObjectField field2, SObjectField field3, SObjectField field4, SObjectField field5);
+        Query selectBy(List<SObjectField> fields);
+        Query selectBy(String relationName, Query query);
 
         // Order By
         Query orderBy(String name);
@@ -1689,6 +1851,12 @@ public with sharing abstract class Query implements Querable {
         Query orderBy(String name1, String name2, String name3, String name4);
         Query orderBy(String name1, String name2, String name3, String name4, String name5);
         Query orderBy(List<String> names);
+        Query orderBy(Distance distance);
+        Query orderBy(Distance distance1, Distance distance2);
+        Query orderBy(Distance distance1, Distance distance2, Distance distance3);
+        Query orderBy(Distance distance1, Distance distance2, Distance distance3, Distance distance4);
+        Query orderBy(Distance distance1, Distance distance2, Distance distance3, Distance distance4, Distance distance5);
+        Query orderBy(List<Distance> distances);
         Query ascending();
         Query descending();
         Query nullsFirst();
@@ -1701,7 +1869,8 @@ public with sharing abstract class Query implements Querable {
         Query forReference();
         Query forUpdate();
 
-        Query filterBy(FilterExpression filter);
+        Query whereBy(Filter filter);
         Object run();
+        Object run(AccessLevel accessLevel);
     }
 }

@@ -11,7 +11,7 @@
     },
     {
       "files": "*.cls",
-      "options": { "tabWidth": 4, "printWidth": 160 }
+      "options": { "tabWidth": 4, "printWidth": 120 }
     }
   ]
 }
