@@ -1,8 +1,8 @@
 {
-  "orgName": "ApexQuery",
+  "orgName": "Apex Query",
   "edition": "Developer",
   "language": "en_US",
-  "features": ["EnableSetPasswordInApi"],
+  "features": ["EnableSetPasswordInApi", "MultiCurrency"],
   "settings": {
     "lightningExperienceSettings": {
       "enableS1DesktopEnabled": true

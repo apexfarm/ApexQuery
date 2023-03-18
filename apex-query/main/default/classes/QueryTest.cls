@@ -27,17 +27,17 @@ public with sharing class QueryTest extends Query {
             new Account(Name = 'Account 3', AnnualRevenue = 1500, BillingCountry = 'China', BillingState = 'Beijing',
                 ShippingLatitude = 37.775001, ShippingLongitude = -122.41801),
             new Account(Name = 'Account 4', AnnualRevenue = 500, BillingCountry = 'China', BillingState = 'Beijing'),
-            new Account(Name = 'Account\' 5', AnnualRevenue = 1500),
-            new Account(Name = 'Account\' 6', AnnualRevenue = 500)
+            new Account(Name = 'Account\' 5', AnnualRevenue = 1500, NumberOfEmployees = 2000),
+            new Account(Name = 'Account\' 6', AnnualRevenue = 500, NumberOfEmployees = 2000)
         };
         insert accountList;
 
         // prettier-ignore
         List<Contact> contactList = new List<Contact> {
-            new Contact(LastName = 'Contact 1', AccountId = accountList[0].Id),
-            new Contact(LastName = 'Contact 2', AccountId = accountList[1].Id),
-            new Contact(LastName = 'Contact 3', AccountId = accountList[2].Id),
-            new Contact(LastName = 'Contact 4', AccountId = accountList[3].Id)
+            new Contact(LastName = 'Contact 1', AccountId = accountList[0].Id, Birthdate = Date.newInstance(2023, 1, 1)),
+            new Contact(LastName = 'Contact 2', AccountId = accountList[1].Id, Birthdate = Date.newInstance(2023, 1, 2)),
+            new Contact(LastName = 'Contact 3', AccountId = accountList[2].Id, Birthdate = Date.newInstance(2023, 1, 3)),
+            new Contact(LastName = 'Contact 4', AccountId = accountList[3].Id, Birthdate = Date.newInstance(2023, 1, 4))
         };
         insert contactList;
     }
@@ -62,7 +62,7 @@ public with sharing class QueryTest extends Query {
                     .add(eq(Account.BillingState, 'Shanghai'))
                 )
             )
-            .orderBy('AnnualRevenue').descending().nullsLast()
+            .orderBy(Account.AnnualRevenue).descending().nullsLast()
             .limitx(10)
             .forView()
             .run();
@@ -91,7 +91,7 @@ public with sharing class QueryTest extends Query {
                     .add(eq(Account.BillingState, 'Shanghai'))
                 )
             )
-            .orderBy('AnnualRevenue').descending().nullsLast()
+            .orderBy(Account.AnnualRevenue).descending().nullsLast()
             .limitx(10)
             .forView()
             .run();
@@ -146,10 +146,150 @@ public with sharing class QueryTest extends Query {
     }
 
     @isTest
+    static void testQuery_Functions_Date() {
+        List<AggregateResult> results = (List<AggregateResult>) Query.of(Contact.SObjectType)
+            .selectBy(
+                selector()
+                    .add(CALENDAR_MONTH(Contact.Birthdate))
+                    .add(CALENDAR_QUARTER(Contact.Birthdate))
+                    .add(CALENDAR_YEAR(Contact.Birthdate))
+                    .add(DAY_IN_MONTH(Contact.Birthdate))
+                    .add(DAY_IN_WEEK(Contact.Birthdate))
+                    .add(DAY_IN_YEAR(Contact.Birthdate))
+                    .add(FISCAL_MONTH(Contact.Birthdate))
+                    .add(FISCAL_QUARTER(Contact.Birthdate))
+                    .add(FISCAL_YEAR(Contact.Birthdate))
+            )
+            .groupBy(Contact.Birthdate)
+            .run();
+        System.debug(results);
+
+        results = (List<AggregateResult>) Query.of(Contact.SObjectType)
+            .selectBy(
+                selector()
+                    .add(CALENDAR_MONTH(CONVERT_TIMEZONE(Contact.Birthdate)))
+                    .add(CALENDAR_QUARTER(CONVERT_TIMEZONE(Contact.Birthdate)))
+                    .add(CALENDAR_YEAR(CONVERT_TIMEZONE(Contact.Birthdate)))
+                    .add(DAY_IN_MONTH(CONVERT_TIMEZONE(Contact.Birthdate)))
+                    .add(DAY_IN_WEEK(CONVERT_TIMEZONE(Contact.Birthdate)))
+                    .add(DAY_IN_YEAR(CONVERT_TIMEZONE(Contact.Birthdate)))
+                    .add(FISCAL_MONTH(CONVERT_TIMEZONE(Contact.Birthdate)))
+                    .add(FISCAL_QUARTER(CONVERT_TIMEZONE(Contact.Birthdate)))
+                    .add(FISCAL_YEAR(CONVERT_TIMEZONE(Contact.Birthdate)))
+            )
+            .groupBy(Contact.Birthdate)
+            .run();
+        System.debug(results);
+
+        results = (List<AggregateResult>) Query.of(Contact.SObjectType)
+            .selectBy(
+                selector()
+                    .add(DAY_ONLY(Contact.CreatedDate))
+                    .add(HOUR_IN_DAY(Contact.CreatedDate))
+                    .add(WEEK_IN_MONTH(Contact.CreatedDate))
+                    .add(WEEK_IN_YEAR(Contact.CreatedDate))
+            )
+            .groupBy(
+                grouper()
+                    .add(DAY_ONLY(Contact.CreatedDate))
+                    .add(HOUR_IN_DAY(Contact.CreatedDate))
+                    .add(WEEK_IN_MONTH(Contact.CreatedDate))
+                    .add(WEEK_IN_YEAR(Contact.CreatedDate))
+            )
+            .run();
+        System.debug(results);
+
+        results = (List<AggregateResult>) Query.of(Contact.SObjectType)
+            .selectBy(
+                selector()
+                    .add(DAY_ONLY(CONVERT_TIMEZONE(Contact.CreatedDate)))
+                    .add(HOUR_IN_DAY(CONVERT_TIMEZONE(Contact.CreatedDate)))
+                    .add(WEEK_IN_MONTH(CONVERT_TIMEZONE(Contact.CreatedDate)))
+                    .add(WEEK_IN_YEAR(CONVERT_TIMEZONE(Contact.CreatedDate)))
+            )
+            .groupBy(
+                grouper()
+                    .add(DAY_ONLY(CONVERT_TIMEZONE(Contact.CreatedDate)))
+                    .add(HOUR_IN_DAY(CONVERT_TIMEZONE(Contact.CreatedDate)))
+                    .add(WEEK_IN_MONTH(CONVERT_TIMEZONE(Contact.CreatedDate)))
+                    .add(WEEK_IN_YEAR(CONVERT_TIMEZONE(Contact.CreatedDate)))
+            )
+            .run();
+        System.debug(results);
+
+        // prettier-ignore
+        List<Contact> contacts = (List<Contact>) Query.of(Contact.SObjectType)
+            .selectBy(Contact.Name)
+            .filterBy(
+                andx()
+                    .add(eq(CALENDAR_YEAR(Contact.Birthdate), 2023))
+                    .add(eq(CALENDAR_MONTH(Contact.Birthdate), 1))
+                    .add(inx(CALENDAR_MONTH(Contact.Birthdate), 1, 2, 3, 4))
+                    .add(between(CALENDAR_MONTH(Contact.Birthdate), 1, 4))
+            )
+            .run();
+        System.debug(contacts);
+        Assert.areEqual(4, contacts.size());
+    }
+
+    // ! CONVERT_CURRENCY is only suppored in a multi-currency org.
+    // TODO: Comment out @isTest before deploy new releases.
+    @isTest
+    static void testQuery_Functions_Currency() {
+        // prettier-ignore
+        List<Account> accounts = (List<Account>) Query.of(Account.SObjectType)
+                .selectBy(Account.Name)
+                .selectBy(CONVERT_CURRENCY(Account.AnnualRevenue))
+                .run();
+        System.debug(accounts);
+        Assert.areEqual(6, accounts.size());
+
+        // prettier-ignore
+        accounts = (List<Account>) Query.of(Account.SObjectType)
+                .selectBy(Account.Name)
+                .selectBy(FORMAT(CONVERT_CURRENCY(Account.AnnualRevenue)))
+                .run();
+        System.debug(accounts);
+        Assert.areEqual(6, accounts.size());
+
+        // prettier-ignore
+        accounts = (List<Account>) Query.of(Account.SObjectType)
+                .selectBy(Account.Name, Account.AnnualRevenue)
+                .filterBy(
+                    andx()
+                        .add(gt(Account.AnnualRevenue, CNY(0)))
+                        .add(lt(Account.AnnualRevenue, CNY(3000)))
+                        .add(between(Account.AnnualRevenue, CNY(0), CNY(3000)))
+                )
+                .run();
+        System.debug(accounts);
+        Assert.areEqual(6, accounts.size());
+    }
+
+    @isTest
+    static void testQuery_Functions_Format() {
+        // prettier-ignore
+        List<Contact> contacts = (List<Contact>) Query.of(Contact.SObjectType)
+            .selectBy(Contact.Name)
+            .selectBy(FORMAT(Contact.Birthdate), FORMAT(Contact.CreatedDate))
+            .run();
+        System.debug(contacts);
+        Assert.areEqual(4, contacts.size());
+
+        // prettier-ignore
+        List<Account> accounts = (List<Account>) Query.of(Account.SObjectType)
+            .selectBy(Account.Name)
+            .selectBy(FORMAT(Account.AnnualRevenue), FORMAT(Account.NumberOfEmployees))
+            .run();
+        System.debug(accounts);
+        Assert.areEqual(6, accounts.size());
+    }
+
+    @isTest
     static void testQuery_OrderBy() {
         List<Account> accountList = (List<Account>) Query.of(Account.SObjectType)
             .selectBy(Account.Name, Account.AnnualRevenue, Account.BillingState)
-            .orderBy('BillingCountry', 'BillingState', 'AnnualRevenue')
+            .orderBy(Account.BillingCountry, Account.BillingState, Account.AnnualRevenue)
             .run();
 
         System.debug(accountList);
@@ -157,14 +297,15 @@ public with sharing class QueryTest extends Query {
 
         // prettier-ignore
         List<AggregateResult> results = (List<AggregateResult>) Query.of(Account.SObjectType)
-            .grouping(Account.BillingCountry)
-            .grouping(Account.BillingState, 'alias0')
-            .min(Account.AnnualRevenue)
-            .max(Account.AnnualRevenue)
-            .avg(Account.AnnualRevenue, 'average')
-            .sum(Account.AnnualRevenue, 'summary')
+            .selectBy(GROUPING(Account.BillingCountry))
+            .selectBy(GROUPING(Account.BillingState, 'alias0'))
+            .selectBy(MIN(Account.AnnualRevenue))
+            .selectBy(MAX(Account.AnnualRevenue))
+            .selectBy(AVG(Account.AnnualRevenue, 'average'))
+            .selectBy(SUM(Account.AnnualRevenue, 'summary'))
             .groupBy(Account.BillingCountry, Account.BillingState).rollup()
-            .orderBy('BillingState', 'expr0', 'alias0').nullsLast().descending()
+            .orderBy(Account.BillingState).nullsLast().descending()
+            .orderBy(GROUPING(Account.BillingCountry), GROUPING(Account.BillingState)).nullsLast().descending()
             .run();
         System.debug(results);
     }
@@ -198,7 +339,7 @@ public with sharing class QueryTest extends Query {
 
         query.filterBy(filters);
 
-        query.orderBy('AnnualRevenue').descending().nullsLast();
+        query.orderBy(Account.AnnualRevenue).descending().nullsLast();
 
         List<Account> accountList = (List<Account>) query.run();
         Assert.areEqual(2, accountList.size());
@@ -235,7 +376,7 @@ public with sharing class QueryTest extends Query {
 
         query.filterBy(filters);
 
-        query.orderBy('AnnualRevenue').descending().nullsLast();
+        query.orderBy(Account.AnnualRevenue).descending().nullsLast();
 
         List<Account> accountList = (List<Account>) query.run();
         Assert.areEqual(2, accountList.size());
@@ -268,7 +409,7 @@ public with sharing class QueryTest extends Query {
                     )
                 )
             )
-            .orderBy('AnnualRevenue').descending().nullsLast()
+            .orderBy(Account.AnnualRevenue).descending().nullsLast()
             .run();
         Assert.areEqual(2, accountList.size());
         Assert.areEqual(1500, accountList[0].AnnualRevenue);
@@ -302,7 +443,7 @@ public with sharing class QueryTest extends Query {
                     )
                 )
             ))
-            .orderBy('AnnualRevenue').descending().nullsLast()
+            .orderBy(orderer().add(Account.AnnualRevenue).descending().nullsLast())
             .run();
         Assert.areEqual(2, accountList.size());
         Assert.areEqual(1500, accountList[0].AnnualRevenue);
@@ -375,27 +516,27 @@ public with sharing class QueryTest extends Query {
     static void testQuery_GroupBy() {
         // prettier-ignore
         List<AggregateResult> results = (List<AggregateResult>) Query.of(Account.SObjectType)
-            .grouping(Account.BillingCountry)
-            .grouping(Account.BillingState, 'alias0')
-            .min(Account.AnnualRevenue)
-            .max(Account.AnnualRevenue)
-            .avg(Account.AnnualRevenue, 'average')
-            .sum(Account.AnnualRevenue, 'summary')
+            .selectBy(GROUPING(Account.BillingCountry))
+            .selectBy(GROUPING(Account.BillingState, 'alias0'))
+            .selectBy(MIN(Account.AnnualRevenue))
+            .selectBy(MAX(Account.AnnualRevenue))
+            .selectBy(AVG(Account.AnnualRevenue, 'average'))
+            .selectBy(SUM(Account.AnnualRevenue, 'summary'))
             .groupBy(Account.BillingCountry, Account.BillingState).rollup()
-            .orderBy('expr0', 'alias0').nullsLast().descending()
+            .orderBy(GROUPING(Account.BillingCountry), GROUPING(Account.BillingState)).nullsLast().descending()
             .run();
         System.debug(results);
 
         // prettier-ignore
         results = (List<AggregateResult>) Query.of(Account.SObjectType)
-            .grouping(Account.BillingCountry)
-            .grouping(Account.BillingState, 'alias0')
-            .min(Account.AnnualRevenue)
-            .max(Account.AnnualRevenue)
-            .avg(Account.AnnualRevenue, 'average')
-            .sum(Account.AnnualRevenue, 'summary')
+            .selectBy(GROUPING(Account.BillingCountry))
+            .selectBy(GROUPING(Account.BillingState, 'alias0'))
+            .selectBy(MIN(Account.AnnualRevenue))
+            .selectBy(MAX(Account.AnnualRevenue))
+            .selectBy(AVG(Account.AnnualRevenue, 'average'))
+            .selectBy(SUM(Account.AnnualRevenue, 'summary'))
             .groupBy(Account.BillingCountry, Account.BillingState).cube()
-            .orderBy('expr0', 'alias0').nullsLast().descending()
+            .orderBy(GROUPING(Account.BillingCountry), GROUPING(Account.BillingState)).nullsLast().descending()
             .run();
         System.debug(results);
     }
@@ -403,7 +544,7 @@ public with sharing class QueryTest extends Query {
     @isTest
     static void testQuery_GroupBy_Count() {
         List<AggregateResult> results = (List<AggregateResult>) Query.of(Account.SObjectType)
-            .count(Account.AnnualRevenue)
+            .selectBy(COUNT(Account.AnnualRevenue))
             .groupBy(Account.BillingCountry, Account.BillingState)
             .run();
         System.debug(results);
@@ -412,7 +553,7 @@ public with sharing class QueryTest extends Query {
         Assert.areEqual(2, results[2].get('expr0'));
 
         results = (List<AggregateResult>) Query.of(Account.SObjectType)
-            .count(Account.AnnualRevenue, 'count_of_account')
+            .selectBy(COUNT(Account.AnnualRevenue, 'count_of_account'))
             .groupBy(Account.BillingCountry, Account.BillingState)
             .run();
         System.debug(results);
@@ -421,19 +562,34 @@ public with sharing class QueryTest extends Query {
         Assert.areEqual(2, results[2].get('count_of_account'));
 
         results = (List<AggregateResult>) Query.of(Account.SObjectType)
-            .count(Account.AnnualRevenue, 'count_of_account')
+            .selectBy(COUNT(Account.AnnualRevenue, 'count_of_account'))
             .run();
         System.debug(results);
         Assert.areEqual(6, results[0].get('count_of_account'));
 
         results = (List<AggregateResult>) Query.of(Account.SObjectType)
-            .count(Account.BillingCountry, 'count_of_account')
+            .selectBy(COUNT(Account.AnnualRevenue, 'count_of_account'))
             .run();
         System.debug(results);
-        Assert.areEqual(4, results[0].get('count_of_account'));
+        Assert.areEqual(6, results[0].get('count_of_account'));
 
-        Integer count = Query.of(Account.SObjectType).count().getCount();
+        Integer count = Query.of(Account.SObjectType).selectBy(COUNT()).getCount();
         Assert.areEqual(6, count);
+
+        results = (List<AggregateResult>) Query.of(Account.SObjectType)
+            .selectBy(COUNT_DISTINCT(Account.BillingState))
+            .run();
+        System.debug(results);
+        Assert.areEqual(2, results[0].get('expr0'));
+
+        results = (List<AggregateResult>) Query.of(Account.SObjectType)
+            .selectBy(Account.BillingCountry)
+            .selectBy(COUNT_DISTINCT(Account.BillingState))
+            .groupBy(Account.BillingCountry)
+            .run();
+        System.debug(results);
+        Assert.areEqual(2, results[0].get('expr0'));
+        Assert.areEqual(0, results[1].get('expr0'));
     }
 
     @isTest
@@ -602,31 +758,43 @@ public with sharing class QueryTest extends Query {
 
         Assert.areEqual(
             Query.of(Account.SObjectType)
-                .OrderBy('BillingCountry', 'BillingState')
-                .OrderBy('BillingCountry', 'BillingState', 'BillingState')
-                .OrderBy('BillingCountry', 'BillingState', 'BillingState', 'BillingState')
-                .OrderBy('BillingCountry', 'BillingState', 'BillingState', 'BillingState', 'BillingState')
+                .OrderBy(Account.BillingCountry, Account.BillingState)
+                .OrderBy(Account.BillingCountry, Account.BillingState, Account.BillingState)
+                .OrderBy(Account.BillingCountry, Account.BillingState, Account.BillingState, Account.BillingState)
+                .OrderBy(
+                    Account.BillingCountry,
+                    Account.BillingState,
+                    Account.BillingState,
+                    Account.BillingState,
+                    Account.BillingState
+                )
                 .nullsFirst(),
             Query.of(Account.SObjectType)
-                .OrderBy('BillingCountry', 'BillingState')
-                .OrderBy('BillingCountry', 'BillingState', 'BillingState')
-                .OrderBy('BillingCountry', 'BillingState', 'BillingState', 'BillingState')
-                .OrderBy('BillingCountry', 'BillingState', 'BillingState', 'BillingState', 'BillingState')
+                .OrderBy(Account.BillingCountry, Account.BillingState)
+                .OrderBy(Account.BillingCountry, Account.BillingState, Account.BillingState)
+                .OrderBy(Account.BillingCountry, Account.BillingState, Account.BillingState, Account.BillingState)
+                .OrderBy(
+                    Account.BillingCountry,
+                    Account.BillingState,
+                    Account.BillingState,
+                    Account.BillingState,
+                    Account.BillingState
+                )
                 .nullsFirst()
         );
 
         Assert.areEqual(
             Query.of(Account.SObjectType)
-                .grouping(Account.BillingCountry)
-                .grouping(Account.BillingState, 'alias0')
-                .min(Account.AnnualRevenue, 'minimum')
-                .min(Account.AnnualRevenue)
-                .max(Account.AnnualRevenue, 'maximum')
-                .max(Account.AnnualRevenue)
-                .avg(Account.AnnualRevenue, 'average')
-                .avg(Account.AnnualRevenue)
-                .sum(Account.AnnualRevenue, 'summary')
-                .sum(Account.AnnualRevenue)
+                .selectBy(GROUPING(Account.BillingCountry))
+                .selectBy(GROUPING(Account.BillingState, 'alias0'))
+                .selectBy(MIN(Account.AnnualRevenue, 'minimum'))
+                .selectBy(MIN(Account.AnnualRevenue))
+                .selectBy(MAX(Account.AnnualRevenue, 'maximum'))
+                .selectBy(MAX(Account.AnnualRevenue))
+                .selectBy(AVG(Account.AnnualRevenue, 'average'))
+                .selectBy(AVG(Account.AnnualRevenue))
+                .selectBy(SUM(Account.AnnualRevenue, 'summary'))
+                .selectBy(SUM(Account.AnnualRevenue))
                 .groupBy(Account.BillingCountry)
                 .groupBy(Account.BillingCountry, Account.BillingState)
                 .groupBy(Account.BillingCountry, Account.BillingState, Account.BillingState)
@@ -639,20 +807,20 @@ public with sharing class QueryTest extends Query {
                     Account.BillingState
                 )
                 .rollup()
-                .orderBy('expr0', 'alias0')
+                .orderBy(grouping(Account.BillingCountry), grouping(Account.BillingState))
                 .nullsLast()
                 .descending(),
             Query.of(Account.SObjectType)
-                .grouping(Account.BillingCountry)
-                .grouping(Account.BillingState, 'alias0')
-                .min(Account.AnnualRevenue, 'minimum')
-                .min(Account.AnnualRevenue)
-                .max(Account.AnnualRevenue, 'maximum')
-                .max(Account.AnnualRevenue)
-                .avg(Account.AnnualRevenue, 'average')
-                .avg(Account.AnnualRevenue)
-                .sum(Account.AnnualRevenue, 'summary')
-                .sum(Account.AnnualRevenue)
+                .selectBy(GROUPING(Account.BillingCountry))
+                .selectBy(GROUPING(Account.BillingState, 'alias0'))
+                .selectBy(MIN(Account.AnnualRevenue, 'minimum'))
+                .selectBy(MIN(Account.AnnualRevenue))
+                .selectBy(MAX(Account.AnnualRevenue, 'maximum'))
+                .selectBy(MAX(Account.AnnualRevenue))
+                .selectBy(AVG(Account.AnnualRevenue, 'average'))
+                .selectBy(AVG(Account.AnnualRevenue))
+                .selectBy(SUM(Account.AnnualRevenue, 'summary'))
+                .selectBy(SUM(Account.AnnualRevenue))
                 .groupBy(Account.BillingCountry)
                 .groupBy(Account.BillingCountry, Account.BillingState)
                 .groupBy(Account.BillingCountry, Account.BillingState, Account.BillingState)
@@ -665,7 +833,7 @@ public with sharing class QueryTest extends Query {
                     Account.BillingState
                 )
                 .rollup()
-                .orderBy('expr0', 'alias0')
+                .orderBy(grouping(Account.BillingCountry), grouping(Account.BillingState))
                 .nullsLast()
                 .descending()
         );
@@ -679,15 +847,13 @@ public with sharing class QueryTest extends Query {
                 .add(Account.Name, Account.Name)
                 .add(Account.Name, Account.Name, Account.Name)
                 .add(Account.Name, Account.Name, Account.Name, Account.Name)
-                .add(Account.Name, Account.Name, Account.Name, Account.Name, Account.Name)
-                .add(new List<SObjectField>{ Account.Name }),
+                .add(Account.Name, Account.Name, Account.Name, Account.Name, Account.Name),
             selector()
                 .add(Account.Name)
                 .add(Account.Name, Account.Name)
                 .add(Account.Name, Account.Name, Account.Name)
                 .add(Account.Name, Account.Name, Account.Name, Account.Name)
                 .add(Account.Name, Account.Name, Account.Name, Account.Name, Account.Name)
-                .add(new List<SObjectField>{ Account.Name })
         );
     }
 }

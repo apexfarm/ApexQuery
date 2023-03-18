@@ -19,11 +19,10 @@ public abstract class Query implements Querable {
     private SObjectType objectType { get; set; }
     private SelectorImpl rootSelector { get; set; }
     private Filter rootFilter { get; set; }
-    private List<OrderByField> orderByFields { get; set; }
+    private OrdererImpl rootOrderer { get; set; }
 
-    private Map<String, Aggregation> aggregationsByAlias { get; set; }
-    private List<Aggregation> aggregations { get; set; }
-    private List<SObjectField> groupByFields { get; set; }
+    private GrouperImpl grouper { get; set; }
+
     private Boolean rollup { get; set; }
     private Boolean cube { get; set; }
 
@@ -35,10 +34,8 @@ public abstract class Query implements Querable {
 
     {
         this.rootSelector = new SelectorImpl();
-        this.orderByFields = new List<OrderByField>();
-        this.aggregationsByAlias = new Map<String, Aggregation>();
-        this.aggregations = new List<Aggregation>();
-        this.groupByFields = new List<SObjectField>();
+        this.rootOrderer = new OrdererImpl();
+        this.grouper = new GrouperImpl();
         this.rollup = false;
         this.cube = false;
     }
@@ -50,37 +47,30 @@ public abstract class Query implements Querable {
 
         Query that = (Query) obj;
 
-        if (this.aggregations.isEmpty() && this.groupByFields.isEmpty()) {
-            return this.objectType == that.objectType &&
-                this.rootSelector == that.rootSelector &&
-                this.rootFilter == that.rootFilter &&
-                this.orderByFields == that.orderByFields &&
-                this.limitx == that.limitx &&
-                this.offset == that.offset &&
-                this.forView == that.forView &&
-                this.forReference == that.forReference &&
-                this.forUpdate == that.forUpdate;
+        Boolean isEqual =
+            this.objectType == that.objectType &&
+            this.rootSelector == that.rootSelector &&
+            this.rootFilter == that.rootFilter &&
+            this.rootOrderer == that.rootOrderer &&
+            this.limitx == that.limitx &&
+            this.offset == that.offset &&
+            this.forView == that.forView &&
+            this.forReference == that.forReference &&
+            this.forUpdate == that.forUpdate;
+
+        if (!isEqual) {
+            return false;
+        }
+
+        if (this.grouper.fieldOrFuncs.isEmpty()) {
+            return true;
         } else {
-            return this.objectType == that.objectType &&
-                this.groupByFields == that.groupByFields &&
-                this.aggregations == that.aggregations &&
-                this.orderByFields == that.orderByFields &&
-                this.rollup == that.rollup &&
-                this.cube == that.cube &&
-                this.limitx == that.limitx;
+            return this.grouper == that.grouper && this.rollup == that.rollup && this.cube == that.cube;
         }
     }
 
     public static Query of(SObjectType objectType) {
         return new QueryBuilder(objectType);
-    }
-
-    private virtual IOrderManager getOrderManager() {
-        return null;
-    }
-
-    private virtual IGroupManager getGroupManager() {
-        return null;
     }
 
     protected virtual String build(Map<String, Object> tmpVars) {
@@ -117,37 +107,37 @@ public abstract class Query implements Querable {
     // =============
     // #region Query
     private class QueryBuilder extends Query {
-        private OrderManager orderManager { get; set; }
-        private GroupManager groupManager { get; set; }
-
         private QueryBuilder(SObjectType objectType) {
             this.objectType = objectType;
-            this.orderManager = new OrderManager(this);
-            this.groupManager = new GroupManager(this);
-        }
-
-        private override IOrderManager getOrderManager() {
-            return this.orderManager;
-        }
-
-        private override IGroupManager getGroupManager() {
-            return this.groupManager;
         }
 
         private void buildSelect(List<String> fragments, Map<String, Object> tmpVars) {
+            fragments.add('SELECT ');
             Boolean isFirst = true;
             for (SObjectField field : this.rootSelector.fields) {
                 if (isFirst) {
-                    fragments.add('SELECT ');
+                    isFirst = false;
                 } else {
                     fragments.add(', ');
                 }
-                isFirst = false;
                 fragments.add(String.valueOf(field));
             }
 
+            for (Function func : this.rootSelector.funcs) {
+                if (isFirst) {
+                    isFirst = false;
+                } else {
+                    fragments.add(', ');
+                }
+                fragments.add(String.valueOf(func));
+            }
+
             for (String relationName : this.rootSelector.queries.keySet()) {
-                fragments.add(', ');
+                if (isFirst) {
+                    isFirst = false;
+                } else {
+                    fragments.add(', ');
+                }
                 fragments.add('(');
                 this.rootSelector.queries.get(relationName).buildSoql(relationName, fragments, tmpVars);
                 fragments.add(')');
@@ -156,7 +146,7 @@ public abstract class Query implements Querable {
 
         private void buildOrderBy(List<String> fragments) {
             Boolean isFirst = true;
-            for (OrderByField clause : orderByFields) {
+            for (OrderByClause clause : this.rootOrderer.clauses) {
                 if (isFirst) {
                     fragments.add(' ORDER BY ');
                 } else {
@@ -164,36 +154,14 @@ public abstract class Query implements Querable {
                 }
                 isFirst = false;
 
-                fragments.add(clause.fieldName);
-
-                if (!clause.ascending) {
-                    fragments.add(' DESC');
-                }
-
-                if (!clause.nullFirst) {
-                    fragments.add(' NULLS LAST');
-                }
-            }
-        }
-
-        private void buildOrderByForGroup(List<String> fragments) {
-            Boolean isFirst = true;
-            for (OrderByField clause : this.orderByFields) {
-                if (isFirst) {
-                    fragments.add(' ORDER BY ');
-                } else {
-                    fragments.add(', ');
-                }
-                isFirst = false;
-
-                if (this.aggregationsByAlias.containsKey(clause.fieldName)) {
-                    Aggregation operation = this.aggregationsByAlias.get(clause.fieldName);
-                    fragments.add(operation.operation);
+                if (clause.fieldOrFunc instanceof AggregateFunction) {
+                    AggregateFunction func = (AggregateFunction) clause.fieldOrFunc;
+                    fragments.add(func.name);
                     fragments.add('(');
-                    fragments.add(String.valueOf(operation.field));
+                    fragments.add(String.valueOf(func.fieldOrFunc));
                     fragments.add(')');
                 } else {
-                    fragments.add(clause.fieldName);
+                    fragments.add(String.valueOf(clause.fieldOrFunc));
                 }
 
                 if (!clause.ascending) {
@@ -203,32 +171,12 @@ public abstract class Query implements Querable {
                 if (!clause.nullFirst) {
                     fragments.add(' NULLS LAST');
                 }
-            }
-        }
-
-        public void buildGroupBySelect(List<String> fragments) {
-            fragments.add('SELECT ');
-            Boolean isFirst = true;
-            for (SObjectField field : this.groupByFields) {
-                if (!isFirst) {
-                    fragments.add(', ');
-                }
-                isFirst = false;
-                fragments.add(String.valueOf(field));
-            }
-
-            for (Aggregation operation : this.aggregations) {
-                if (!isFirst) {
-                    fragments.add(', ');
-                }
-                isFirst = false;
-                operation.build(fragments);
             }
         }
 
         public void buildGroupBy(List<String> fragments) {
             Boolean isFirst = true;
-            for (SObjectField field : this.groupByFields) {
+            for (Object field : this.grouper.fieldOrFuncs) {
                 if (isFirst) {
                     fragments.add(' GROUP BY ');
                     if (this.rollup) {
@@ -248,11 +196,7 @@ public abstract class Query implements Querable {
         }
 
         private void buildSoql(String fromObjectName, List<String> fragments, Map<String, Object> tmpVars) {
-            if (this.aggregations.size() > 0) {
-                this.buildGroupBySelect(fragments);
-            } else {
-                this.buildSelect(fragments, tmpVars);
-            }
+            this.buildSelect(fragments, tmpVars);
             fragments.add(' FROM ');
             fragments.add(fromObjectName);
 
@@ -263,12 +207,7 @@ public abstract class Query implements Querable {
             }
 
             this.buildGroupBy(fragments);
-
-            if (this.aggregations.size() > 0) {
-                buildOrderByForGroup(fragments);
-            } else {
-                buildOrderBy(fragments);
-            }
+            this.buildOrderBy(fragments);
 
             if (this.limitx != null) {
                 fragments.add(' LIMIT ');
@@ -349,16 +288,30 @@ public abstract class Query implements Querable {
             SObjectField field4,
             SObjectField field5
         );
-        Selector add(List<SObjectField> fields);
+        Selector add(SelectFunction func);
+        Selector add(SelectFunction func1, SelectFunction func2);
+        Selector add(SelectFunction func1, SelectFunction func2, SelectFunction func3);
+        Selector add(SelectFunction func1, SelectFunction func2, SelectFunction func3, SelectFunction func4);
+        Selector add(
+            SelectFunction func1,
+            SelectFunction func2,
+            SelectFunction func3,
+            SelectFunction func4,
+            SelectFunction func5
+        );
         Selector add(String relationName, Query query);
+        Selector add(Selector other);
+        Selector add(List<Object> fieldOrFuncs);
     }
 
     private class SelectorImpl implements Selector {
         private List<SObjectField> fields { get; set; }
+        private List<Function> funcs { get; set; }
         private Map<String, QueryBuilder> queries { get; set; }
 
         private SelectorImpl() {
             this.fields = new List<SObjectField>();
+            this.funcs = new List<Function>();
             this.queries = new Map<String, QueryBuilder>();
         }
 
@@ -368,7 +321,7 @@ public abstract class Query implements Querable {
             }
 
             SelectorImpl that = (SelectorImpl) obj;
-            return this.fields == that.fields && this.queries == that.queries;
+            return this.fields == that.fields && this.funcs == that.funcs && this.queries == that.queries;
         }
 
         public Selector add(SObjectField field) {
@@ -390,7 +343,10 @@ public abstract class Query implements Querable {
         }
 
         public Selector add(SObjectField field1, SObjectField field2, SObjectField field3, SObjectField field4) {
-            this.add(new List<SObjectField>{ field1, field2, field3, field4 });
+            this.fields.add(field1);
+            this.fields.add(field2);
+            this.fields.add(field3);
+            this.fields.add(field4);
             return this;
         }
 
@@ -401,12 +357,52 @@ public abstract class Query implements Querable {
             SObjectField field4,
             SObjectField field5
         ) {
-            this.add(new List<SObjectField>{ field1, field2, field3, field4, field5 });
+            this.fields.add(field1);
+            this.fields.add(field2);
+            this.fields.add(field3);
+            this.fields.add(field4);
+            this.fields.add(field5);
             return this;
         }
 
-        public Selector add(List<SObjectField> fields) {
-            this.fields.addAll(fields);
+        public Selector add(SelectFunction func) {
+            this.funcs.add(func);
+            return this;
+        }
+
+        public Selector add(SelectFunction func1, SelectFunction func2) {
+            this.funcs.add(func1);
+            this.funcs.add(func2);
+            return this;
+        }
+
+        public Selector add(SelectFunction func1, SelectFunction func2, SelectFunction func3) {
+            this.funcs.add(func1);
+            this.funcs.add(func2);
+            this.funcs.add(func3);
+            return this;
+        }
+
+        public Selector add(SelectFunction func1, SelectFunction func2, SelectFunction func3, SelectFunction func4) {
+            this.funcs.add(func1);
+            this.funcs.add(func2);
+            this.funcs.add(func3);
+            this.funcs.add(func4);
+            return this;
+        }
+
+        public Selector add(
+            SelectFunction func1,
+            SelectFunction func2,
+            SelectFunction func3,
+            SelectFunction func4,
+            SelectFunction func5
+        ) {
+            this.funcs.add(func1);
+            this.funcs.add(func2);
+            this.funcs.add(func3);
+            this.funcs.add(func4);
+            this.funcs.add(func5);
             return this;
         }
 
@@ -415,9 +411,22 @@ public abstract class Query implements Querable {
             return this;
         }
 
-        private Selector addAll(Selector selector) {
-            this.fields.addAll(((SelectorImpl) selector).fields);
-            this.queries.putAll(((SelectorImpl) selector).queries);
+        public Selector add(Selector other) {
+            this.fields.addAll(((SelectorImpl) other).fields);
+            this.queries.putAll(((SelectorImpl) other).queries);
+            this.funcs.addAll(((SelectorImpl) other).funcs);
+            return this;
+        }
+
+        public Selector add(List<Object> fieldOrFuncs) {
+            for (Object fieldOrFunc : fieldOrFuncs) {
+                if (fieldOrFunc instanceof SObjectField) {
+                    this.fields.add((SObjectField) fieldOrFunc);
+                }
+                if (fieldOrFunc instanceof Function) {
+                    this.funcs.add((Function) fieldOrFunc);
+                }
+            }
             return this;
         }
     }
@@ -431,24 +440,39 @@ public abstract class Query implements Querable {
     }
 
     public Query selectBy(Selector selector) {
-        this.rootSelector.addAll(selector);
+        this.rootSelector.add(selector);
+        return this;
+    }
+
+    public Query selectBy(List<Object> fieldOrFuncs) {
+        this.rootSelector.add(fieldOrFuncs);
         return this;
     }
 
     public Query selectBy(SObjectField field) {
-        return selectBy(new List<SObjectField>{ field });
+        this.rootSelector.fields.add(field);
+        return this;
     }
 
     public Query selectBy(SObjectField field1, SObjectField field2) {
-        return selectBy(new List<SObjectField>{ field1, field2 });
+        this.rootSelector.fields.add(field1);
+        this.rootSelector.fields.add(field2);
+        return this;
     }
 
     public Query selectBy(SObjectField field1, SObjectField field2, SObjectField field3) {
-        return selectBy(new List<SObjectField>{ field1, field2, field3 });
+        this.rootSelector.fields.add(field1);
+        this.rootSelector.fields.add(field2);
+        this.rootSelector.fields.add(field3);
+        return this;
     }
 
     public Query selectBy(SObjectField field1, SObjectField field2, SObjectField field3, SObjectField field4) {
-        return selectBy(new List<SObjectField>{ field1, field2, field3, field4 });
+        this.rootSelector.fields.add(field1);
+        this.rootSelector.fields.add(field2);
+        this.rootSelector.fields.add(field3);
+        this.rootSelector.fields.add(field4);
+        return this;
     }
 
     public Query selectBy(
@@ -458,10 +482,52 @@ public abstract class Query implements Querable {
         SObjectField field4,
         SObjectField field5
     ) {
-        return selectBy(new List<SObjectField>{ field1, field2, field3, field4, field5 });
+        this.rootSelector.fields.add(field1);
+        this.rootSelector.fields.add(field2);
+        this.rootSelector.fields.add(field3);
+        this.rootSelector.fields.add(field4);
+        this.rootSelector.fields.add(field5);
+        return this;
     }
-    public Query selectBy(List<SObjectField> fields) {
-        this.rootSelector.fields.addAll(fields);
+
+    public Query selectBy(SelectFunction func) {
+        this.rootSelector.funcs.add(func);
+        return this;
+    }
+
+    public Query selectBy(SelectFunction func1, SelectFunction func2) {
+        this.rootSelector.funcs.add(func1);
+        this.rootSelector.funcs.add(func2);
+        return this;
+    }
+
+    public Query selectBy(SelectFunction func1, SelectFunction func2, SelectFunction func3) {
+        this.rootSelector.funcs.add(func1);
+        this.rootSelector.funcs.add(func2);
+        this.rootSelector.funcs.add(func3);
+        return this;
+    }
+
+    public Query selectBy(SelectFunction func1, SelectFunction func2, SelectFunction func3, SelectFunction func4) {
+        this.rootSelector.funcs.add(func1);
+        this.rootSelector.funcs.add(func2);
+        this.rootSelector.funcs.add(func3);
+        this.rootSelector.funcs.add(func4);
+        return this;
+    }
+
+    public Query selectBy(
+        SelectFunction func1,
+        SelectFunction func2,
+        SelectFunction func3,
+        SelectFunction func4,
+        SelectFunction func5
+    ) {
+        this.rootSelector.funcs.add(func1);
+        this.rootSelector.funcs.add(func2);
+        this.rootSelector.funcs.add(func3);
+        this.rootSelector.funcs.add(func4);
+        this.rootSelector.funcs.add(func5);
         return this;
     }
 
@@ -476,13 +542,13 @@ public abstract class Query implements Querable {
     // ================
     // #region Order By
 
-    private virtual class OrderByField {
-        private String fieldName { get; set; }
+    private virtual class OrderByClause {
+        private Object fieldOrFunc { get; set; }
         private Boolean ascending { get; set; }
         private Boolean nullFirst { get; set; }
 
-        private OrderByField(String fieldName) {
-            this.fieldName = fieldName;
+        private OrderByClause(Object fieldOrFunc) {
+            this.fieldOrFunc = fieldOrFunc;
             this.ascending = true;
             this.nullFirst = true;
         }
@@ -492,78 +558,250 @@ public abstract class Query implements Querable {
                 return true;
             }
 
-            OrderByField that = (OrderByField) obj;
-            return this.fieldName == that.fieldName &&
+            OrderByClause that = (OrderByClause) obj;
+            return this.fieldOrFunc == that.fieldOrFunc &&
                 this.ascending == that.ascending &&
                 this.nullFirst == that.nullFirst;
         }
     }
 
-    private interface IOrderManager {
-        void setFieldNames(List<String> fieldNames);
-        void setAscending(Boolean ascending);
-        void setNullFirst(Boolean nullFirst);
+    public interface Orderer {
+        Orderer ascending();
+        Orderer descending();
+        Orderer nullsFirst();
+        Orderer nullsLast();
+
+        Orderer add(SObjectField field);
+        Orderer add(SObjectField field1, SObjectField field2);
+        Orderer add(SObjectField field1, SObjectField field2, SObjectField field3);
+        Orderer add(SObjectField field1, SObjectField field2, SObjectField field3, SObjectField field4);
+        Orderer add(
+            SObjectField field1,
+            SObjectField field2,
+            SObjectField field3,
+            SObjectField field4,
+            SObjectField field5
+        );
+
+        Orderer add(OrderFunction func);
+        Orderer add(OrderFunction func1, OrderFunction func2);
+        Orderer add(OrderFunction func1, OrderFunction func2, OrderFunction func3);
+        Orderer add(OrderFunction func1, OrderFunction func2, OrderFunction func3, OrderFunction func4);
+        Orderer add(
+            OrderFunction func1,
+            OrderFunction func2,
+            OrderFunction func3,
+            OrderFunction func4,
+            OrderFunction func5
+        );
+
+        Orderer add(List<Object> fieldOrFuncs);
+        Orderer add(Orderer other);
     }
 
-    private class OrderManager implements IOrderManager {
-        private Query query { get; set; }
+    private class OrdererImpl implements Orderer {
+        private List<OrderByClause> clauses { get; set; }
         private Integer batchSize { get; set; }
-        private List<OrderByField> clauses {
-            get {
-                return this.query.orderByFields;
+
+        public Boolean equals(Object obj) {
+            if (this === obj) {
+                return true;
             }
+
+            OrdererImpl that = (OrdererImpl) obj;
+
+            return this.clauses == that.clauses;
         }
 
-        private OrderManager(Query query) {
-            this.query = query;
+        private OrdererImpl() {
+            this.clauses = new List<OrderByClause>();
             this.batchSize = 0;
         }
 
-        public void setFieldNames(List<String> fieldNames) {
-            this.batchSize = fieldNames.size();
-            for (String fieldName : fieldNames) {
-                this.clauses.add(new OrderByField(fieldName));
+        private void addFieldOrFuncs(List<Object> fieldOrFuncs) {
+            this.batchSize = fieldOrFuncs.size();
+            for (Object fieldOrFunc : fieldOrFuncs) {
+                this.clauses.add(new OrderByClause(fieldOrFunc));
             }
         }
 
-        public void setAscending(Boolean ascending) {
+        private void setAscending(Boolean ascending) {
             if (this.clauses.size() >= this.batchSize) {
                 for (Integer i = this.batchSize; i > 0; i--) {
                     this.clauses[this.clauses.size() - i].ascending = ascending;
                 }
             }
         }
-        public void setNullFirst(Boolean nullFirst) {
+
+        private void setNullFirst(Boolean nullFirst) {
             if (this.clauses.size() >= this.batchSize) {
                 for (Integer i = this.batchSize; i > 0; i--) {
                     this.clauses[this.clauses.size() - i].nullFirst = nullFirst;
                 }
             }
         }
+
+        public Orderer ascending() {
+            return this;
+        }
+
+        public Orderer descending() {
+            this.setAscending(false);
+            return this;
+        }
+
+        public Orderer nullsFirst() {
+            return this;
+        }
+
+        public Orderer nullsLast() {
+            this.setNullFirst(false);
+            return this;
+        }
+
+        public Orderer add(SObjectField field) {
+            this.addFieldOrFuncs(new List<Object>{ field });
+            return this;
+        }
+
+        public Orderer add(SObjectField field1, SObjectField field2) {
+            this.addFieldOrFuncs(new List<Object>{ field1, field2 });
+            return this;
+        }
+
+        public Orderer add(SObjectField field1, SObjectField field2, SObjectField field3) {
+            this.addFieldOrFuncs(new List<Object>{ field1, field2, field3 });
+            return this;
+        }
+
+        public Orderer add(SObjectField field1, SObjectField field2, SObjectField field3, SObjectField field4) {
+            this.addFieldOrFuncs(new List<Object>{ field1, field2, field3, field4 });
+            return this;
+        }
+
+        public Orderer add(
+            SObjectField field1,
+            SObjectField field2,
+            SObjectField field3,
+            SObjectField field4,
+            SObjectField field5
+        ) {
+            this.addFieldOrFuncs(new List<Object>{ field1, field2, field3, field4, field5 });
+            return this;
+        }
+
+        public Orderer add(OrderFunction func) {
+            this.addFieldOrFuncs(new List<Object>{ func });
+            return this;
+        }
+
+        public Orderer add(OrderFunction func1, OrderFunction func2) {
+            this.addFieldOrFuncs(new List<Object>{ func1, func2 });
+            return this;
+        }
+
+        public Orderer add(OrderFunction func1, OrderFunction func2, OrderFunction func3) {
+            this.addFieldOrFuncs(new List<Object>{ func1, func2, func3 });
+            return this;
+        }
+
+        public Orderer add(OrderFunction func1, OrderFunction func2, OrderFunction func3, OrderFunction func4) {
+            this.addFieldOrFuncs(new List<Object>{ func1, func2, func3, func4 });
+            return this;
+        }
+
+        public Orderer add(
+            OrderFunction func1,
+            OrderFunction func2,
+            OrderFunction func3,
+            OrderFunction func4,
+            OrderFunction func5
+        ) {
+            this.addFieldOrFuncs(new List<Object>{ func1, func2, func3, func4, func5 });
+            return this;
+        }
+
+        public Orderer add(List<Object> fieldOrFuncs) {
+            this.addFieldOrFuncs(fieldOrFuncs);
+            return this;
+        }
+
+        public Orderer add(Orderer other) {
+            this.clauses.addAll(((OrdererImpl) other).clauses);
+            this.batchSize = this.clauses.size();
+            return this;
+        }
     }
 
-    public Query orderBy(String name) {
-        this.orderBy(new List<String>{ name });
+    public static Orderer orderer() {
+        return new OrdererImpl();
+    }
+
+    public Query orderBy(List<Object> fieldOrFuncs) {
+        this.rootOrderer.add(fieldOrFuncs);
         return this;
     }
-    public Query orderBy(String name1, String name2) {
-        this.orderBy(new List<String>{ name1, name2 });
+
+    public Query orderBy(Orderer orderer) {
+        this.rootOrderer.add(orderer);
         return this;
     }
-    public Query orderBy(String name1, String name2, String name3) {
-        this.orderBy(new List<String>{ name1, name2, name3 });
+
+    public Query orderBy(SObjectField field) {
+        this.rootOrderer.addFieldOrFuncs(new List<Object>{ field });
         return this;
     }
-    public Query orderBy(String name1, String name2, String name3, String name4) {
-        this.orderBy(new List<String>{ name1, name2, name3, name4 });
+    public Query orderBy(SObjectField field1, SObjectField field2) {
+        this.rootOrderer.addFieldOrFuncs(new List<Object>{ field1, field2 });
         return this;
     }
-    public Query orderBy(String name1, String name2, String name3, String name4, String name5) {
-        this.orderBy(new List<String>{ name1, name2, name3, name4, name5 });
+    public Query orderBy(SObjectField field1, SObjectField field2, SObjectField field3) {
+        this.rootOrderer.addFieldOrFuncs(new List<Object>{ field1, field2, field3 });
         return this;
     }
-    public Query orderBy(List<String> names) {
-        this.getOrderManager().setFieldNames(names);
+    public Query orderBy(SObjectField field1, SObjectField field2, SObjectField field3, SObjectField field4) {
+        this.rootOrderer.addFieldOrFuncs(new List<Object>{ field1, field2, field3, field4 });
+        return this;
+    }
+    public Query orderBy(
+        SObjectField field1,
+        SObjectField field2,
+        SObjectField field3,
+        SObjectField field4,
+        SObjectField field5
+    ) {
+        this.rootOrderer.addFieldOrFuncs(new List<Object>{ field1, field2, field3, field4, field5 });
+        return this;
+    }
+
+    public Query orderBy(OrderFunction func) {
+        this.rootOrderer.addFieldOrFuncs(new List<Object>{ func });
+        return this;
+    }
+
+    public Query orderBy(OrderFunction func1, OrderFunction func2) {
+        this.rootOrderer.addFieldOrFuncs(new List<Object>{ func1, func2 });
+        return this;
+    }
+
+    public Query orderBy(OrderFunction func1, OrderFunction func2, OrderFunction func3) {
+        this.rootOrderer.addFieldOrFuncs(new List<Object>{ func1, func2, func3 });
+        return this;
+    }
+
+    public Query orderBy(OrderFunction func1, OrderFunction func2, OrderFunction func3, OrderFunction func4) {
+        this.rootOrderer.addFieldOrFuncs(new List<Object>{ func1, func2, func3, func4 });
+        return this;
+    }
+
+    public Query orderBy(
+        OrderFunction func1,
+        OrderFunction func2,
+        OrderFunction func3,
+        OrderFunction func4,
+        OrderFunction func5
+    ) {
+        this.rootOrderer.addFieldOrFuncs(new List<Object>{ func1, func2, func3, func4, func5 });
         return this;
     }
 
@@ -573,7 +811,7 @@ public abstract class Query implements Querable {
     }
 
     public Query descending() {
-        this.getOrderManager().setAscending(false);
+        this.rootOrderer.setAscending(false);
         return this;
     }
 
@@ -583,7 +821,7 @@ public abstract class Query implements Querable {
     }
 
     public Query nullsLast() {
-        this.getOrderManager().setNullFirst(false);
+        this.rootOrderer.setNullFirst(false);
         return this;
     }
     // #endregion
@@ -591,47 +829,34 @@ public abstract class Query implements Querable {
 
     // ================
     // #region Group By
+    public interface Grouper {
+        Grouper add(SObjectField field);
+        Grouper add(SObjectField field1, SObjectField field2);
+        Grouper add(SObjectField field1, SObjectField field2, SObjectField field3);
+        Grouper add(SObjectField field1, SObjectField field2, SObjectField field3, SObjectField field4);
+        Grouper add(
+            SObjectField field1,
+            SObjectField field2,
+            SObjectField field3,
+            SObjectField field4,
+            SObjectField field5
+        );
 
-    private interface IGroupManager {
-        void add(Aggregation operation);
+        Grouper add(DateFunction func);
+        Grouper add(DateFunction func1, DateFunction func2);
+        Grouper add(DateFunction func1, DateFunction func2, DateFunction func3);
+        Grouper add(DateFunction func1, DateFunction func2, DateFunction func3, DateFunction func4);
+        Grouper add(DateFunction func1, DateFunction func2, DateFunction func3, DateFunction func4, DateFunction func5);
+
+        Grouper add(List<Object> fieldOrFuncs);
+        Grouper add(Grouper other);
     }
 
-    private class GroupManager implements IGroupManager {
-        private Query query { get; set; }
-        private Integer aliasIndex { get; set; }
+    private class GrouperImpl implements Grouper {
+        private List<Object> fieldOrFuncs { get; set; }
 
-        private GroupManager(Query query) {
-            this.query = query;
-            this.aliasIndex = 0;
-        }
-
-        public void add(Aggregation operation) {
-            if (String.isBlank(operation.alias)) {
-                operation.alias = 'expr' + this.aliasIndex;
-                this.aliasIndex++;
-            }
-            this.query.aggregations.add(operation);
-            this.query.aggregationsByAlias.put(operation.alias, operation);
-        }
-    }
-
-    private abstract class Aggregation {
-        private String operation { get; set; }
-        private SOBjectField field { get; set; }
-        private String alias { get; set; }
-        private Integer tag { get; set; }
-
-        private void build(List<String> fragments) {
-            fragments.add(this.operation);
-            fragments.add('(');
-            if (this.field != null) {
-                fragments.add(String.valueOf(this.field));
-            }
-            fragments.add(')');
-            if (String.isNotBlank(this.alias) && !this.alias.startsWithIgnoreCase('expr')) {
-                fragments.add(' ');
-                fragments.add(this.alias);
-            }
+        private GrouperImpl() {
+            this.fieldOrFuncs = new List<Object>();
         }
 
         public Boolean equals(Object obj) {
@@ -639,186 +864,141 @@ public abstract class Query implements Querable {
                 return true;
             }
 
-            Aggregation that = (Aggregation) obj;
+            GrouperImpl that = (GrouperImpl) obj;
+            return this.fieldOrFuncs == that.fieldOrFuncs;
+        }
 
-            return this.tag == that.tag && this.field == that.field;
+        public Grouper add(SObjectField field) {
+            this.fieldOrFuncs.add(field);
+            return this;
+        }
+
+        public Grouper add(SObjectField field1, SObjectField field2) {
+            this.fieldOrFuncs.add(field1);
+            this.fieldOrFuncs.add(field2);
+            return this;
+        }
+
+        public Grouper add(SObjectField field1, SObjectField field2, SObjectField field3) {
+            this.fieldOrFuncs.add(field1);
+            this.fieldOrFuncs.add(field2);
+            this.fieldOrFuncs.add(field3);
+            return this;
+        }
+
+        public Grouper add(SObjectField field1, SObjectField field2, SObjectField field3, SObjectField field4) {
+            this.fieldOrFuncs.add(field1);
+            this.fieldOrFuncs.add(field2);
+            this.fieldOrFuncs.add(field3);
+            this.fieldOrFuncs.add(field4);
+            return this;
+        }
+
+        public Grouper add(
+            SObjectField field1,
+            SObjectField field2,
+            SObjectField field3,
+            SObjectField field4,
+            SObjectField field5
+        ) {
+            this.fieldOrFuncs.add(field1);
+            this.fieldOrFuncs.add(field2);
+            this.fieldOrFuncs.add(field3);
+            this.fieldOrFuncs.add(field4);
+            this.fieldOrFuncs.add(field5);
+            return this;
+        }
+
+        public Grouper add(DateFunction func) {
+            this.fieldOrFuncs.add(func);
+            return this;
+        }
+
+        public Grouper add(DateFunction func1, DateFunction func2) {
+            this.fieldOrFuncs.add(func1);
+            this.fieldOrFuncs.add(func2);
+            return this;
+        }
+
+        public Grouper add(DateFunction func1, DateFunction func2, DateFunction func3) {
+            this.fieldOrFuncs.add(func1);
+            this.fieldOrFuncs.add(func2);
+            this.fieldOrFuncs.add(func3);
+            return this;
+        }
+
+        public Grouper add(DateFunction func1, DateFunction func2, DateFunction func3, DateFunction func4) {
+            this.fieldOrFuncs.add(func1);
+            this.fieldOrFuncs.add(func2);
+            this.fieldOrFuncs.add(func3);
+            this.fieldOrFuncs.add(func4);
+            return this;
+        }
+
+        public Grouper add(
+            DateFunction func1,
+            DateFunction func2,
+            DateFunction func3,
+            DateFunction func4,
+            DateFunction func5
+        ) {
+            this.fieldOrFuncs.add(func1);
+            this.fieldOrFuncs.add(func2);
+            this.fieldOrFuncs.add(func3);
+            this.fieldOrFuncs.add(func4);
+            this.fieldOrFuncs.add(func5);
+            return this;
+        }
+
+        public Grouper add(List<Object> fieldOrFuncs) {
+            this.fieldOrFuncs.addAll(fieldOrFuncs);
+            return this;
+        }
+
+        public Grouper add(Grouper other) {
+            this.fieldOrFuncs.addAll(((GrouperImpl) other).fieldOrFuncs);
+            return this;
         }
     }
 
-    private class Grouping extends Aggregation {
-        private Grouping(SObjectField field) {
-            this.operation = 'GROUPING';
-            this.field = field;
-            this.tag = GROUPING_TAG;
-        }
-
-        private Grouping(SObjectField field, String alias) {
-            this.operation = 'GROUPING';
-            this.field = field;
-            this.alias = alias;
-            this.tag = GROUPING_TAG;
-        }
+    public static Grouper grouper() {
+        return new GrouperImpl();
     }
 
-    private class Count extends Aggregation {
-        private Count() {
-            this.operation = 'COUNT';
-            this.tag = COUNT_TAG;
-        }
-
-        private Count(SObjectField field) {
-            this.operation = 'COUNT';
-            this.field = field;
-            this.tag = COUNT_TAG;
-        }
-
-        private Count(SObjectField field, String alias) {
-            this.operation = 'COUNT';
-            this.field = field;
-            this.alias = alias;
-            this.tag = COUNT_TAG;
-        }
-    }
-
-    private class SUM extends Aggregation {
-        private SUM(SObjectField field) {
-            this.operation = 'SUM';
-            this.field = field;
-            this.tag = SUM_TAG;
-        }
-
-        private SUM(SObjectField field, String alias) {
-            this.operation = 'SUM';
-            this.field = field;
-            this.alias = alias;
-            this.tag = SUM_TAG;
-        }
-    }
-
-    private class AVG extends Aggregation {
-        private AVG(SObjectField field) {
-            this.operation = 'AVG';
-            this.field = field;
-            this.tag = AVG_TAG;
-        }
-
-        private AVG(SObjectField field, String alias) {
-            this.operation = 'AVG';
-            this.field = field;
-            this.alias = alias;
-            this.tag = AVG_TAG;
-        }
-    }
-
-    private class MAX extends Aggregation {
-        private MAX(SObjectField field) {
-            this.operation = 'MAX';
-            this.field = field;
-            this.tag = MAX_TAG;
-        }
-
-        private MAX(SObjectField field, String alias) {
-            this.operation = 'MAX';
-            this.field = field;
-            this.alias = alias;
-            this.tag = MAX_TAG;
-        }
-    }
-
-    private class MIN extends Aggregation {
-        private MIN(SObjectField field) {
-            this.operation = 'MIN';
-            this.field = field;
-            this.tag = MIN_TAG;
-        }
-
-        private MIN(SObjectField field, String alias) {
-            this.operation = 'MIN';
-            this.field = field;
-            this.alias = alias;
-            this.tag = MIN_TAG;
-        }
-    }
-
-    public Query grouping(SObjectField field) {
-        this.getGroupManager().add(new Grouping(field));
+    public Query groupBy(Grouper grouper) {
+        this.grouper.fieldOrFuncs.addAll(((GrouperImpl) grouper).fieldOrFuncs);
         return this;
     }
 
-    public Query grouping(SObjectField field, String alias) {
-        this.getGroupManager().add(new Grouping(field, alias));
-        return this;
-    }
-
-    public Query count() {
-        this.getGroupManager().add(new Count());
-        return this;
-    }
-
-    public Query count(SObjectField field) {
-        this.getGroupManager().add(new Count(field));
-        return this;
-    }
-
-    public Query count(SObjectField field, String alias) {
-        this.getGroupManager().add(new Count(field, alias));
-        return this;
-    }
-
-    public Query sum(SObjectField field) {
-        this.getGroupManager().add(new SUM(field));
-        return this;
-    }
-
-    public Query sum(SObjectField field, String alias) {
-        this.getGroupManager().add(new SUM(field, alias));
-        return this;
-    }
-
-    public Query avg(SObjectField field) {
-        this.getGroupManager().add(new AVG(field));
-        return this;
-    }
-
-    public Query avg(SObjectField field, String alias) {
-        this.getGroupManager().add(new AVG(field, alias));
-        return this;
-    }
-
-    public Query max(SObjectField field) {
-        this.getGroupManager().add(new MAX(field));
-        return this;
-    }
-
-    public Query max(SObjectField field, String alias) {
-        this.getGroupManager().add(new MAX(field, alias));
-        return this;
-    }
-
-    public Query min(SObjectField field) {
-        this.getGroupManager().add(new MIN(field));
-        return this;
-    }
-
-    public Query min(SObjectField field, String alias) {
-        this.getGroupManager().add(new MIN(field, alias));
+    public Query groupBy(List<Object> fieldOrFuncs) {
+        this.grouper.fieldOrFuncs.addAll(fieldOrFuncs);
         return this;
     }
 
     public Query groupBy(SObjectField field) {
-        return groupBy(new List<SObjectField>{ field });
+        this.grouper.fieldOrFuncs.add(field);
+        return this;
     }
 
     public Query groupBy(SObjectField field1, SObjectField field2) {
-        return groupBy(new List<SObjectField>{ field1, field2 });
+        this.grouper.fieldOrFuncs.add(field1);
+        this.grouper.fieldOrFuncs.add(field2);
+        return this;
     }
 
     public Query groupBy(SObjectField field1, SObjectField field2, SObjectField field3) {
-        return groupBy(new List<SObjectField>{ field1, field2, field3 });
+        this.grouper.fieldOrFuncs.add(field1);
+        this.grouper.fieldOrFuncs.add(field2);
+        this.grouper.fieldOrFuncs.add(field3);
+        return this;
     }
 
     public Query groupBy(SObjectField field1, SObjectField field2, SObjectField field3, SObjectField field4) {
-        return groupBy(new List<SObjectField>{ field1, field2, field3, field4 });
+        this.grouper.fieldOrFuncs.add(field1);
+        this.grouper.fieldOrFuncs.add(field2);
+        this.grouper.fieldOrFuncs.add(field3);
+        this.grouper.fieldOrFuncs.add(field4);
+        return this;
     }
 
     public Query groupBy(
@@ -828,11 +1008,52 @@ public abstract class Query implements Querable {
         SObjectField field4,
         SObjectField field5
     ) {
-        return groupBy(new List<SObjectField>{ field1, field2, field3, field4, field5 });
+        this.grouper.fieldOrFuncs.add(field1);
+        this.grouper.fieldOrFuncs.add(field2);
+        this.grouper.fieldOrFuncs.add(field3);
+        this.grouper.fieldOrFuncs.add(field4);
+        this.grouper.fieldOrFuncs.add(field5);
+        return this;
     }
 
-    public Query groupBy(List<SObjectField> fields) {
-        this.groupByFields.addAll(fields);
+    public Query groupBy(DateFunction func) {
+        this.grouper.fieldOrFuncs.add(func);
+        return this;
+    }
+
+    public Query groupBy(DateFunction func1, DateFunction func2) {
+        this.grouper.fieldOrFuncs.add(func1);
+        this.grouper.fieldOrFuncs.add(func2);
+        return this;
+    }
+
+    public Query groupBy(DateFunction func1, DateFunction func2, DateFunction func3) {
+        this.grouper.fieldOrFuncs.add(func1);
+        this.grouper.fieldOrFuncs.add(func2);
+        this.grouper.fieldOrFuncs.add(func3);
+        return this;
+    }
+
+    public Query groupBy(DateFunction func1, DateFunction func2, DateFunction func3, DateFunction func4) {
+        this.grouper.fieldOrFuncs.add(func1);
+        this.grouper.fieldOrFuncs.add(func2);
+        this.grouper.fieldOrFuncs.add(func3);
+        this.grouper.fieldOrFuncs.add(func4);
+        return this;
+    }
+
+    public Query groupBy(
+        DateFunction func1,
+        DateFunction func2,
+        DateFunction func3,
+        DateFunction func4,
+        DateFunction func5
+    ) {
+        this.grouper.fieldOrFuncs.add(func1);
+        this.grouper.fieldOrFuncs.add(func2);
+        this.grouper.fieldOrFuncs.add(func3);
+        this.grouper.fieldOrFuncs.add(func4);
+        this.grouper.fieldOrFuncs.add(func5);
         return this;
     }
 
@@ -908,32 +1129,32 @@ public abstract class Query implements Querable {
     private class AndLogicalExpression extends LogicalExpression {
         private AndLogicalExpression() {
             super(' AND ');
-            this.tag = AND_TAG;
+            this.tag = FILTER_AND_TAG;
         }
     }
 
     private class OrLogicalExpression extends LogicalExpression {
         private OrLogicalExpression() {
             super(' OR ');
-            this.tag = OR_TAG;
+            this.tag = FILTER_OR_TAG;
         }
     }
 
     private abstract class ComparisonExpression implements Filter {
-        private SObjectField field { get; set; }
+        private Object fieldOrFunc { get; set; }
         private String operator { get; set; }
         private Object value { get; set; }
-        private Distance distance { get; set; } // used by DistanceComparison
+        private DistanceFunction distance { get; set; } // used by DistanceComparison
         private Integer tag { get; set; } // used to distinguish each implementation.
 
-        private ComparisonExpression(SObjectField field, String operator, Object value) {
-            this.field = field;
+        private ComparisonExpression(Object fieldOrFunc, String operator, Object value) {
+            this.fieldOrFunc = fieldOrFunc;
             this.operator = operator;
             this.value = value;
         }
 
         public virtual void build(List<String> fragments, Map<String, Object> tmpVars) {
-            fragments.add(String.valueOf(this.field));
+            fragments.add(String.valueOf(this.fieldOrFunc));
             fragments.add(this.operator);
             if (
                 this.value instanceof List<Object> ||
@@ -965,7 +1186,7 @@ public abstract class Query implements Querable {
 
             ComparisonExpression that = (ComparisonExpression) obj;
 
-            return (this.field == that.field &&
+            return (this.fieldOrFunc == that.fieldOrFunc &&
             this.tag == that.tag &&
             this.value == that.value &&
             this.distance == that.distance);
@@ -1077,18 +1298,20 @@ public abstract class Query implements Querable {
     // =============
     // #region =, !=
     private class EQ extends ComparisonExpression {
-        private EQ(SObjectField field, Object value) {
-            super(field, ' = ', value);
-            this.tag = EQ_TAG;
+        private EQ(Object fieldOrFunc, Object value) {
+            super(fieldOrFunc, ' = ', value);
+            this.tag = FILTER_EQ_TAG;
         }
     }
 
     private class NE extends ComparisonExpression {
-        private NE(SObjectField field, Object value) {
-            super(field, ' != ', value);
-            this.tag = NE_TAG;
+        private NE(Object fieldOrFunc, Object value) {
+            super(fieldOrFunc, ' != ', value);
+            this.tag = FILTER_NE_TAG;
         }
     }
+
+    // TODO: strong types of eq and ne
 
     public static Filter eq(SObjectField field, Object value) {
         return new EQ(field, value);
@@ -1097,19 +1320,41 @@ public abstract class Query implements Querable {
     public static Filter ne(SObjectField field, Object value) {
         return new NE(field, value);
     }
+
+    public static Filter eq(DateFunction func, Integer value) {
+        return new EQ(func, value);
+    }
+
+    public static Filter ne(DateFunction func, Integer value) {
+        return new NE(func, value);
+    }
+
+    // TODO: support isnull?
+
+    public static Filter eqNull(SObjectField field) {
+        return new EQ(field, null);
+    }
+
+    public static Filter neNull(SObjectField field) {
+        return new NE(field, null);
+    }
     // #endregion
     // =============
 
     // =========
     // #region >
     private class GT extends ComparisonExpression {
-        private GT(SObjectField field, Object value) {
-            super(field, ' > ', value);
-            this.tag = GT_TAG;
+        private GT(Object fieldOrFunc, Object value) {
+            super(fieldOrFunc, ' > ', value);
+            this.tag = FILTER_GT_TAG;
         }
     }
 
     public static Filter gt(SObjectField field, Decimal value) {
+        return new GT(field, value);
+    }
+
+    public static Filter gt(SObjectField field, CurrencyLiteral value) {
         return new GT(field, value);
     }
 
@@ -1137,19 +1382,31 @@ public abstract class Query implements Querable {
         return new GT(field, value);
     }
 
+    public static Filter gt(DateFunction func, Integer value) {
+        return new GT(func, value);
+    }
+
+    public static Filter gt(DistanceFunction func, Decimal value) {
+        return new GT(func, value);
+    }
+
     // #endregion
     // ==========
 
     // ==========
     // #region >=
     private class GTE extends ComparisonExpression {
-        private GTE(SObjectField field, Object value) {
-            super(field, ' >= ', value);
-            this.tag = GTE_TAG;
+        private GTE(Object fieldOrFunc, Object value) {
+            super(fieldOrFunc, ' >= ', value);
+            this.tag = FILTER_GTE_TAG;
         }
     }
 
     public static Filter gte(SObjectField field, Decimal value) {
+        return new GTE(field, value);
+    }
+
+    public static Filter gte(SObjectField field, CurrencyLiteral value) {
         return new GTE(field, value);
     }
 
@@ -1176,19 +1433,31 @@ public abstract class Query implements Querable {
     public static Filter gte(SObjectField field, String value) {
         return new GTE(field, value);
     }
+
+    public static Filter gte(DateFunction func, Integer value) {
+        return new GTE(func, value);
+    }
+
+    public static Filter gte(DistanceFunction func, Decimal value) {
+        return new GTE(func, value);
+    }
     // #endregion
     // ===========
 
     // ==========
     // #region <
     private class LT extends ComparisonExpression {
-        private LT(SObjectField field, Object value) {
-            super(field, ' < ', value);
-            this.tag = LT_TAG;
+        private LT(Object fieldOrFunc, Object value) {
+            super(fieldOrFunc, ' < ', value);
+            this.tag = FILTER_LT_TAG;
         }
     }
 
     public static Filter lt(SObjectField field, Decimal value) {
+        return new LT(field, value);
+    }
+
+    public static Filter lt(SObjectField field, CurrencyLiteral value) {
         return new LT(field, value);
     }
 
@@ -1215,19 +1484,31 @@ public abstract class Query implements Querable {
     public static Filter lt(SObjectField field, String value) {
         return new LT(field, value);
     }
+
+    public static Filter lt(DateFunction func, Integer value) {
+        return new LT(func, value);
+    }
+
+    public static Filter lt(DistanceFunction func, Decimal value) {
+        return new LT(func, value);
+    }
     // #endregion
     // ==========
 
     // ==========
     // #region <=
     private class LTE extends ComparisonExpression {
-        private LTE(SObjectField field, Object value) {
-            super(field, ' <= ', value);
-            this.tag = LTE_TAG;
+        private LTE(Object fieldOrFunc, Object value) {
+            super(fieldOrFunc, ' <= ', value);
+            this.tag = FILTER_LTE_TAG;
         }
     }
 
     public static Filter lte(SObjectField field, Decimal value) {
+        return new LTE(field, value);
+    }
+
+    public static Filter lte(SObjectField field, CurrencyLiteral value) {
         return new LTE(field, value);
     }
 
@@ -1255,6 +1536,13 @@ public abstract class Query implements Querable {
         return new LTE(field, value);
     }
 
+    public static Filter lte(DateFunction func, Integer value) {
+        return new LTE(func, value);
+    }
+
+    public static Filter lte(DistanceFunction func, Decimal value) {
+        return new LTE(func, value);
+    }
     // #endregion
     // ==========
 
@@ -1262,6 +1550,10 @@ public abstract class Query implements Querable {
     // #region between
     // prettier-ignore
     public static Filter between(SObjectField field, Decimal fromValue, Decimal toValue) {
+        return andx(gte(field, fromValue), lte(field, toValue));
+    }
+    // prettier-ignore
+    public static Filter between(SObjectField field, CurrencyLiteral fromValue, CurrencyLiteral toValue) {
         return andx(gte(field, fromValue), lte(field, toValue));
     }
     // prettier-ignore
@@ -1288,6 +1580,14 @@ public abstract class Query implements Querable {
     public static Filter between(SObjectField field, String fromValue, String toValue) {
         return andx(gte(field, fromValue), lte(field, toValue));
     }
+    // prettier-ignore
+    public static Filter between(DateFunction func, Integer fromValue, Integer toValue) {
+        return andx(gte(func, fromValue), lte(func, toValue));
+    }
+    // prettier-ignore
+    public static Filter between(DistanceFunction func, Decimal fromValue, Decimal toValue) {
+        return andx(gte(func, fromValue), lte(func, toValue));
+    }
     // #endregion
     // ===============
 
@@ -1296,14 +1596,14 @@ public abstract class Query implements Querable {
     private class LikeX extends ComparisonExpression {
         private LikeX(SObjectField field, String value) {
             super(field, ' LIKE ', value);
-            this.tag = LIKEX_TAG;
+            this.tag = FILTER_LIKEX_TAG;
         }
     }
 
     private class NLike extends ComparisonExpression {
         private NLike(SObjectField field, String value) {
             super(field, ' LIKE ', value);
-            this.tag = NLIKE_TAG;
+            this.tag = FILTER_NLIKE_TAG;
         }
 
         public override void build(List<String> fragments, Map<String, Object> tmpVars) {
@@ -1326,42 +1626,42 @@ public abstract class Query implements Querable {
     // ====================================
     // #region inx, nin, includes, excludes
     private class Includes extends ComparisonExpression {
-        private Includes(SObjectField field, List<Object> values) {
+        private Includes(SObjectField field, List<String> values) {
             super(field, 'INCLUDES', values);
-            this.tag = INCLUDES_TAG;
+            this.tag = FILTER_INCLUDES_TAG;
         }
     }
 
     private class Excludes extends ComparisonExpression {
-        private Excludes(SObjectField field, List<Object> values) {
+        private Excludes(SObjectField field, List<String> values) {
             super(field, 'EXCLUDES', values);
-            this.tag = EXCLUDES_TAG;
+            this.tag = FILTER_EXCLUDES_TAG;
         }
     }
 
     private class INX extends ComparisonExpression {
-        private INX(SObjectField field, List<Object> values) {
-            super(field, ' IN ', values);
-            this.tag = INX_TAG;
+        private INX(Object fieldOrFunc, List<Object> values) {
+            super(fieldOrFunc, ' IN ', values);
+            this.tag = FILTER_INX_TAG;
         }
     }
 
     private class NIN extends ComparisonExpression {
-        private NIN(SObjectField field, List<Object> values) {
-            super(field, 'NOT IN', values);
-            this.tag = NIN_TAG;
+        private NIN(Object fieldOrFunc, List<Object> values) {
+            super(fieldOrFunc, 'NOT IN', values);
+            this.tag = FILTER_NIN_TAG;
         }
     }
 
     private virtual class INX_Query extends ComparisonExpression {
         private INX_Query(SObjectField field, Boolean isNot, Query query) {
             super(field, isNot ? 'NOT IN' : 'IN', query);
-            this.tag = INX_Query_TAG;
+            this.tag = FILTER_INX_Query_TAG;
         }
 
         public override void build(List<String> fragments, Map<String, Object> tmpVars) {
             if (this.value instanceof QueryBuilder) {
-                fragments.add(String.valueOf(this.field));
+                fragments.add(String.valueOf(this.fieldOrFunc));
                 fragments.add(' ');
                 fragments.add(this.operator);
                 fragments.add(' ');
@@ -1372,24 +1672,194 @@ public abstract class Query implements Querable {
         }
     }
 
-    public static Filter includes(SObjectField field, List<Object> values) {
+    public static Filter includes(SObjectField field, String value) {
+        return new Includes(field, new List<String>{ value });
+    }
+
+    public static Filter includes(SObjectField field, String value1, String value2) {
+        return new Includes(field, new List<String>{ value1, value2 });
+    }
+
+    public static Filter includes(SObjectField field, String value1, String value2, String value3) {
+        return new Includes(field, new List<String>{ value1, value2, value3 });
+    }
+
+    public static Filter includes(SObjectField field, String value1, String value2, String value3, String value4) {
+        return new Includes(field, new List<String>{ value1, value2, value3, value4 });
+    }
+
+    public static Filter includes(
+        SObjectField field,
+        String value1,
+        String value2,
+        String value3,
+        String value4,
+        String value5
+    ) {
+        return new Includes(field, new List<String>{ value1, value2, value3, value4, value5 });
+    }
+
+    public static Filter includes(SObjectField field, List<String> values) {
         return new Includes(field, values);
     }
 
-    public static Filter excludes(SObjectField field, List<Object> values) {
+    public static Filter excludes(SObjectField field, String value) {
+        return new Excludes(field, new List<String>{ value });
+    }
+
+    public static Filter excludes(SObjectField field, String value1, String value2) {
+        return new Excludes(field, new List<String>{ value1, value2 });
+    }
+
+    public static Filter excludes(SObjectField field, String value1, String value2, String value3) {
+        return new Excludes(field, new List<String>{ value1, value2, value3 });
+    }
+
+    public static Filter excludes(SObjectField field, String value1, String value2, String value3, String value4) {
+        return new Excludes(field, new List<String>{ value1, value2, value3, value4 });
+    }
+
+    public static Filter excludes(
+        SObjectField field,
+        String value1,
+        String value2,
+        String value3,
+        String value4,
+        String value5
+    ) {
+        return new Excludes(field, new List<String>{ value1, value2, value3, value4, value5 });
+    }
+
+    public static Filter excludes(SObjectField field, List<String> values) {
         return new Excludes(field, values);
+    }
+
+    public static Filter inx(SObjectField field, Object value) {
+        return new INX(field, new List<Object>{ value });
+    }
+
+    public static Filter inx(SObjectField field, Object value1, Object value2) {
+        return new INX(field, new List<Object>{ value1, value2 });
+    }
+
+    public static Filter inx(SObjectField field, Object value1, Object value2, Object value3) {
+        return new INX(field, new List<Object>{ value1, value2, value3 });
+    }
+
+    public static Filter inx(SObjectField field, Object value1, Object value2, Object value3, Object value4) {
+        return new INX(field, new List<Object>{ value1, value2, value3, value4 });
+    }
+
+    public static Filter inx(
+        SObjectField field,
+        Object value1,
+        Object value2,
+        Object value3,
+        Object value4,
+        Object value5
+    ) {
+        return new INX(field, new List<Object>{ value1, value2, value3, value4, value5 });
     }
 
     public static Filter inx(SObjectField field, List<Object> values) {
         return new INX(field, values);
     }
 
-    public static Filter inx(SObjectField field, Query query) {
-        return new INX_Query(field, false, query);
+    public static Filter inx(DateFunction func, Integer value) {
+        return new INX(func, new List<Integer>{ value });
+    }
+
+    public static Filter inx(DateFunction func, Integer value1, Integer value2) {
+        return new INX(func, new List<Integer>{ value1, value2 });
+    }
+
+    public static Filter inx(DateFunction func, Integer value1, Integer value2, Integer value3) {
+        return new INX(func, new List<Integer>{ value1, value2, value3 });
+    }
+
+    public static Filter inx(DateFunction func, Integer value1, Integer value2, Integer value3, Integer value4) {
+        return new INX(func, new List<Integer>{ value1, value2, value3, value4 });
+    }
+
+    public static Filter inx(
+        DateFunction field,
+        Integer value1,
+        Integer value2,
+        Integer value3,
+        Integer value4,
+        Integer value5
+    ) {
+        return new INX(field, new List<Integer>{ value1, value2, value3, value4, value5 });
+    }
+
+    public static Filter inx(DateFunction func, List<Integer> values) {
+        return new INX(func, values);
+    }
+
+    public static Filter nin(SObjectField field, Object value) {
+        return new NIN(field, new List<Object>{ value });
+    }
+
+    public static Filter nin(SObjectField field, Object value1, Object value2) {
+        return new NIN(field, new List<Object>{ value1, value2 });
+    }
+
+    public static Filter nin(SObjectField field, Object value1, Object value2, Object value3) {
+        return new NIN(field, new List<Object>{ value1, value2, value3 });
+    }
+
+    public static Filter nin(SObjectField field, Object value1, Object value2, Object value3, Object value4) {
+        return new NIN(field, new List<Object>{ value1, value2, value3, value4 });
+    }
+
+    public static Filter nin(
+        SObjectField field,
+        Object value1,
+        Object value2,
+        Object value3,
+        Object value4,
+        Object value5
+    ) {
+        return new NIN(field, new List<Object>{ value1, value2, value3, value4, value5 });
     }
 
     public static Filter nin(SObjectField field, List<Object> values) {
         return new NIN(field, values);
+    }
+
+    public static Filter nin(DateFunction func, Integer value) {
+        return new NIN(func, new List<Integer>{ value });
+    }
+
+    public static Filter nin(DateFunction func, Integer value1, Integer value2) {
+        return new NIN(func, new List<Integer>{ value1, value2 });
+    }
+
+    public static Filter nin(DateFunction func, Integer value1, Integer value2, Integer value3) {
+        return new NIN(func, new List<Integer>{ value1, value2, value3 });
+    }
+
+    public static Filter nin(DateFunction func, Integer value1, Integer value2, Integer value3, Integer value4) {
+        return new NIN(func, new List<Integer>{ value1, value2, value3, value4 });
+    }
+
+    public static Filter nin(
+        DateFunction field,
+        Integer value1,
+        Integer value2,
+        Integer value3,
+        Integer value4,
+        Integer value5
+    ) {
+        return new NIN(field, new List<Integer>{ value1, value2, value3, value4, value5 });
+    }
+
+    public static Filter nin(DateFunction func, List<Object> values) {
+        return new NIN(func, values);
+    }
+
+    public static Filter inx(SObjectField field, Query query) {
+        return new INX_Query(field, false, query);
     }
 
     public static Filter nin(SObjectField field, Query query) {
@@ -1402,18 +1872,18 @@ public abstract class Query implements Querable {
     // ================
     // #region distance
 
-    public class Distance {
+    public class DistanceFunction implements Function, FilterFunction, OrderFunction {
         private SObjectField field { get; set; }
         private Location geo { get; set; }
         private String unit { get; set; }
 
-        private Distance(SObjectField field, Location geo, String unit) {
+        private DistanceFunction(SObjectField field, Location geo, String unit) {
             this.field = field;
             this.geo = geo;
             this.unit = unit;
         }
 
-        private String build() {
+        public override String toString() {
             return 'DISTANCE(' +
                 String.valueOf(this.field) +
                 ', GEOLOCATION(' +
@@ -1430,117 +1900,972 @@ public abstract class Query implements Querable {
                 return true;
             }
 
-            Distance that = (Distance) obj;
+            DistanceFunction that = (DistanceFunction) obj;
 
             return this.field == that.field &&
                 this.geo.latitude == that.geo.latitude &&
-                this.geo.longitude == that.geo.longitude &&
-                this.unit == that.unit;
+                this.geo.longitude == that.geo.longitude;
         }
     }
 
     private static final String DISTANCE_UNIT_KM = 'km';
     private static final String DISTANCE_UNIT_MI = 'mi';
 
-    public static Distance DISTANCE_IN_KILOMETER(SObjectField field, Location geo) {
-        return new Distance(field, geo, DISTANCE_UNIT_KM);
+    public static DistanceFunction DISTANCE_IN_KILOMETER(SObjectField field, Location geo) {
+        return new DistanceFunction(field, geo, DISTANCE_UNIT_KM);
     }
 
-    public static Distance DISTANCE_IN_MILE(SObjectField field, Location geo) {
-        return new Distance(field, geo, DISTANCE_UNIT_MI);
-    }
-
-    private class DistanceComparison extends ComparisonExpression {
-        private DistanceComparison(Distance distance, String operator, Decimal value) {
-            super(distance.field, operator, value);
-            this.distance = distance;
-            this.tag = DISTANCE_TAG;
-        }
-
-        public override void build(List<String> fragments, Map<String, Object> tmpVars) {
-            fragments.add(this.distance.build());
-            fragments.add(this.operator);
-            fragments.add(String.valueOf(this.value));
-        }
-    }
-
-    public static Filter gt(Distance distance, Decimal value) {
-        return new DistanceComparison(distance, ' > ', value);
-    }
-
-    public static Filter gte(Distance distance, Decimal value) {
-        return new DistanceComparison(distance, ' >= ', value);
-    }
-
-    public static Filter lt(Distance distance, Decimal value) {
-        return new DistanceComparison(distance, ' < ', value);
-    }
-
-    public static Filter lte(Distance distance, Decimal value) {
-        return new DistanceComparison(distance, ' <= ', value);
-    }
-
-    public static Filter between(Distance distance, Decimal fromValue, Decimal toValue) {
-        return andx(gte(distance, fromValue), lte(distance, toValue));
-    }
-
-    public Query orderBy(Distance distance) {
-        return this.orderBy(distance.build());
-    }
-
-    public Query orderBy(Distance distance1, Distance distance2) {
-        return this.orderBy(distance1.build(), distance2.build());
-    }
-
-    public Query orderBy(Distance distance1, Distance distance2, Distance distance3) {
-        return this.orderBy(distance1.build(), distance2.build(), distance3.build());
-    }
-
-    public Query orderBy(Distance distance1, Distance distance2, Distance distance3, Distance distance4) {
-        return this.orderBy(distance1.build(), distance2.build(), distance3.build(), distance4.build());
-    }
-
-    public Query orderBy(
-        Distance distance1,
-        Distance distance2,
-        Distance distance3,
-        Distance distance4,
-        Distance distance5
-    ) {
-        return this.orderBy(
-            distance1.build(),
-            distance2.build(),
-            distance3.build(),
-            distance4.build(),
-            distance5.build()
-        );
-    }
-
-    public Query orderBy(List<Distance> distances) {
-        List<String> distStrings = new List<String>();
-
-        for (Distance distance : distances) {
-            distStrings.add(distance.build());
-        }
-
-        return this.orderBy(distStrings);
+    public static DistanceFunction DISTANCE_IN_MILE(SObjectField field, Location geo) {
+        return new DistanceFunction(field, geo, DISTANCE_UNIT_MI);
     }
 
     // #endregion
     // ================
 
+    // ======================
+    // #region Aggregate
+    public class AggregateFunction extends GenericFunction implements SelectFunction, OrderFunction {
+        private AggregateFunction(Object field, String name, Integer tag, String alias) {
+            super(field, name, tag, alias);
+        }
+    }
+
+    public static AggregateFunction GROUPING(SObjectField field) {
+        return new AggregateFunction(field, 'GROUPING', FUNC_GROUPING_TAG, null);
+    }
+
+    public static AggregateFunction GROUPING(SObjectField field, String alias) {
+        return new AggregateFunction(field, 'GROUPING', FUNC_GROUPING_TAG, alias);
+    }
+
+    public static AggregateFunction COUNT() {
+        return new AggregateFunction(null, 'COUNT', FUNC_COUNT_TAG, null);
+    }
+
+    public static AggregateFunction COUNT(SObjectField field) {
+        return new AggregateFunction(field, 'COUNT', FUNC_COUNT_TAG, null);
+    }
+
+    public static AggregateFunction COUNT(SObjectField field, String alias) {
+        return new AggregateFunction(field, 'COUNT', FUNC_COUNT_TAG, alias);
+    }
+
+    public static AggregateFunction COUNT_DISTINCT(SObjectField field) {
+        return new AggregateFunction(field, 'COUNT_DISTINCT', FUNC_COUNT_DISTINCT_TAG, null);
+    }
+
+    public static AggregateFunction COUNT_DISTINCT(SObjectField field, String alias) {
+        return new AggregateFunction(field, 'COUNT_DISTINCT', FUNC_COUNT_DISTINCT_TAG, alias);
+    }
+
+    public static AggregateFunction SUM(SObjectField field) {
+        return new AggregateFunction(field, 'SUM', FUNC_SUM_TAG, null);
+    }
+
+    public static AggregateFunction SUM(SObjectField field, String alias) {
+        return new AggregateFunction(field, 'SUM', FUNC_SUM_TAG, alias);
+    }
+
+    public static AggregateFunction AVG(SObjectField field) {
+        return new AggregateFunction(field, 'AVG', FUNC_AVG_TAG, null);
+    }
+
+    public static AggregateFunction AVG(SObjectField field, String alias) {
+        return new AggregateFunction(field, 'AVG', FUNC_AVG_TAG, alias);
+    }
+
+    public static AggregateFunction MAX(SObjectField field) {
+        return new AggregateFunction(field, 'MAX', FUNC_MAX_TAG, null);
+    }
+
+    public static AggregateFunction MAX(SObjectField field, String alias) {
+        return new AggregateFunction(field, 'MAX', FUNC_MAX_TAG, alias);
+    }
+
+    public static AggregateFunction MIN(SObjectField field) {
+        return new AggregateFunction(field, 'MIN', FUNC_MIN_TAG, null);
+    }
+
+    public static AggregateFunction MIN(SObjectField field, String alias) {
+        return new AggregateFunction(field, 'MIN', FUNC_MIN_TAG, alias);
+    }
+    // #endregion
+    // ================
+
+    // ======================
+    // #region Function
+
+    public interface Function {
+    }
+
+    public interface SelectFunction extends Function {
+    }
+
+    public interface OrderFunction extends Function {
+    }
+
+    public interface FilterFunction extends Function {
+    }
+
+    public virtual class GenericFunction implements Function {
+        private Object fieldOrFunc { get; set; }
+        private String name { get; set; }
+        private Integer tag { get; set; }
+        private String alias { get; set; }
+
+        private GenericFunction(Object fieldOrFunc, String name, Integer tag) {
+            this.fieldOrFunc = fieldOrFunc;
+            this.name = name;
+            this.tag = tag;
+        }
+
+        private GenericFunction(Object fieldOrFunc, String name, Integer tag, String alias) {
+            this.fieldOrFunc = fieldOrFunc;
+            this.name = name;
+            this.tag = tag;
+            this.alias = alias;
+        }
+
+        public override String toString() {
+            if (this.alias == null && this.fieldOrFunc == null) {
+                return this.name + '()';
+            } else if (this.alias == null) {
+                return this.name + '(' + this.fieldOrFunc + ')';
+            } else {
+                return String.format('{0}({1}) {2}', new List<Object>{ this.name, this.fieldOrFunc, this.alias });
+            }
+        }
+
+        public Boolean equals(Object obj) {
+            if (this === obj) {
+                return true;
+            }
+
+            GenericFunction that = (GenericFunction) obj;
+            return this.tag == that.tag && this.fieldOrFunc == that.fieldOrFunc;
+        }
+    }
+
+    public class ToLabelFunction extends GenericFunction implements SelectFunction, FilterFunction {
+        private ToLabelFunction(Object fieldOrFunc) {
+            super(fieldOrFunc, 'TOLABEL', FUNC_LABEL_TAG);
+        }
+    }
+
+    public static ToLabelFunction TO_LABEL(SObjectField field) {
+        return new ToLabelFunction(field);
+    }
+
+    public class FormatFunction extends GenericFunction implements SelectFunction {
+        private FormatFunction(Object fieldOrFunc) {
+            super(fieldOrFunc, 'FORMAT', FUNC_FORMAT_TAG);
+        }
+    }
+
+    public static FormatFunction FORMAT(SObjectField field) {
+        return new FormatFunction(field);
+    }
+
+    public static FormatFunction FORMAT(CurrencyFunction func) {
+        return new FormatFunction(func);
+    }
+
+    // #endregion
+    // ======================
+
     // =====================
-    // #region Date Literals
+    // #region Currency
 
-    public class DateLiteral {
-        public String value { get; set; }
+    public class CurrencyFunction extends GenericFunction implements SelectFunction {
+        private CurrencyFunction(SObjectField field) {
+            super(field, 'CONVERTCURRENCY', FUNC_CURRENCY_TAG);
+        }
+    }
 
-        private DateLiteral(String value) {
+    public static CurrencyFunction CONVERT_CURRENCY(SObjectField field) {
+        return new CurrencyFunction(field);
+    }
+
+    public class CurrencyLiteral {
+        // ISO Code Reference: https://help.salesforce.com/s/articleView?id=sf.admin_supported_currencies.htm
+        private String code { get; set; }
+        private Decimal value { get; set; }
+
+        private CurrencyLiteral(String code, Decimal value) {
+            this.code = code;
             this.value = value;
         }
 
         public override String toString() {
-            return this.value;
+            return this.code + this.value;
+        }
+
+        public Boolean equals(Object obj) {
+            if (this === obj) {
+                return true;
+            }
+
+            CurrencyLiteral that = (CurrencyLiteral) obj;
+            return this.value == that.value && this.code == that.code;
+        }
+    }
+
+    public static CurrencyLiteral ISO(String code, Decimal value) {
+        return new CurrencyLiteral(code, value);
+    }
+
+    public static CurrencyLiteral AED(Decimal value) {
+        return new CurrencyLiteral('AED', value);
+    }
+
+    public static CurrencyLiteral AFN(Decimal value) {
+        return new CurrencyLiteral('AFN', value);
+    }
+
+    public static CurrencyLiteral ALL(Decimal value) {
+        return new CurrencyLiteral('ALL', value);
+    }
+
+    public static CurrencyLiteral AMD(Decimal value) {
+        return new CurrencyLiteral('AMD', value);
+    }
+
+    public static CurrencyLiteral ANG(Decimal value) {
+        return new CurrencyLiteral('ANG', value);
+    }
+
+    public static CurrencyLiteral AOA(Decimal value) {
+        return new CurrencyLiteral('AOA', value);
+    }
+
+    public static CurrencyLiteral ARS(Decimal value) {
+        return new CurrencyLiteral('ARS', value);
+    }
+
+    public static CurrencyLiteral AUD(Decimal value) {
+        return new CurrencyLiteral('AUD', value);
+    }
+
+    public static CurrencyLiteral AWG(Decimal value) {
+        return new CurrencyLiteral('AWG', value);
+    }
+
+    public static CurrencyLiteral AZN(Decimal value) {
+        return new CurrencyLiteral('AZN', value);
+    }
+
+    public static CurrencyLiteral BAM(Decimal value) {
+        return new CurrencyLiteral('BAM', value);
+    }
+
+    public static CurrencyLiteral BBD(Decimal value) {
+        return new CurrencyLiteral('BBD', value);
+    }
+
+    public static CurrencyLiteral BDT(Decimal value) {
+        return new CurrencyLiteral('BDT', value);
+    }
+
+    public static CurrencyLiteral BGN(Decimal value) {
+        return new CurrencyLiteral('BGN', value);
+    }
+
+    public static CurrencyLiteral BHD(Decimal value) {
+        return new CurrencyLiteral('BHD', value);
+    }
+
+    public static CurrencyLiteral BIF(Decimal value) {
+        return new CurrencyLiteral('BIF', value);
+    }
+
+    public static CurrencyLiteral BMD(Decimal value) {
+        return new CurrencyLiteral('BMD', value);
+    }
+
+    public static CurrencyLiteral BND(Decimal value) {
+        return new CurrencyLiteral('BND', value);
+    }
+
+    public static CurrencyLiteral BOB(Decimal value) {
+        return new CurrencyLiteral('BOB', value);
+    }
+
+    public static CurrencyLiteral BRL(Decimal value) {
+        return new CurrencyLiteral('BRL', value);
+    }
+
+    public static CurrencyLiteral BSD(Decimal value) {
+        return new CurrencyLiteral('BSD', value);
+    }
+
+    public static CurrencyLiteral BTN(Decimal value) {
+        return new CurrencyLiteral('BTN', value);
+    }
+
+    public static CurrencyLiteral BWP(Decimal value) {
+        return new CurrencyLiteral('BWP', value);
+    }
+
+    public static CurrencyLiteral BYN(Decimal value) {
+        return new CurrencyLiteral('BYN', value);
+    }
+
+    public static CurrencyLiteral BZD(Decimal value) {
+        return new CurrencyLiteral('BZD', value);
+    }
+
+    public static CurrencyLiteral CAD(Decimal value) {
+        return new CurrencyLiteral('CAD', value);
+    }
+
+    public static CurrencyLiteral CDF(Decimal value) {
+        return new CurrencyLiteral('CDF', value);
+    }
+
+    public static CurrencyLiteral CHF(Decimal value) {
+        return new CurrencyLiteral('CHF', value);
+    }
+
+    public static CurrencyLiteral CLP(Decimal value) {
+        return new CurrencyLiteral('CLP', value);
+    }
+
+    public static CurrencyLiteral CNY(Decimal value) {
+        return new CurrencyLiteral('CNY', value);
+    }
+
+    public static CurrencyLiteral COP(Decimal value) {
+        return new CurrencyLiteral('COP', value);
+    }
+
+    public static CurrencyLiteral CRC(Decimal value) {
+        return new CurrencyLiteral('CRC', value);
+    }
+
+    public static CurrencyLiteral CSD(Decimal value) {
+        return new CurrencyLiteral('CSD', value);
+    }
+
+    public static CurrencyLiteral CUP(Decimal value) {
+        return new CurrencyLiteral('CUP', value);
+    }
+
+    public static CurrencyLiteral CVE(Decimal value) {
+        return new CurrencyLiteral('CVE', value);
+    }
+
+    public static CurrencyLiteral CZK(Decimal value) {
+        return new CurrencyLiteral('CZK', value);
+    }
+
+    public static CurrencyLiteral DJF(Decimal value) {
+        return new CurrencyLiteral('DJF', value);
+    }
+
+    public static CurrencyLiteral DKK(Decimal value) {
+        return new CurrencyLiteral('DKK', value);
+    }
+
+    public static CurrencyLiteral DOP(Decimal value) {
+        return new CurrencyLiteral('DOP', value);
+    }
+
+    public static CurrencyLiteral DZD(Decimal value) {
+        return new CurrencyLiteral('DZD', value);
+    }
+
+    public static CurrencyLiteral EGP(Decimal value) {
+        return new CurrencyLiteral('EGP', value);
+    }
+
+    public static CurrencyLiteral ERN(Decimal value) {
+        return new CurrencyLiteral('ERN', value);
+    }
+
+    public static CurrencyLiteral ETB(Decimal value) {
+        return new CurrencyLiteral('ETB', value);
+    }
+
+    public static CurrencyLiteral EUR(Decimal value) {
+        return new CurrencyLiteral('EUR', value);
+    }
+
+    public static CurrencyLiteral FJD(Decimal value) {
+        return new CurrencyLiteral('FJD', value);
+    }
+
+    public static CurrencyLiteral FKP(Decimal value) {
+        return new CurrencyLiteral('FKP', value);
+    }
+
+    public static CurrencyLiteral GBP(Decimal value) {
+        return new CurrencyLiteral('GBP', value);
+    }
+
+    public static CurrencyLiteral GEL(Decimal value) {
+        return new CurrencyLiteral('GEL', value);
+    }
+
+    public static CurrencyLiteral GHS(Decimal value) {
+        return new CurrencyLiteral('GHS', value);
+    }
+
+    public static CurrencyLiteral GIP(Decimal value) {
+        return new CurrencyLiteral('GIP', value);
+    }
+
+    public static CurrencyLiteral GMD(Decimal value) {
+        return new CurrencyLiteral('GMD', value);
+    }
+
+    public static CurrencyLiteral GNF(Decimal value) {
+        return new CurrencyLiteral('GNF', value);
+    }
+
+    public static CurrencyLiteral GTQ(Decimal value) {
+        return new CurrencyLiteral('GTQ', value);
+    }
+
+    public static CurrencyLiteral GYD(Decimal value) {
+        return new CurrencyLiteral('GYD', value);
+    }
+
+    public static CurrencyLiteral HKD(Decimal value) {
+        return new CurrencyLiteral('HKD', value);
+    }
+
+    public static CurrencyLiteral HNL(Decimal value) {
+        return new CurrencyLiteral('HNL', value);
+    }
+
+    public static CurrencyLiteral HRK(Decimal value) {
+        return new CurrencyLiteral('HRK', value);
+    }
+
+    public static CurrencyLiteral HTG(Decimal value) {
+        return new CurrencyLiteral('HTG', value);
+    }
+
+    public static CurrencyLiteral HUF(Decimal value) {
+        return new CurrencyLiteral('HUF', value);
+    }
+
+    public static CurrencyLiteral IDR(Decimal value) {
+        return new CurrencyLiteral('IDR', value);
+    }
+
+    public static CurrencyLiteral ILS(Decimal value) {
+        return new CurrencyLiteral('ILS', value);
+    }
+
+    public static CurrencyLiteral INR(Decimal value) {
+        return new CurrencyLiteral('INR', value);
+    }
+
+    public static CurrencyLiteral IQD(Decimal value) {
+        return new CurrencyLiteral('IQD', value);
+    }
+
+    public static CurrencyLiteral IRR(Decimal value) {
+        return new CurrencyLiteral('IRR', value);
+    }
+
+    public static CurrencyLiteral ISK(Decimal value) {
+        return new CurrencyLiteral('ISK', value);
+    }
+
+    public static CurrencyLiteral JMD(Decimal value) {
+        return new CurrencyLiteral('JMD', value);
+    }
+
+    public static CurrencyLiteral JOD(Decimal value) {
+        return new CurrencyLiteral('JOD', value);
+    }
+
+    public static CurrencyLiteral JPY(Decimal value) {
+        return new CurrencyLiteral('JPY', value);
+    }
+
+    public static CurrencyLiteral KES(Decimal value) {
+        return new CurrencyLiteral('KES', value);
+    }
+
+    public static CurrencyLiteral KGS(Decimal value) {
+        return new CurrencyLiteral('KGS', value);
+    }
+
+    public static CurrencyLiteral KHR(Decimal value) {
+        return new CurrencyLiteral('KHR', value);
+    }
+
+    public static CurrencyLiteral KMF(Decimal value) {
+        return new CurrencyLiteral('KMF', value);
+    }
+
+    public static CurrencyLiteral KPW(Decimal value) {
+        return new CurrencyLiteral('KPW', value);
+    }
+
+    public static CurrencyLiteral KRW(Decimal value) {
+        return new CurrencyLiteral('KRW', value);
+    }
+
+    public static CurrencyLiteral KWD(Decimal value) {
+        return new CurrencyLiteral('KWD', value);
+    }
+
+    public static CurrencyLiteral KYD(Decimal value) {
+        return new CurrencyLiteral('KYD', value);
+    }
+
+    public static CurrencyLiteral KZT(Decimal value) {
+        return new CurrencyLiteral('KZT', value);
+    }
+
+    public static CurrencyLiteral LAK(Decimal value) {
+        return new CurrencyLiteral('LAK', value);
+    }
+
+    public static CurrencyLiteral LBP(Decimal value) {
+        return new CurrencyLiteral('LBP', value);
+    }
+
+    public static CurrencyLiteral LKR(Decimal value) {
+        return new CurrencyLiteral('LKR', value);
+    }
+
+    public static CurrencyLiteral LRD(Decimal value) {
+        return new CurrencyLiteral('LRD', value);
+    }
+
+    public static CurrencyLiteral LYD(Decimal value) {
+        return new CurrencyLiteral('LYD', value);
+    }
+
+    public static CurrencyLiteral MAD(Decimal value) {
+        return new CurrencyLiteral('MAD', value);
+    }
+
+    public static CurrencyLiteral MDL(Decimal value) {
+        return new CurrencyLiteral('MDL', value);
+    }
+
+    public static CurrencyLiteral MGA(Decimal value) {
+        return new CurrencyLiteral('MGA', value);
+    }
+
+    public static CurrencyLiteral MKD(Decimal value) {
+        return new CurrencyLiteral('MKD', value);
+    }
+
+    public static CurrencyLiteral MMK(Decimal value) {
+        return new CurrencyLiteral('MMK', value);
+    }
+
+    public static CurrencyLiteral MOP(Decimal value) {
+        return new CurrencyLiteral('MOP', value);
+    }
+
+    public static CurrencyLiteral MRU(Decimal value) {
+        return new CurrencyLiteral('MRU', value);
+    }
+
+    public static CurrencyLiteral MUR(Decimal value) {
+        return new CurrencyLiteral('MUR', value);
+    }
+
+    public static CurrencyLiteral MWK(Decimal value) {
+        return new CurrencyLiteral('MWK', value);
+    }
+
+    public static CurrencyLiteral MXN(Decimal value) {
+        return new CurrencyLiteral('MXN', value);
+    }
+
+    public static CurrencyLiteral MYR(Decimal value) {
+        return new CurrencyLiteral('MYR', value);
+    }
+
+    public static CurrencyLiteral MZN(Decimal value) {
+        return new CurrencyLiteral('MZN', value);
+    }
+
+    public static CurrencyLiteral NAD(Decimal value) {
+        return new CurrencyLiteral('NAD', value);
+    }
+
+    public static CurrencyLiteral NGN(Decimal value) {
+        return new CurrencyLiteral('NGN', value);
+    }
+
+    public static CurrencyLiteral NIO(Decimal value) {
+        return new CurrencyLiteral('NIO', value);
+    }
+
+    public static CurrencyLiteral NOK(Decimal value) {
+        return new CurrencyLiteral('NOK', value);
+    }
+
+    public static CurrencyLiteral NPR(Decimal value) {
+        return new CurrencyLiteral('NPR', value);
+    }
+
+    public static CurrencyLiteral NZD(Decimal value) {
+        return new CurrencyLiteral('NZD', value);
+    }
+
+    public static CurrencyLiteral OMR(Decimal value) {
+        return new CurrencyLiteral('OMR', value);
+    }
+
+    public static CurrencyLiteral PAB(Decimal value) {
+        return new CurrencyLiteral('PAB', value);
+    }
+
+    public static CurrencyLiteral PEN(Decimal value) {
+        return new CurrencyLiteral('PEN', value);
+    }
+
+    public static CurrencyLiteral PGK(Decimal value) {
+        return new CurrencyLiteral('PGK', value);
+    }
+
+    public static CurrencyLiteral PHP(Decimal value) {
+        return new CurrencyLiteral('PHP', value);
+    }
+
+    public static CurrencyLiteral PKR(Decimal value) {
+        return new CurrencyLiteral('PKR', value);
+    }
+
+    public static CurrencyLiteral PLN(Decimal value) {
+        return new CurrencyLiteral('PLN', value);
+    }
+
+    public static CurrencyLiteral PYG(Decimal value) {
+        return new CurrencyLiteral('PYG', value);
+    }
+
+    public static CurrencyLiteral QAR(Decimal value) {
+        return new CurrencyLiteral('QAR', value);
+    }
+
+    public static CurrencyLiteral RON(Decimal value) {
+        return new CurrencyLiteral('RON', value);
+    }
+
+    public static CurrencyLiteral RSD(Decimal value) {
+        return new CurrencyLiteral('RSD', value);
+    }
+
+    public static CurrencyLiteral RUB(Decimal value) {
+        return new CurrencyLiteral('RUB', value);
+    }
+
+    public static CurrencyLiteral RWF(Decimal value) {
+        return new CurrencyLiteral('RWF', value);
+    }
+
+    public static CurrencyLiteral SAR(Decimal value) {
+        return new CurrencyLiteral('SAR', value);
+    }
+
+    public static CurrencyLiteral SBD(Decimal value) {
+        return new CurrencyLiteral('SBD', value);
+    }
+
+    public static CurrencyLiteral SCR(Decimal value) {
+        return new CurrencyLiteral('SCR', value);
+    }
+
+    public static CurrencyLiteral SDG(Decimal value) {
+        return new CurrencyLiteral('SDG', value);
+    }
+
+    public static CurrencyLiteral SEK(Decimal value) {
+        return new CurrencyLiteral('SEK', value);
+    }
+
+    public static CurrencyLiteral SGD(Decimal value) {
+        return new CurrencyLiteral('SGD', value);
+    }
+
+    public static CurrencyLiteral SHP(Decimal value) {
+        return new CurrencyLiteral('SHP', value);
+    }
+
+    public static CurrencyLiteral SLE(Decimal value) {
+        return new CurrencyLiteral('SLE', value);
+    }
+
+    public static CurrencyLiteral SLL(Decimal value) {
+        return new CurrencyLiteral('SLL', value);
+    }
+
+    public static CurrencyLiteral SOS(Decimal value) {
+        return new CurrencyLiteral('SOS', value);
+    }
+
+    public static CurrencyLiteral SRD(Decimal value) {
+        return new CurrencyLiteral('SRD', value);
+    }
+
+    public static CurrencyLiteral STN(Decimal value) {
+        return new CurrencyLiteral('STN', value);
+    }
+
+    public static CurrencyLiteral SYP(Decimal value) {
+        return new CurrencyLiteral('SYP', value);
+    }
+
+    public static CurrencyLiteral SZL(Decimal value) {
+        return new CurrencyLiteral('SZL', value);
+    }
+
+    public static CurrencyLiteral THB(Decimal value) {
+        return new CurrencyLiteral('THB', value);
+    }
+
+    public static CurrencyLiteral TJS(Decimal value) {
+        return new CurrencyLiteral('TJS', value);
+    }
+
+    public static CurrencyLiteral TND(Decimal value) {
+        return new CurrencyLiteral('TND', value);
+    }
+
+    public static CurrencyLiteral TOP(Decimal value) {
+        return new CurrencyLiteral('TOP', value);
+    }
+
+    // !TRY is a keywork
+    // public static CurrencyLiteral TRY(Decimal value) {
+    //     return new CurrencyLiteral('TRY', value);
+    // }
+
+    public static CurrencyLiteral TTD(Decimal value) {
+        return new CurrencyLiteral('TTD', value);
+    }
+
+    public static CurrencyLiteral TWD(Decimal value) {
+        return new CurrencyLiteral('TWD', value);
+    }
+
+    public static CurrencyLiteral TZS(Decimal value) {
+        return new CurrencyLiteral('TZS', value);
+    }
+
+    public static CurrencyLiteral UAH(Decimal value) {
+        return new CurrencyLiteral('UAH', value);
+    }
+
+    public static CurrencyLiteral UGX(Decimal value) {
+        return new CurrencyLiteral('UGX', value);
+    }
+
+    public static CurrencyLiteral USD(Decimal value) {
+        return new CurrencyLiteral('USD', value);
+    }
+
+    public static CurrencyLiteral UYU(Decimal value) {
+        return new CurrencyLiteral('UYU', value);
+    }
+
+    public static CurrencyLiteral UZS(Decimal value) {
+        return new CurrencyLiteral('UZS', value);
+    }
+
+    public static CurrencyLiteral VES(Decimal value) {
+        return new CurrencyLiteral('VES', value);
+    }
+
+    public static CurrencyLiteral VND(Decimal value) {
+        return new CurrencyLiteral('VND', value);
+    }
+
+    public static CurrencyLiteral VUV(Decimal value) {
+        return new CurrencyLiteral('VUV', value);
+    }
+
+    public static CurrencyLiteral WST(Decimal value) {
+        return new CurrencyLiteral('WST', value);
+    }
+
+    public static CurrencyLiteral XAF(Decimal value) {
+        return new CurrencyLiteral('XAF', value);
+    }
+
+    public static CurrencyLiteral XCD(Decimal value) {
+        return new CurrencyLiteral('XCD', value);
+    }
+
+    public static CurrencyLiteral XOF(Decimal value) {
+        return new CurrencyLiteral('XOF', value);
+    }
+
+    public static CurrencyLiteral XPF(Decimal value) {
+        return new CurrencyLiteral('XPF', value);
+    }
+
+    public static CurrencyLiteral YER(Decimal value) {
+        return new CurrencyLiteral('YER', value);
+    }
+
+    public static CurrencyLiteral ZAR(Decimal value) {
+        return new CurrencyLiteral('ZAR', value);
+    }
+
+    // #endregion
+    // ======================
+
+    // =====================
+    // #region Date
+
+    public class DateFunction extends GenericFunction implements SelectFunction {
+        private DateFunction(Object fieldOrFunc, String name, Integer tag) {
+            super(fieldOrFunc, name, tag);
+        }
+
+        private DateFunction(Object fieldOrFunc, String name, Integer tag, String alias) {
+            super(fieldOrFunc, name, tag, alias);
+        }
+    }
+
+    public static DateFunction CALENDAR_MONTH(SObjectField field) {
+        return new DateFunction(field, 'CALENDAR_MONTH', CALENDAR_MONTH_TAG);
+    }
+
+    public static DateFunction CALENDAR_QUARTER(SObjectField field) {
+        return new DateFunction(field, 'CALENDAR_QUARTER', CALENDAR_QUARTER_TAG);
+    }
+
+    public static DateFunction CALENDAR_YEAR(SObjectField field) {
+        return new DateFunction(field, 'CALENDAR_YEAR', CALENDAR_YEAR_TAG);
+    }
+
+    public static DateFunction DAY_IN_MONTH(SObjectField field) {
+        return new DateFunction(field, 'DAY_IN_MONTH', DAY_IN_MONTH_TAG);
+    }
+
+    public static DateFunction DAY_IN_WEEK(SObjectField field) {
+        return new DateFunction(field, 'DAY_IN_WEEK', DAY_IN_WEEK_TAG);
+    }
+
+    public static DateFunction DAY_IN_YEAR(SObjectField field) {
+        return new DateFunction(field, 'DAY_IN_YEAR', DAY_IN_YEAR_TAG);
+    }
+
+    public static DateFunction DAY_ONLY(SObjectField field) {
+        return new DateFunction(field, 'DAY_ONLY', DAY_ONLY_TAG);
+    }
+
+    public static DateFunction FISCAL_MONTH(SObjectField field) {
+        return new DateFunction(field, 'FISCAL_MONTH', FISCAL_MONTH_TAG);
+    }
+
+    public static DateFunction FISCAL_QUARTER(SObjectField field) {
+        return new DateFunction(field, 'FISCAL_QUARTER', FISCAL_QUARTER_TAG);
+    }
+
+    public static DateFunction FISCAL_YEAR(SObjectField field) {
+        return new DateFunction(field, 'FISCAL_YEAR', FISCAL_YEAR_TAG);
+    }
+
+    public static DateFunction HOUR_IN_DAY(SObjectField field) {
+        return new DateFunction(field, 'HOUR_IN_DAY', HOUR_IN_DAY_TAG);
+    }
+
+    public static DateFunction WEEK_IN_MONTH(SObjectField field) {
+        return new DateFunction(field, 'WEEK_IN_MONTH', WEEK_IN_MONTH_TAG);
+    }
+
+    public static DateFunction WEEK_IN_YEAR(SObjectField field) {
+        return new DateFunction(field, 'WEEK_IN_YEAR', WEEK_IN_YEAR_TAG);
+    }
+
+    public static DateFunction CALENDAR_MONTH(TimezoneFunction func) {
+        return new DateFunction(func, 'CALENDAR_MONTH', CALENDAR_MONTH_TAG);
+    }
+
+    public static DateFunction CALENDAR_QUARTER(TimezoneFunction func) {
+        return new DateFunction(func, 'CALENDAR_QUARTER', CALENDAR_QUARTER_TAG);
+    }
+
+    public static DateFunction CALENDAR_YEAR(TimezoneFunction func) {
+        return new DateFunction(func, 'CALENDAR_YEAR', CALENDAR_YEAR_TAG);
+    }
+
+    public static DateFunction DAY_IN_MONTH(TimezoneFunction func) {
+        return new DateFunction(func, 'DAY_IN_MONTH', DAY_IN_MONTH_TAG);
+    }
+
+    public static DateFunction DAY_IN_WEEK(TimezoneFunction func) {
+        return new DateFunction(func, 'DAY_IN_WEEK', DAY_IN_WEEK_TAG);
+    }
+
+    public static DateFunction DAY_IN_YEAR(TimezoneFunction func) {
+        return new DateFunction(func, 'DAY_IN_YEAR', DAY_IN_YEAR_TAG);
+    }
+
+    public static DateFunction DAY_ONLY(TimezoneFunction func) {
+        return new DateFunction(func, 'DAY_ONLY', DAY_ONLY_TAG);
+    }
+
+    public static DateFunction FISCAL_MONTH(TimezoneFunction func) {
+        return new DateFunction(func, 'FISCAL_MONTH', FISCAL_MONTH_TAG);
+    }
+
+    public static DateFunction FISCAL_QUARTER(TimezoneFunction func) {
+        return new DateFunction(func, 'FISCAL_QUARTER', FISCAL_QUARTER_TAG);
+    }
+
+    public static DateFunction FISCAL_YEAR(TimezoneFunction func) {
+        return new DateFunction(func, 'FISCAL_YEAR', FISCAL_YEAR_TAG);
+    }
+
+    public static DateFunction HOUR_IN_DAY(TimezoneFunction func) {
+        return new DateFunction(func, 'HOUR_IN_DAY', HOUR_IN_DAY_TAG);
+    }
+
+    public static DateFunction WEEK_IN_MONTH(TimezoneFunction func) {
+        return new DateFunction(func, 'WEEK_IN_MONTH', WEEK_IN_MONTH_TAG);
+    }
+
+    public static DateFunction WEEK_IN_YEAR(TimezoneFunction func) {
+        return new DateFunction(func, 'WEEK_IN_YEAR', WEEK_IN_YEAR_TAG);
+    }
+
+    public class TimezoneFunction extends GenericFunction {
+        private TimezoneFunction(SObjectField field) {
+            super(field, 'CONVERTTIMEZONE', FUNC_CURRENCY_TAG);
+        }
+    }
+
+    public static TimezoneFunction CONVERT_TIMEZONE(SObjectField field) {
+        return new TimezoneFunction(field);
+    }
+
+    public class DateLiteral {
+        public String name { get; set; }
+        public Integer value { get; set; }
+
+        // TODO: use tag to improve performance for literals as well?
+
+        private DateLiteral(String name) {
+            this.name = name;
+        }
+
+        private DateLiteral(String name, Integer value) {
+            this.name = name;
+            this.value = value;
+        }
+
+        public override String toString() {
+            if (this.value == null) {
+                return this.name;
+            } else {
+                return this.name + this.value;
+            }
         }
 
         public Boolean equals(Object obj) {
@@ -1549,7 +2874,7 @@ public abstract class Query implements Querable {
             }
 
             DateLiteral that = (DateLiteral) obj;
-            return this.value == that.value;
+            return this.value == that.value && this.name == that.name;
         }
     }
 
@@ -1682,161 +3007,193 @@ public abstract class Query implements Querable {
     }
 
     public static DateLiteral LAST_N_DAYS(Integer n) {
-        return new DateLiteral('LAST_N_DAYS:' + n);
+        return new DateLiteral('LAST_N_DAYS:', n);
     }
 
     public static DateLiteral NEXT_N_DAYS(Integer n) {
-        return new DateLiteral('NEXT_N_DAYS:' + n);
+        return new DateLiteral('NEXT_N_DAYS:', n);
     }
 
     public static DateLiteral N_DAYS_AGO(Integer n) {
-        return new DateLiteral('N_DAYS_AGO:' + n);
+        return new DateLiteral('N_DAYS_AGO:', n);
     }
 
     public static DateLiteral NEXT_N_WEEKS(Integer n) {
-        return new DateLiteral('NEXT_N_WEEKS:' + n);
+        return new DateLiteral('NEXT_N_WEEKS:', n);
     }
 
     public static DateLiteral LAST_N_WEEKS(Integer n) {
-        return new DateLiteral('LAST_N_WEEKS:' + n);
+        return new DateLiteral('LAST_N_WEEKS:', n);
     }
 
     public static DateLiteral N_WEEKS_AGO(Integer n) {
-        return new DateLiteral('N_WEEKS_AGO:' + n);
+        return new DateLiteral('N_WEEKS_AGO:', n);
     }
 
     public static DateLiteral NEXT_N_MONTHS(Integer n) {
-        return new DateLiteral('NEXT_N_MONTHS:' + n);
+        return new DateLiteral('NEXT_N_MONTHS:', n);
     }
 
     public static DateLiteral LAST_N_MONTHS(Integer n) {
-        return new DateLiteral('LAST_N_MONTHS:' + n);
+        return new DateLiteral('LAST_N_MONTHS:', n);
     }
 
     public static DateLiteral N_MONTHS_AGO(Integer n) {
-        return new DateLiteral('N_MONTHS_AGO:' + n);
+        return new DateLiteral('N_MONTHS_AGO:', n);
     }
 
     public static DateLiteral NEXT_N_QUARTERS(Integer n) {
-        return new DateLiteral('NEXT_N_QUARTERS:' + n);
+        return new DateLiteral('NEXT_N_QUARTERS:', n);
     }
 
     public static DateLiteral LAST_N_QUARTERS(Integer n) {
-        return new DateLiteral('LAST_N_QUARTERS:' + n);
+        return new DateLiteral('LAST_N_QUARTERS:', n);
     }
 
     public static DateLiteral N_QUARTERS_AGO(Integer n) {
-        return new DateLiteral('N_QUARTERS_AGO:' + n);
+        return new DateLiteral('N_QUARTERS_AGO:', n);
     }
 
     public static DateLiteral NEXT_N_YEARS(Integer n) {
-        return new DateLiteral('NEXT_N_YEARS:' + n);
+        return new DateLiteral('NEXT_N_YEARS:', n);
     }
 
     public static DateLiteral LAST_N_YEARS(Integer n) {
-        return new DateLiteral('LAST_N_YEARS:' + n);
+        return new DateLiteral('LAST_N_YEARS:', n);
     }
 
     public static DateLiteral N_YEARS_AGO(Integer n) {
-        return new DateLiteral('N_YEARS_AGO:' + n);
+        return new DateLiteral('N_YEARS_AGO:', n);
     }
 
     public static DateLiteral NEXT_N_FISCAL_QUARTERS(Integer n) {
-        return new DateLiteral('NEXT_N_FISCAL_QUARTERS:' + n);
+        return new DateLiteral('NEXT_N_FISCAL_QUARTERS:', n);
     }
 
     public static DateLiteral N_FISCAL_QUARTERS_AGO(Integer n) {
-        return new DateLiteral('N_FISCAL_QUARTERS_AGO:' + n);
+        return new DateLiteral('N_FISCAL_QUARTERS_AGO:', n);
     }
 
     public static DateLiteral NEXT_N_FISCAL_YEARS(Integer n) {
-        return new DateLiteral('NEXT_N_FISCAL_YEARS:' + n);
+        return new DateLiteral('NEXT_N_FISCAL_YEARS:', n);
     }
 
     public static DateLiteral LAST_N_FISCAL_YEARS(Integer n) {
-        return new DateLiteral('LAST_N_FISCAL_YEARS:' + n);
+        return new DateLiteral('LAST_N_FISCAL_YEARS:', n);
     }
 
     public static DateLiteral N_FISCAL_YEARS_AGO(Integer n) {
-        return new DateLiteral('N_FISCAL_YEARS_AGO:' + n);
+        return new DateLiteral('N_FISCAL_YEARS_AGO:', n);
     }
 
     // #endregion
     // =====================
 
-    private static final Integer EQ_TAG = 1;
-    private static final Integer NE_TAG = 2;
-    private static final Integer GT_TAG = 3;
-    private static final Integer GTE_TAG = 4;
-    private static final Integer LT_TAG = 5;
-    private static final Integer LTE_TAG = 6;
-    private static final Integer LIKEX_TAG = 7;
-    private static final Integer NLIKE_TAG = 8;
-    private static final Integer INCLUDES_TAG = 9;
-    private static final Integer EXCLUDES_TAG = 10;
-    private static final Integer INX_TAG = 11;
-    private static final Integer NIN_TAG = 12;
-    private static final Integer INX_QUERY_TAG = 13;
-    private static final Integer DISTANCE_TAG = 14;
-    private static final Integer AND_TAG = 15;
-    private static final Integer OR_TAG = 16;
-    private static final Integer GROUPING_TAG = 17;
-    private static final Integer COUNT_TAG = 18;
-    private static final Integer SUM_TAG = 19;
-    private static final Integer AVG_TAG = 20;
-    private static final Integer MAX_TAG = 21;
-    private static final Integer MIN_TAG = 22;
+    // Filter Tags
+    private static final Integer FILTER_EQ_TAG = 1;
+    private static final Integer FILTER_NE_TAG = 2;
+    private static final Integer FILTER_GT_TAG = 3;
+    private static final Integer FILTER_GTE_TAG = 4;
+    private static final Integer FILTER_LT_TAG = 5;
+    private static final Integer FILTER_LTE_TAG = 6;
+    private static final Integer FILTER_LIKEX_TAG = 7;
+    private static final Integer FILTER_NLIKE_TAG = 8;
+    private static final Integer FILTER_INCLUDES_TAG = 9;
+    private static final Integer FILTER_EXCLUDES_TAG = 10;
+    private static final Integer FILTER_INX_TAG = 11;
+    private static final Integer FILTER_NIN_TAG = 12;
+    private static final Integer FILTER_INX_QUERY_TAG = 13;
+    private static final Integer FILTER_DISTANCE_TAG = 14;
+    private static final Integer FILTER_AND_TAG = 15;
+    private static final Integer FILTER_OR_TAG = 16;
+
+    private static final Integer FUNC_GROUPING_TAG = 17;
+    private static final Integer FUNC_COUNT_TAG = 18;
+    private static final Integer FUNC_COUNT_DISTINCT_TAG = 19;
+    private static final Integer FUNC_SUM_TAG = 20;
+    private static final Integer FUNC_AVG_TAG = 21;
+    private static final Integer FUNC_MAX_TAG = 22;
+    private static final Integer FUNC_MIN_TAG = 23;
+
+    private static final Integer CALENDAR_MONTH_TAG = 24;
+    private static final Integer CALENDAR_QUARTER_TAG = 25;
+    private static final Integer CALENDAR_YEAR_TAG = 26;
+    private static final Integer DAY_IN_MONTH_TAG = 27;
+    private static final Integer DAY_IN_WEEK_TAG = 28;
+    private static final Integer DAY_IN_YEAR_TAG = 29;
+    private static final Integer DAY_ONLY_TAG = 30;
+    private static final Integer FISCAL_MONTH_TAG = 31;
+    private static final Integer FISCAL_QUARTER_TAG = 32;
+    private static final Integer FISCAL_YEAR_TAG = 33;
+    private static final Integer HOUR_IN_DAY_TAG = 34;
+    private static final Integer WEEK_IN_MONTH_TAG = 35;
+    private static final Integer WEEK_IN_YEAR_TAG = 36;
+
+    private static final Integer FUNC_FORMAT_TAG = 37;
+    private static final Integer FUNC_LABEL_TAG = 38;
+    private static final Integer FUNC_CURRENCY_TAG = 39;
 
     // prettier-ignore
     public interface Querable {
         // Select
-        Query selectAll();
-        Query selectBy(Selector selector);
+        Query selectAll(); // TODO: Support select all?
+        // TODO: support forLabel.
+        // TODO: Support Using Scope
+        // TODO: Support NOT Logic
         Query selectBy(SObjectField field);
         Query selectBy(SObjectField field1, SObjectField field2);
         Query selectBy(SObjectField field1, SObjectField field2, SObjectField field3);
         Query selectBy(SObjectField field1, SObjectField field2, SObjectField field3, SObjectField field4);
         Query selectBy(SObjectField field1, SObjectField field2, SObjectField field3, SObjectField field4, SObjectField field5);
-        Query selectBy(List<SObjectField> fields);
+
+        Query selectBy(SelectFunction func);
+        Query selectBy(SelectFunction func1, SelectFunction func2);
+        Query selectBy(SelectFunction func1, SelectFunction func2, SelectFunction func3);
+        Query selectBy(SelectFunction func1, SelectFunction func2, SelectFunction func3, SelectFunction func4);
+        Query selectBy(SelectFunction func1, SelectFunction func2, SelectFunction func3, SelectFunction func4, SelectFunction func5);
+
         Query selectBy(String relationName, Query query);
+        Query selectBy(List<Object> fieldOrFuncs);
+        Query selectBy(Selector selector);
 
         // Group By
-        Query grouping(SObjectField field);
-        Query grouping(SObjectField field, String alias);
-        Query count();
-        Query count(SObjectField field);
-        Query count(SObjectField field, String alias);
-        Query sum(SObjectField field);
-        Query sum(SObjectField field, String alias);
-        Query avg(SObjectField field);
-        Query avg(SObjectField field, String alias);
-        Query max(SObjectField field);
-        Query max(SObjectField field, String alias);
-        Query min(SObjectField field);
-        Query min(SObjectField field, String alias);
 
         Query groupBy(SObjectField field);
         Query groupBy(SObjectField field1, SObjectField field2);
         Query groupBy(SObjectField field1, SObjectField field2, SObjectField field3);
         Query groupBy(SObjectField field1, SObjectField field2, SObjectField field3, SObjectField field4);
         Query groupBy(SObjectField field1, SObjectField field2, SObjectField field3, SObjectField field4, SObjectField field5);
-        Query groupBy(List<SObjectField> fields);
+
+        Query groupBy(DateFunction func);
+        Query groupBy(DateFunction func1, DateFunction func2);
+        Query groupBy(DateFunction func1, DateFunction func2, DateFunction func3);
+        Query groupBy(DateFunction func1, DateFunction func2, DateFunction func3, DateFunction func4);
+        Query groupBy(DateFunction func1, DateFunction func2, DateFunction func3, DateFunction func4, DateFunction func5);
+
+        Query groupBy(List<Object> fieldOrFuncs);
+        Query groupBy(Grouper grouper);
+
         Query rollup();
         Query cube();
 
+        // TODO: support having
+
         // Order By
-        Query orderBy(String name);
-        Query orderBy(String name1, String name2);
-        Query orderBy(String name1, String name2, String name3);
-        Query orderBy(String name1, String name2, String name3, String name4);
-        Query orderBy(String name1, String name2, String name3, String name4, String name5);
-        Query orderBy(List<String> names);
-        Query orderBy(Distance distance);
-        Query orderBy(Distance distance1, Distance distance2);
-        Query orderBy(Distance distance1, Distance distance2, Distance distance3);
-        Query orderBy(Distance distance1, Distance distance2, Distance distance3, Distance distance4);
-        Query orderBy(Distance distance1, Distance distance2, Distance distance3, Distance distance4, Distance distance5);
-        Query orderBy(List<Distance> distances);
+        Query orderBy(SObjectField field);
+        Query orderBy(SObjectField field1, SObjectField field2);
+        Query orderBy(SObjectField field1, SObjectField field2, SObjectField field3);
+        Query orderBy(SObjectField field1, SObjectField field2, SObjectField field3, SObjectField field4);
+        Query orderBy(SObjectField field1, SObjectField field2, SObjectField field3, SObjectField field4, SObjectField field5);
+
+        Query orderBy(OrderFunction func);
+        Query orderBy(OrderFunction func1, OrderFunction func2);
+        Query orderBy(OrderFunction func1, OrderFunction func2, OrderFunction func3);
+        Query orderBy(OrderFunction func1, OrderFunction func2, OrderFunction func3, OrderFunction func4);
+        Query orderBy(OrderFunction func1, OrderFunction func2, OrderFunction func3, OrderFunction func4, OrderFunction func5);
+
+        Query orderBy(List<Object> fieldOrFuncs);
+        Query orderBy(Orderer orderer);
+
         Query ascending();
         Query descending();
         Query nullsFirst();
