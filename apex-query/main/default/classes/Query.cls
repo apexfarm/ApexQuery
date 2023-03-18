@@ -19,6 +19,7 @@ public abstract class Query implements Querable {
     private SObjectType objectType { get; set; }
     private SelectorImpl rootSelector { get; set; }
     private Filter rootFilter { get; set; }
+    private Filter rootHaving { get; set; }
     private OrdererImpl rootOrderer { get; set; }
 
     private GrouperImpl grouper { get; set; }
@@ -203,10 +204,17 @@ public abstract class Query implements Querable {
             // Build Filters
             if (this.rootFilter != null) {
                 fragments.add(' WHERE ');
-                rootFilter.build(fragments, tmpVars);
+                this.rootFilter.build(fragments, tmpVars);
             }
 
             this.buildGroupBy(fragments);
+
+            // Build Filters
+            if (this.rootHaving != null) {
+                fragments.add(' HAVING ');
+                this.rootHaving.build(fragments, tmpVars);
+            }
+
             this.buildOrderBy(fragments);
 
             if (this.limitx != null) {
@@ -237,6 +245,7 @@ public abstract class Query implements Querable {
             buildSoql(fragments, tmpVars);
             String query = String.join(fragments, '');
             System.debug(query);
+            System.debug(tmpVars);
             return query;
         }
     }
@@ -433,10 +442,6 @@ public abstract class Query implements Querable {
 
     public static Selector selector() {
         return new SelectorImpl();
-    }
-
-    public Query selectAll() {
-        return this;
     }
 
     public Query selectBy(Selector selector) {
@@ -1070,6 +1075,17 @@ public abstract class Query implements Querable {
     // ================
 
     // ==============
+    // #region Having
+
+    public Query havingBy(Filter filter) {
+        this.rootHaving = filter;
+        return this;
+    }
+
+    // #endregion
+    // ==============
+
+    // ==============
     // #region Filter
     public interface Filter {
         void build(List<String> fragments, Map<String, Object> tmpVars);
@@ -1329,6 +1345,14 @@ public abstract class Query implements Querable {
         return new NE(func, value);
     }
 
+    public static Filter eq(AggregateFunction func, Object value) {
+        return new EQ(func, value);
+    }
+
+    public static Filter ne(AggregateFunction func, Object value) {
+        return new NE(func, value);
+    }
+
     // TODO: support isnull?
 
     public static Filter eqNull(SObjectField field) {
@@ -1390,6 +1414,10 @@ public abstract class Query implements Querable {
         return new GT(func, value);
     }
 
+    public static Filter gt(AggregateFunction func, Object value) {
+        return new GT(func, value);
+    }
+
     // #endregion
     // ==========
 
@@ -1439,6 +1467,10 @@ public abstract class Query implements Querable {
     }
 
     public static Filter gte(DistanceFunction func, Decimal value) {
+        return new GTE(func, value);
+    }
+
+    public static Filter gte(AggregateFunction func, Object value) {
         return new GTE(func, value);
     }
     // #endregion
@@ -1492,6 +1524,10 @@ public abstract class Query implements Querable {
     public static Filter lt(DistanceFunction func, Decimal value) {
         return new LT(func, value);
     }
+
+    public static Filter lt(AggregateFunction func, Object value) {
+        return new LT(func, value);
+    }
     // #endregion
     // ==========
 
@@ -1543,6 +1579,10 @@ public abstract class Query implements Querable {
     public static Filter lte(DistanceFunction func, Decimal value) {
         return new LTE(func, value);
     }
+
+    public static Filter lte(AggregateFunction func, Object value) {
+        return new LTE(func, value);
+    }
     // #endregion
     // ==========
 
@@ -1588,21 +1628,25 @@ public abstract class Query implements Querable {
     public static Filter between(DistanceFunction func, Decimal fromValue, Decimal toValue) {
         return andx(gte(func, fromValue), lte(func, toValue));
     }
+    // prettier-ignore
+    public static Filter between(AggregateFunction func, Object fromValue, Object toValue) {
+        return andx(gte(func, fromValue), lte(func, toValue));
+    }
     // #endregion
     // ===============
 
     // ============
     // #region like
     private class LikeX extends ComparisonExpression {
-        private LikeX(SObjectField field, String value) {
-            super(field, ' LIKE ', value);
+        private LikeX(Object fieldOrFunc, String value) {
+            super(fieldOrFunc, ' LIKE ', value);
             this.tag = FILTER_LIKEX_TAG;
         }
     }
 
     private class NLike extends ComparisonExpression {
-        private NLike(SObjectField field, String value) {
-            super(field, ' LIKE ', value);
+        private NLike(Object fieldOrFunc, String value) {
+            super(fieldOrFunc, ' LIKE ', value);
             this.tag = FILTER_NLIKE_TAG;
         }
 
@@ -1619,6 +1663,14 @@ public abstract class Query implements Querable {
 
     public static Filter nlike(SObjectField field, String value) {
         return new NLike(field, value);
+    }
+
+    public static Filter likex(AggregateFunction func, String value) {
+        return new LikeX(func, value);
+    }
+
+    public static Filter nlike(AggregateFunction func, String value) {
+        return new NLike(func, value);
     }
     // #endregion
     // ============
@@ -1765,6 +1817,37 @@ public abstract class Query implements Querable {
         return new INX(field, values);
     }
 
+    public static Filter inx(AggregateFunction func, String value) {
+        return new INX(func, new List<String>{ value });
+    }
+
+    public static Filter inx(AggregateFunction func, String value1, String value2) {
+        return new INX(func, new List<String>{ value1, value2 });
+    }
+
+    public static Filter inx(AggregateFunction func, String value1, String value2, String value3) {
+        return new INX(func, new List<String>{ value1, value2, value3 });
+    }
+
+    public static Filter inx(AggregateFunction func, String value1, String value2, String value3, String value4) {
+        return new INX(func, new List<String>{ value1, value2, value3, value4 });
+    }
+
+    public static Filter inx(
+        AggregateFunction func,
+        String value1,
+        String value2,
+        String value3,
+        String value4,
+        String value5
+    ) {
+        return new INX(func, new List<String>{ value1, value2, value3, value4, value5 });
+    }
+
+    public static Filter inx(AggregateFunction func, List<String> values) {
+        return new INX(func, values);
+    }
+
     public static Filter inx(DateFunction func, Integer value) {
         return new INX(func, new List<Integer>{ value });
     }
@@ -1825,6 +1908,37 @@ public abstract class Query implements Querable {
 
     public static Filter nin(SObjectField field, List<Object> values) {
         return new NIN(field, values);
+    }
+
+    public static Filter nin(AggregateFunction func, Object value) {
+        return new NIN(func, new List<Object>{ value });
+    }
+
+    public static Filter nin(AggregateFunction func, Object value1, Object value2) {
+        return new NIN(func, new List<Object>{ value1, value2 });
+    }
+
+    public static Filter nin(AggregateFunction func, Object value1, Object value2, Object value3) {
+        return new NIN(func, new List<Object>{ value1, value2, value3 });
+    }
+
+    public static Filter nin(AggregateFunction func, Object value1, Object value2, Object value3, Object value4) {
+        return new NIN(func, new List<Object>{ value1, value2, value3, value4 });
+    }
+
+    public static Filter nin(
+        AggregateFunction func,
+        Object value1,
+        Object value2,
+        Object value3,
+        Object value4,
+        Object value5
+    ) {
+        return new NIN(func, new List<Object>{ value1, value2, value3, value4, value5 });
+    }
+
+    public static Filter nin(AggregateFunction func, List<Object> values) {
+        return new NIN(func, values);
     }
 
     public static Filter nin(DateFunction func, Integer value) {
@@ -3135,11 +3249,25 @@ public abstract class Query implements Querable {
 
     // prettier-ignore
     public interface Querable {
-        // Select
-        Query selectAll(); // TODO: Support select all?
-        // TODO: support forLabel.
-        // TODO: Support Using Scope
+        // SELECT
+        // TODO: Support select all? And automatically skips fields don't have read permission?
         // TODO: Support NOT Logic
+
+        // SELECT fieldList [subquery][...]
+        //![TYPEOF typeOfField whenExpression[...] elseExpression END][...]
+        // FROM objectType[,...]
+        //!    [USING SCOPE filterScope]
+        // [WHERE conditionExpression]
+        //![WITH [DATA CATEGORY] filteringExpression]
+        // [GROUP BY {fieldGroupByList|ROLLUP (fieldSubtotalGroupByList)|CUBE (fieldSubtotalGroupByList)}
+        //     [HAVING havingConditionExpression] ]
+        // [ORDER BY fieldOrderByList {ASC|DESC} [NULLS {FIRST|LAST}] ]
+        // [LIMIT numberOfRowsToReturn]
+        // [OFFSET numberOfRowsToSkip]
+        // [{FOR VIEW  | FOR REFERENCE} ]
+        //![UPDATE {TRACKING|VIEWSTAT} ]
+        // [FOR UPDATE]
+
         Query selectBy(SObjectField field);
         Query selectBy(SObjectField field1, SObjectField field2);
         Query selectBy(SObjectField field1, SObjectField field2, SObjectField field3);
@@ -3156,29 +3284,10 @@ public abstract class Query implements Querable {
         Query selectBy(List<Object> fieldOrFuncs);
         Query selectBy(Selector selector);
 
-        // Group By
+        // WHERE
+        Query filterBy(Filter filter);
 
-        Query groupBy(SObjectField field);
-        Query groupBy(SObjectField field1, SObjectField field2);
-        Query groupBy(SObjectField field1, SObjectField field2, SObjectField field3);
-        Query groupBy(SObjectField field1, SObjectField field2, SObjectField field3, SObjectField field4);
-        Query groupBy(SObjectField field1, SObjectField field2, SObjectField field3, SObjectField field4, SObjectField field5);
-
-        Query groupBy(DateFunction func);
-        Query groupBy(DateFunction func1, DateFunction func2);
-        Query groupBy(DateFunction func1, DateFunction func2, DateFunction func3);
-        Query groupBy(DateFunction func1, DateFunction func2, DateFunction func3, DateFunction func4);
-        Query groupBy(DateFunction func1, DateFunction func2, DateFunction func3, DateFunction func4, DateFunction func5);
-
-        Query groupBy(List<Object> fieldOrFuncs);
-        Query groupBy(Grouper grouper);
-
-        Query rollup();
-        Query cube();
-
-        // TODO: support having
-
-        // Order By
+        // ORDER BY
         Query orderBy(SObjectField field);
         Query orderBy(SObjectField field1, SObjectField field2);
         Query orderBy(SObjectField field1, SObjectField field2, SObjectField field3);
@@ -3199,6 +3308,29 @@ public abstract class Query implements Querable {
         Query nullsFirst();
         Query nullsLast();
 
+        // GROUP BY
+
+        Query groupBy(SObjectField field);
+        Query groupBy(SObjectField field1, SObjectField field2);
+        Query groupBy(SObjectField field1, SObjectField field2, SObjectField field3);
+        Query groupBy(SObjectField field1, SObjectField field2, SObjectField field3, SObjectField field4);
+        Query groupBy(SObjectField field1, SObjectField field2, SObjectField field3, SObjectField field4, SObjectField field5);
+
+        Query groupBy(DateFunction func);
+        Query groupBy(DateFunction func1, DateFunction func2);
+        Query groupBy(DateFunction func1, DateFunction func2, DateFunction func3);
+        Query groupBy(DateFunction func1, DateFunction func2, DateFunction func3, DateFunction func4);
+        Query groupBy(DateFunction func1, DateFunction func2, DateFunction func3, DateFunction func4, DateFunction func5);
+
+        Query groupBy(List<Object> fieldOrFuncs);
+        Query groupBy(Grouper grouper);
+
+        Query rollup();
+        Query cube();
+
+        // HAVING
+        Query havingBy(Filter filter);
+
         // Misc
         Query offset(Integer n);
         Query limitx(Integer n);
@@ -3206,7 +3338,6 @@ public abstract class Query implements Querable {
         Query forReference();
         Query forUpdate();
 
-        Query filterBy(Filter filter);
         Object run();
         Object run(AccessLevel accessLevel);
         Integer getCount();

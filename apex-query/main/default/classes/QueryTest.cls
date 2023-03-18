@@ -539,6 +539,41 @@ public with sharing class QueryTest extends Query {
             .orderBy(GROUPING(Account.BillingCountry), GROUPING(Account.BillingState)).nullsLast().descending()
             .run();
         System.debug(results);
+
+        // prettier-ignore
+        results = (List<AggregateResult>) Query.of(Account.SObjectType)
+            .selectBy(GROUPING(Account.BillingCountry))
+            .selectBy(GROUPING(Account.BillingState, 'alias0'))
+            .selectBy(MIN(Account.AnnualRevenue))
+            .selectBy(MAX(Account.AnnualRevenue))
+            .selectBy(AVG(Account.AnnualRevenue, 'average'))
+            .selectBy(SUM(Account.AnnualRevenue, 'summary'))
+            .groupBy(Account.BillingCountry, Account.BillingState).rollup()
+            .havingBy(
+                andx()
+                    .add(between(AVG(Account.AnnualRevenue), 0, 2000))
+                    .add(eq(SUM(Account.AnnualRevenue), 2000))
+            )
+            .orderBy(GROUPING(Account.BillingCountry), GROUPING(Account.BillingState)).nullsLast().descending()
+            .run();
+        System.debug(results);
+
+        // prettier-ignore
+        results = (List<AggregateResult>) Query.of(Account.SObjectType)
+            .selectBy(GROUPING(Account.BillingCountry))
+            .selectBy(MIN(Account.BillingState))
+            .selectBy(MAX(Account.BillingState))
+            .groupBy(Account.BillingCountry).rollup()
+            .havingBy(
+                andx()
+                    .add(likex(MIN(Account.BillingState), '%i%'))
+                    .add(inx(MIN(Account.BillingState), 'Shanghai', 'Beijing'))
+                    .add(likex(MAX(Account.BillingState), '%i%'))
+                    .add(inx(MAX(Account.BillingState), 'Shanghai', 'Beijing'))
+            )
+            .orderBy(GROUPING(Account.BillingCountry)).nullsLast().descending()
+            .run();
+        System.debug(results);
     }
 
     @isTest
