@@ -17,7 +17,6 @@
 
 @isTest
 public with sharing class QueryTest extends Query {
-    @TestSetup
     static void makeData() {
         // prettier-ignore
         List<Account> accountList = new List<Account> {
@@ -41,6 +40,713 @@ public with sharing class QueryTest extends Query {
         };
         insert contactList;
     }
+
+    @isTest
+    static void testKeyword_From() {
+        Query accountQuery = Query.of(Account.SObjectType);
+        Assert.areEqual('SELECT Id FROM Account', accountQuery.build());
+        Query contactQuery = Query.of(Contact.SObjectType);
+        Assert.areEqual('SELECT Id FROM Contact', contactQuery.build());
+    }
+
+    // ======================
+    // #region Keyword Select
+
+    @isTest
+    static void testKeyword_Select_Fields() {
+        // Inline Styles
+        Query accountQuery = Query.of(Account.SObjectType).selectBy(Account.Id);
+        Assert.areEqual('SELECT Id FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).selectBy(Account.Id, Account.Name);
+        Assert.areEqual('SELECT Id, Name FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).selectBy(Account.Id, Account.Name, Account.Description);
+        Assert.areEqual('SELECT Id, Name, Description FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType)
+            .selectBy(Account.Id, Account.Name, Account.Description, Account.BillingCountry);
+        Assert.areEqual('SELECT Id, Name, Description, BillingCountry FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType)
+            .selectBy(Account.Id, Account.Name, Account.Description, Account.BillingCountry, Account.BillingState);
+        Assert.areEqual(
+            'SELECT Id, Name, Description, BillingCountry, BillingState FROM Account',
+            accountQuery.build()
+        );
+
+        accountQuery = Query.of(Account.SObjectType)
+            .selectBy(Account.Id, Account.Name)
+            .selectBy(Account.Description, Account.BillingCountry, Account.BillingState);
+        Assert.areEqual(
+            'SELECT Id, Name, Description, BillingCountry, BillingState FROM Account',
+            accountQuery.build()
+        );
+
+        // Outline Styles
+        Query.Selector selector = Query.selector().add(Account.Id);
+        accountQuery = Query.of(Account.SObjectType).selectBy(selector);
+        Assert.areEqual('SELECT Id FROM Account', accountQuery.build());
+
+        selector = Query.selector().add(Account.Id, Account.Name);
+        accountQuery = Query.of(Account.SObjectType).selectBy(selector);
+        Assert.areEqual('SELECT Id, Name FROM Account', accountQuery.build());
+
+        selector = Query.selector().add(Account.Id, Account.Name, Account.Description);
+        accountQuery = Query.of(Account.SObjectType).selectBy(selector);
+        Assert.areEqual('SELECT Id, Name, Description FROM Account', accountQuery.build());
+
+        selector = Query.selector().add(Account.Id, Account.Name, Account.Description, Account.BillingCountry);
+        accountQuery = Query.of(Account.SObjectType).selectBy(selector);
+        Assert.areEqual('SELECT Id, Name, Description, BillingCountry FROM Account', accountQuery.build());
+
+        selector = Query.selector()
+            .add(Account.Id, Account.Name, Account.Description, Account.BillingCountry, Account.BillingState);
+        accountQuery = Query.of(Account.SObjectType).selectBy(selector);
+        Assert.areEqual(
+            'SELECT Id, Name, Description, BillingCountry, BillingState FROM Account',
+            accountQuery.build()
+        );
+
+        selector = Query.selector()
+            .add(Account.Id, Account.Name)
+            .add(Account.Description, Account.BillingCountry, Account.BillingState);
+        accountQuery = Query.of(Account.SObjectType).selectBy(selector);
+        Assert.areEqual(
+            'SELECT Id, Name, Description, BillingCountry, BillingState FROM Account',
+            accountQuery.build()
+        );
+
+        selector = Query.selector().add(Account.Description, Account.BillingCountry, Account.BillingState);
+        Query.Selector anotherSelector = Query.selector().add(Account.Id, Account.Name).add(selector);
+        accountQuery = Query.of(Account.SObjectType).selectBy(anotherSelector);
+        Assert.areEqual(
+            'SELECT Id, Name, Description, BillingCountry, BillingState FROM Account',
+            accountQuery.build()
+        );
+    }
+
+    @isTest
+    static void testKeyword_Select_Functions() {
+        // Inline Styles
+        Query accountQuery = Query.of(Account.SObjectType).selectBy(TO_LABEL(Account.Id));
+        Assert.areEqual('SELECT TOLABEL(Id) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).selectBy(TO_LABEL(Account.Id), TO_LABEL(Account.Name));
+        Assert.areEqual('SELECT TOLABEL(Id), TOLABEL(Name) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType)
+            .selectBy(TO_LABEL(Account.Id), TO_LABEL(Account.Name), TO_LABEL(Account.Description));
+        Assert.areEqual('SELECT TOLABEL(Id), TOLABEL(Name), TOLABEL(Description) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType)
+            .selectBy(
+                TO_LABEL(Account.Id),
+                TO_LABEL(Account.Name),
+                TO_LABEL(Account.Description),
+                TO_LABEL(Account.BillingCountry)
+            );
+        Assert.areEqual(
+            'SELECT TOLABEL(Id), TOLABEL(Name), TOLABEL(Description), TOLABEL(BillingCountry) FROM Account',
+            accountQuery.build()
+        );
+
+        accountQuery = Query.of(Account.SObjectType)
+            .selectBy(
+                TO_LABEL(Account.Id),
+                TO_LABEL(Account.Name),
+                TO_LABEL(Account.Description),
+                TO_LABEL(Account.BillingCountry),
+                TO_LABEL(Account.BillingState)
+            );
+        Assert.areEqual(
+            'SELECT TOLABEL(Id), TOLABEL(Name), TOLABEL(Description), TOLABEL(BillingCountry), TOLABEL(BillingState) FROM Account',
+            accountQuery.build()
+        );
+
+        accountQuery = Query.of(Account.SObjectType)
+            .selectBy(TO_LABEL(Account.Id), TO_LABEL(Account.Name))
+            .selectBy(TO_LABEL(Account.Description), TO_LABEL(Account.BillingCountry), TO_LABEL(Account.BillingState));
+        Assert.areEqual(
+            'SELECT TOLABEL(Id), TOLABEL(Name), TOLABEL(Description), TOLABEL(BillingCountry), TOLABEL(BillingState) FROM Account',
+            accountQuery.build()
+        );
+
+        // Outline Styles
+        Query.Selector selector = Query.selector().add(TO_LABEL(Account.Id));
+        accountQuery = Query.of(Account.SObjectType).selectBy(selector);
+        Assert.areEqual('SELECT TOLABEL(Id) FROM Account', accountQuery.build());
+
+        selector = Query.selector().add(TO_LABEL(Account.Id), TO_LABEL(Account.Name));
+        accountQuery = Query.of(Account.SObjectType).selectBy(selector);
+        Assert.areEqual('SELECT TOLABEL(Id), TOLABEL(Name) FROM Account', accountQuery.build());
+
+        selector = Query.selector().add(TO_LABEL(Account.Id), TO_LABEL(Account.Name), TO_LABEL(Account.Description));
+        accountQuery = Query.of(Account.SObjectType).selectBy(selector);
+        Assert.areEqual('SELECT TOLABEL(Id), TOLABEL(Name), TOLABEL(Description) FROM Account', accountQuery.build());
+
+        selector = Query.selector()
+            .add(
+                TO_LABEL(Account.Id),
+                TO_LABEL(Account.Name),
+                TO_LABEL(Account.Description),
+                TO_LABEL(Account.BillingCountry)
+            );
+        accountQuery = Query.of(Account.SObjectType).selectBy(selector);
+        Assert.areEqual(
+            'SELECT TOLABEL(Id), TOLABEL(Name), TOLABEL(Description), TOLABEL(BillingCountry) FROM Account',
+            accountQuery.build()
+        );
+
+        selector = Query.selector()
+            .add(
+                TO_LABEL(Account.Id),
+                TO_LABEL(Account.Name),
+                TO_LABEL(Account.Description),
+                TO_LABEL(Account.BillingCountry),
+                TO_LABEL(Account.BillingState)
+            );
+        accountQuery = Query.of(Account.SObjectType).selectBy(selector);
+        Assert.areEqual(
+            'SELECT TOLABEL(Id), TOLABEL(Name), TOLABEL(Description), TOLABEL(BillingCountry), TOLABEL(BillingState) FROM Account',
+            accountQuery.build()
+        );
+
+        selector = Query.selector()
+            .add(TO_LABEL(Account.Id), TO_LABEL(Account.Name))
+            .add(TO_LABEL(Account.Description), TO_LABEL(Account.BillingCountry), TO_LABEL(Account.BillingState));
+        accountQuery = Query.of(Account.SObjectType).selectBy(selector);
+        Assert.areEqual(
+            'SELECT TOLABEL(Id), TOLABEL(Name), TOLABEL(Description), TOLABEL(BillingCountry), TOLABEL(BillingState) FROM Account',
+            accountQuery.build()
+        );
+
+        selector = Query.selector()
+            .add(TO_LABEL(Account.Description), TO_LABEL(Account.BillingCountry), TO_LABEL(Account.BillingState));
+        Query.Selector anotherSelector = Query.selector()
+            .add(TO_LABEL(Account.Id), TO_LABEL(Account.Name))
+            .add(selector);
+        accountQuery = Query.of(Account.SObjectType).selectBy(anotherSelector);
+        Assert.areEqual(
+            'SELECT TOLABEL(Id), TOLABEL(Name), TOLABEL(Description), TOLABEL(BillingCountry), TOLABEL(BillingState) FROM Account',
+            accountQuery.build()
+        );
+    }
+
+    @isTest
+    static void testKeyword_Select_Queries() {
+        // Inline Styles
+        Query contactQuery = Query.of(Contact.SObjectType);
+        Query accountQuery = Query.of(Account.SObjectType).selectBy('Contacts', contactQuery);
+        Assert.areEqual('SELECT (SELECT Id FROM Contacts) FROM Account', accountQuery.build());
+
+        contactQuery = Query.of(Contact.SObjectType).selectBy(Contact.Name);
+        accountQuery = Query.of(Account.SObjectType).selectBy('Contacts', contactQuery).selectBy(Account.Name);
+        Assert.areEqual('SELECT (SELECT Name FROM Contacts), Name FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).selectBy(Account.Name).selectBy('Contacts', contactQuery);
+        Assert.areEqual('SELECT Name, (SELECT Name FROM Contacts) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType)
+            .selectBy('Contacts', contactQuery)
+            .selectBy('Contacts', contactQuery);
+        Assert.areEqual(
+            'SELECT (SELECT Name FROM Contacts), (SELECT Name FROM Contacts) FROM Account',
+            accountQuery.build()
+        );
+
+        // Outline Styles
+        contactQuery = Query.of(Contact.SObjectType);
+        Query.Selector selector = Query.selector().add('Contacts', contactQuery);
+        accountQuery = Query.of(Account.SObjectType).selectBy(selector);
+        Assert.areEqual('SELECT (SELECT Id FROM Contacts) FROM Account', accountQuery.build());
+
+        contactQuery = Query.of(Contact.SObjectType).selectBy(Contact.Name);
+        selector = Query.selector().add('Contacts', contactQuery).add(Account.Name);
+        accountQuery = Query.of(Account.SObjectType).selectBy(selector);
+        Assert.areEqual('SELECT (SELECT Name FROM Contacts), Name FROM Account', accountQuery.build());
+
+        selector = Query.selector().add(Account.Name).add('Contacts', contactQuery);
+        accountQuery = Query.of(Account.SObjectType).selectBy(selector);
+        Assert.areEqual('SELECT Name, (SELECT Name FROM Contacts) FROM Account', accountQuery.build());
+
+        selector = Query.selector().add('Contacts', contactQuery).add('Contacts', contactQuery);
+        accountQuery = Query.of(Account.SObjectType).selectBy(selector);
+        Assert.areEqual(
+            'SELECT (SELECT Name FROM Contacts), (SELECT Name FROM Contacts) FROM Account',
+            accountQuery.build()
+        );
+    }
+
+    // #endregion
+    // ======================
+
+    // =====================
+    // #region Keyword Where
+
+    @isTest
+    static void testKeyword_Where() {
+        // Inline Styles
+        Query accountQuery = Query.of(Account.SObjectType).filterBy(gt(Account.AnnualRevenue, 2000));
+        Assert.areEqual('SELECT Id FROM Account WHERE AnnualRevenue > 2000', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType)
+            .filterBy(andx().add(gt(Account.AnnualRevenue, 2000)).add(lt(Account.AnnualRevenue, 6000)));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE (AnnualRevenue > 2000 AND AnnualRevenue < 6000)',
+            accountQuery.build()
+        );
+
+        Query.Filter filter = orx()
+            .add(
+                andx()
+                    .add(gt(Account.AnnualRevenue, 1000))
+                    .add(eq(Account.BillingCountry, 'China'))
+                    .add(eq(Account.BillingState, 'Beijing'))
+            )
+            .add(
+                andx()
+                    .add(lt(Account.AnnualRevenue, 1000))
+                    .add(eq(Account.BillingCountry, 'China'))
+                    .add(eq(Account.BillingState, 'Shanghai'))
+            );
+        accountQuery = Query.of(Account.SObjectType).filterBy(filter);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE ((AnnualRevenue > 1000 AND BillingCountry = \'China\' AND BillingState = \'Beijing\') ' +
+            'OR (AnnualRevenue < 1000 AND BillingCountry = \'China\' AND BillingState = \'Shanghai\'))',
+            accountQuery.build()
+        );
+    }
+
+    @isTest
+    static void testKeyword_Where_traditional_Style() {
+        Query.Filter filter = orx(
+            andx(eq(Account.BillingCountry, 'China'), eq(Account.BillingState, 'Beijing')),
+            andx(eq(Account.BillingCountry, 'China'), eq(Account.BillingState, 'Shanghai'))
+        );
+        Query accountQuery = Query.of(Account.SObjectType).filterBy(filter);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE ((AnnualRevenue > 1000 AND BillingCountry = \'China\' AND BillingState = \'Beijing\') ' +
+            'OR (AnnualRevenue < 1000 AND BillingCountry = \'China\' AND BillingState = \'Shanghai\'))',
+            accountQuery.build()
+        );
+
+        filter = orx(
+            andx(eq(Account.BillingCountry, 'China'), eq(Account.BillingState, 'Beijing')),
+            andx(eq(Account.BillingCountry, 'China'), eq(Account.BillingState, 'Shanghai'))
+        );
+    }
+
+    // #endregion
+    // =====================
+
+    // ========================
+    // #region Operator Logical
+
+    @isTest
+    static void testOperator_Logical_Not_Commafree() {
+        makeData();
+        Query.Filter filter = notx(eq(Account.BillingCountry, 'China'));
+        Query accountQuery = Query.of(Account.SObjectType).filterBy(filter);
+        Assert.areEqual('SELECT Id FROM Account WHERE NOT(BillingCountry = \'China\')', accountQuery.build());
+        List<Account> accounts = (List<Account>) accountQuery.run();
+        Assert.areEqual(2, accounts.size());
+
+        filter = notx(
+            andx()
+                .add(eq(Account.BillingCountry, 'China'))
+                .add(eq(Account.BillingState, 'Shanghai'))
+                .add(eq(Account.AnnualRevenue, 1500))
+        );
+        accountQuery = Query.of(Account.SObjectType).filterBy(filter);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE NOT(BillingCountry = \'China\' ' +
+            'AND BillingState = \'Shanghai\' ' +
+            'AND AnnualRevenue = 1500)',
+            accountQuery.build()
+        );
+        accounts = (List<Account>) accountQuery.run();
+        Assert.areEqual(5, accounts.size());
+    }
+
+    @isTest
+    static void testOperator_Logical_And_Commafree() {
+        Query.Filter filter = andx()
+            .add(eq(Account.BillingCountry, 'China'))
+            .add(eq(Account.BillingCountry, 'China'))
+            .add(eq(Account.BillingCountry, 'China'));
+        Query accountQuery = Query.of(Account.SObjectType).filterBy(filter);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE (BillingCountry = \'China\' ' +
+            'AND BillingCountry = \'China\' ' +
+            'AND BillingCountry = \'China\')',
+            accountQuery.build()
+        );
+    }
+
+    @isTest
+    static void testOperator_Logical_And_Traditional() {
+        Query.Filter filter = andx(eq(Account.BillingCountry, 'China'), eq(Account.BillingCountry, 'China'));
+        Query accountQuery = Query.of(Account.SObjectType).filterBy(filter);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE (BillingCountry = \'China\' AND BillingCountry = \'China\')',
+            accountQuery.build()
+        );
+
+        filter = andx(
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China')
+        );
+        accountQuery = Query.of(Account.SObjectType).filterBy(filter);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE (BillingCountry = \'China\' ' +
+            'AND BillingCountry = \'China\' ' +
+            'AND BillingCountry = \'China\')',
+            accountQuery.build()
+        );
+
+        filter = andx(
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China')
+        );
+        accountQuery = Query.of(Account.SObjectType).filterBy(filter);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE (BillingCountry = \'China\' ' +
+            'AND BillingCountry = \'China\' ' +
+            'AND BillingCountry = \'China\' ' +
+            'AND BillingCountry = \'China\')',
+            accountQuery.build()
+        );
+
+        filter = andx(
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China')
+        );
+        accountQuery = Query.of(Account.SObjectType).filterBy(filter);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE (BillingCountry = \'China\' ' +
+            'AND BillingCountry = \'China\' ' +
+            'AND BillingCountry = \'China\' ' +
+            'AND BillingCountry = \'China\' ' +
+            'AND BillingCountry = \'China\')',
+            accountQuery.build()
+        );
+
+        filter = andx(
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China')
+        );
+        accountQuery = Query.of(Account.SObjectType).filterBy(filter);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE (BillingCountry = \'China\' ' +
+            'AND BillingCountry = \'China\' ' +
+            'AND BillingCountry = \'China\' ' +
+            'AND BillingCountry = \'China\' ' +
+            'AND BillingCountry = \'China\' ' +
+            'AND BillingCountry = \'China\')',
+            accountQuery.build()
+        );
+
+        filter = andx(
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China')
+        );
+        accountQuery = Query.of(Account.SObjectType).filterBy(filter);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE (BillingCountry = \'China\' ' +
+            'AND BillingCountry = \'China\' ' +
+            'AND BillingCountry = \'China\' ' +
+            'AND BillingCountry = \'China\' ' +
+            'AND BillingCountry = \'China\' ' +
+            'AND BillingCountry = \'China\' ' +
+            'AND BillingCountry = \'China\')',
+            accountQuery.build()
+        );
+
+        filter = andx(
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China')
+        );
+        accountQuery = Query.of(Account.SObjectType).filterBy(filter);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE (BillingCountry = \'China\' ' +
+            'AND BillingCountry = \'China\' ' +
+            'AND BillingCountry = \'China\' ' +
+            'AND BillingCountry = \'China\' ' +
+            'AND BillingCountry = \'China\' ' +
+            'AND BillingCountry = \'China\' ' +
+            'AND BillingCountry = \'China\' ' +
+            'AND BillingCountry = \'China\')',
+            accountQuery.build()
+        );
+
+        filter = andx(
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China')
+        );
+        accountQuery = Query.of(Account.SObjectType).filterBy(filter);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE (BillingCountry = \'China\' ' +
+            'AND BillingCountry = \'China\' ' +
+            'AND BillingCountry = \'China\' ' +
+            'AND BillingCountry = \'China\' ' +
+            'AND BillingCountry = \'China\' ' +
+            'AND BillingCountry = \'China\' ' +
+            'AND BillingCountry = \'China\' ' +
+            'AND BillingCountry = \'China\' ' +
+            'AND BillingCountry = \'China\')',
+            accountQuery.build()
+        );
+
+        filter = andx(
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China')
+        );
+        accountQuery = Query.of(Account.SObjectType).filterBy(filter);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE (BillingCountry = \'China\' ' +
+            'AND BillingCountry = \'China\' ' +
+            'AND BillingCountry = \'China\' ' +
+            'AND BillingCountry = \'China\' ' +
+            'AND BillingCountry = \'China\' ' +
+            'AND BillingCountry = \'China\' ' +
+            'AND BillingCountry = \'China\' ' +
+            'AND BillingCountry = \'China\' ' +
+            'AND BillingCountry = \'China\' ' +
+            'AND BillingCountry = \'China\')',
+            accountQuery.build()
+        );
+    }
+
+    @isTest
+    static void testOperator_Logical_Or_Commafree() {
+        Query.Filter filter = orx()
+            .add(eq(Account.BillingCountry, 'China'))
+            .add(eq(Account.BillingCountry, 'China'))
+            .add(eq(Account.BillingCountry, 'China'));
+        Query accountQuery = Query.of(Account.SObjectType).filterBy(filter);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE (BillingCountry = \'China\' ' +
+            'OR BillingCountry = \'China\' ' +
+            'OR BillingCountry = \'China\')',
+            accountQuery.build()
+        );
+    }
+
+    @isTest
+    static void testOperator_Logical_Or_Traditional() {
+        Query.Filter filter = orx(eq(Account.BillingCountry, 'China'), eq(Account.BillingCountry, 'China'));
+        Query accountQuery = Query.of(Account.SObjectType).filterBy(filter);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE (BillingCountry = \'China\' OR BillingCountry = \'China\')',
+            accountQuery.build()
+        );
+
+        filter = orx(
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China')
+        );
+        accountQuery = Query.of(Account.SObjectType).filterBy(filter);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE (BillingCountry = \'China\' ' +
+            'OR BillingCountry = \'China\' ' +
+            'OR BillingCountry = \'China\')',
+            accountQuery.build()
+        );
+
+        filter = orx(
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China')
+        );
+        accountQuery = Query.of(Account.SObjectType).filterBy(filter);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE (BillingCountry = \'China\' ' +
+            'OR BillingCountry = \'China\' ' +
+            'OR BillingCountry = \'China\' ' +
+            'OR BillingCountry = \'China\')',
+            accountQuery.build()
+        );
+
+        filter = orx(
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China')
+        );
+        accountQuery = Query.of(Account.SObjectType).filterBy(filter);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE (BillingCountry = \'China\' ' +
+            'OR BillingCountry = \'China\' ' +
+            'OR BillingCountry = \'China\' ' +
+            'OR BillingCountry = \'China\' ' +
+            'OR BillingCountry = \'China\')',
+            accountQuery.build()
+        );
+
+        filter = orx(
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China')
+        );
+        accountQuery = Query.of(Account.SObjectType).filterBy(filter);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE (BillingCountry = \'China\' ' +
+            'OR BillingCountry = \'China\' ' +
+            'OR BillingCountry = \'China\' ' +
+            'OR BillingCountry = \'China\' ' +
+            'OR BillingCountry = \'China\' ' +
+            'OR BillingCountry = \'China\')',
+            accountQuery.build()
+        );
+
+        filter = orx(
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China')
+        );
+        accountQuery = Query.of(Account.SObjectType).filterBy(filter);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE (BillingCountry = \'China\' ' +
+            'OR BillingCountry = \'China\' ' +
+            'OR BillingCountry = \'China\' ' +
+            'OR BillingCountry = \'China\' ' +
+            'OR BillingCountry = \'China\' ' +
+            'OR BillingCountry = \'China\' ' +
+            'OR BillingCountry = \'China\')',
+            accountQuery.build()
+        );
+
+        filter = orx(
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China')
+        );
+        accountQuery = Query.of(Account.SObjectType).filterBy(filter);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE (BillingCountry = \'China\' ' +
+            'OR BillingCountry = \'China\' ' +
+            'OR BillingCountry = \'China\' ' +
+            'OR BillingCountry = \'China\' ' +
+            'OR BillingCountry = \'China\' ' +
+            'OR BillingCountry = \'China\' ' +
+            'OR BillingCountry = \'China\' ' +
+            'OR BillingCountry = \'China\')',
+            accountQuery.build()
+        );
+
+        filter = orx(
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China')
+        );
+        accountQuery = Query.of(Account.SObjectType).filterBy(filter);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE (BillingCountry = \'China\' ' +
+            'OR BillingCountry = \'China\' ' +
+            'OR BillingCountry = \'China\' ' +
+            'OR BillingCountry = \'China\' ' +
+            'OR BillingCountry = \'China\' ' +
+            'OR BillingCountry = \'China\' ' +
+            'OR BillingCountry = \'China\' ' +
+            'OR BillingCountry = \'China\' ' +
+            'OR BillingCountry = \'China\')',
+            accountQuery.build()
+        );
+
+        filter = orx(
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China')
+        );
+        accountQuery = Query.of(Account.SObjectType).filterBy(filter);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE (BillingCountry = \'China\' ' +
+            'OR BillingCountry = \'China\' ' +
+            'OR BillingCountry = \'China\' ' +
+            'OR BillingCountry = \'China\' ' +
+            'OR BillingCountry = \'China\' ' +
+            'OR BillingCountry = \'China\' ' +
+            'OR BillingCountry = \'China\' ' +
+            'OR BillingCountry = \'China\' ' +
+            'OR BillingCountry = \'China\' ' +
+            'OR BillingCountry = \'China\')',
+            accountQuery.build()
+        );
+    }
+
+    // #endregion
+    // =====================
+
+    // ============================
+    // #region Comparison Operators
+
+    // #endregion
+    // ============================
 
     @isTest
     static void testQuery_Style1() {

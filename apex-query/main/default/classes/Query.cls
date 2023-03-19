@@ -78,6 +78,12 @@ public abstract class Query implements Querable {
         return null;
     }
 
+    @TestVisible
+    private String build() {
+        Map<String, Object> tmpVars = new Map<String, Object>();
+        return this.build(tmpVars);
+    }
+
     public Integer getCount() {
         return getCount(AccessLevel.SYSTEM_MODE);
     }
@@ -115,33 +121,27 @@ public abstract class Query implements Querable {
         private void buildSelect(List<String> fragments, Map<String, Object> tmpVars) {
             fragments.add('SELECT ');
             Boolean isFirst = true;
-            for (SObjectField field : this.rootSelector.fields) {
+
+            for (Object selection : this.rootSelector.selections) {
                 if (isFirst) {
                     isFirst = false;
                 } else {
                     fragments.add(', ');
                 }
-                fragments.add(String.valueOf(field));
+
+                if (selection instanceof QuerySelection) {
+                    QuerySelection child = (QuerySelection) selection;
+                    fragments.add('(');
+                    ((QueryBuilder) child.query).buildSoql(child.relation, fragments, tmpVars);
+                    fragments.add(')');
+                } else {
+                    fragments.add(String.valueOf(selection));
+                }
             }
 
-            for (Function func : this.rootSelector.funcs) {
-                if (isFirst) {
-                    isFirst = false;
-                } else {
-                    fragments.add(', ');
-                }
-                fragments.add(String.valueOf(func));
-            }
-
-            for (String relationName : this.rootSelector.queries.keySet()) {
-                if (isFirst) {
-                    isFirst = false;
-                } else {
-                    fragments.add(', ');
-                }
-                fragments.add('(');
-                this.rootSelector.queries.get(relationName).buildSoql(relationName, fragments, tmpVars);
-                fragments.add(')');
+            if (isFirst) {
+                fragments.add('Id');
+                isFirst = false;
             }
         }
 
@@ -313,15 +313,31 @@ public abstract class Query implements Querable {
         Selector add(List<Object> fieldOrFuncs);
     }
 
+    private class QuerySelection {
+        private String relation { get; set; }
+        private Query query { get; set; }
+
+        private QuerySelection(String relation, Query query) {
+            this.relation = relation;
+            this.query = query;
+        }
+
+        public Boolean equals(Object obj) {
+            if (this === obj) {
+                return true;
+            }
+
+            QuerySelection that = (QuerySelection) obj;
+
+            return this.relation == that.relation && this.query == that.query;
+        }
+    }
+
     private class SelectorImpl implements Selector {
-        private List<SObjectField> fields { get; set; }
-        private List<Function> funcs { get; set; }
-        private Map<String, QueryBuilder> queries { get; set; }
+        private List<Object> selections { get; set; }
 
         private SelectorImpl() {
-            this.fields = new List<SObjectField>();
-            this.funcs = new List<Function>();
-            this.queries = new Map<String, QueryBuilder>();
+            this.selections = new List<Object>();
         }
 
         public Boolean equals(Object obj) {
@@ -330,32 +346,32 @@ public abstract class Query implements Querable {
             }
 
             SelectorImpl that = (SelectorImpl) obj;
-            return this.fields == that.fields && this.funcs == that.funcs && this.queries == that.queries;
+            return this.selections == that.selections;
         }
 
         public Selector add(SObjectField field) {
-            this.fields.add(field);
+            this.selections.add(field);
             return this;
         }
 
         public Selector add(SObjectField field1, SObjectField field2) {
-            this.fields.add(field1);
-            this.fields.add(field2);
+            this.selections.add(field1);
+            this.selections.add(field2);
             return this;
         }
 
         public Selector add(SObjectField field1, SObjectField field2, SObjectField field3) {
-            this.fields.add(field1);
-            this.fields.add(field2);
-            this.fields.add(field3);
+            this.selections.add(field1);
+            this.selections.add(field2);
+            this.selections.add(field3);
             return this;
         }
 
         public Selector add(SObjectField field1, SObjectField field2, SObjectField field3, SObjectField field4) {
-            this.fields.add(field1);
-            this.fields.add(field2);
-            this.fields.add(field3);
-            this.fields.add(field4);
+            this.selections.add(field1);
+            this.selections.add(field2);
+            this.selections.add(field3);
+            this.selections.add(field4);
             return this;
         }
 
@@ -366,37 +382,37 @@ public abstract class Query implements Querable {
             SObjectField field4,
             SObjectField field5
         ) {
-            this.fields.add(field1);
-            this.fields.add(field2);
-            this.fields.add(field3);
-            this.fields.add(field4);
-            this.fields.add(field5);
+            this.selections.add(field1);
+            this.selections.add(field2);
+            this.selections.add(field3);
+            this.selections.add(field4);
+            this.selections.add(field5);
             return this;
         }
 
         public Selector add(SelectFunction func) {
-            this.funcs.add(func);
+            this.selections.add(func);
             return this;
         }
 
         public Selector add(SelectFunction func1, SelectFunction func2) {
-            this.funcs.add(func1);
-            this.funcs.add(func2);
+            this.selections.add(func1);
+            this.selections.add(func2);
             return this;
         }
 
         public Selector add(SelectFunction func1, SelectFunction func2, SelectFunction func3) {
-            this.funcs.add(func1);
-            this.funcs.add(func2);
-            this.funcs.add(func3);
+            this.selections.add(func1);
+            this.selections.add(func2);
+            this.selections.add(func3);
             return this;
         }
 
         public Selector add(SelectFunction func1, SelectFunction func2, SelectFunction func3, SelectFunction func4) {
-            this.funcs.add(func1);
-            this.funcs.add(func2);
-            this.funcs.add(func3);
-            this.funcs.add(func4);
+            this.selections.add(func1);
+            this.selections.add(func2);
+            this.selections.add(func3);
+            this.selections.add(func4);
             return this;
         }
 
@@ -407,35 +423,26 @@ public abstract class Query implements Querable {
             SelectFunction func4,
             SelectFunction func5
         ) {
-            this.funcs.add(func1);
-            this.funcs.add(func2);
-            this.funcs.add(func3);
-            this.funcs.add(func4);
-            this.funcs.add(func5);
+            this.selections.add(func1);
+            this.selections.add(func2);
+            this.selections.add(func3);
+            this.selections.add(func4);
+            this.selections.add(func5);
             return this;
         }
 
         public Selector add(String relationName, Query query) {
-            this.queries.put(relationName, (QueryBuilder) query);
+            this.selections.add(new QuerySelection(relationName, query));
             return this;
         }
 
         public Selector add(Selector other) {
-            this.fields.addAll(((SelectorImpl) other).fields);
-            this.queries.putAll(((SelectorImpl) other).queries);
-            this.funcs.addAll(((SelectorImpl) other).funcs);
+            this.selections.addAll(((SelectorImpl) other).selections);
             return this;
         }
 
         public Selector add(List<Object> fieldOrFuncs) {
-            for (Object fieldOrFunc : fieldOrFuncs) {
-                if (fieldOrFunc instanceof SObjectField) {
-                    this.fields.add((SObjectField) fieldOrFunc);
-                }
-                if (fieldOrFunc instanceof Function) {
-                    this.funcs.add((Function) fieldOrFunc);
-                }
-            }
+            this.selections.addAll(fieldOrFuncs);
             return this;
         }
     }
@@ -455,28 +462,22 @@ public abstract class Query implements Querable {
     }
 
     public Query selectBy(SObjectField field) {
-        this.rootSelector.fields.add(field);
+        this.rootSelector.add(field);
         return this;
     }
 
     public Query selectBy(SObjectField field1, SObjectField field2) {
-        this.rootSelector.fields.add(field1);
-        this.rootSelector.fields.add(field2);
+        this.rootSelector.add(field1, field2);
         return this;
     }
 
     public Query selectBy(SObjectField field1, SObjectField field2, SObjectField field3) {
-        this.rootSelector.fields.add(field1);
-        this.rootSelector.fields.add(field2);
-        this.rootSelector.fields.add(field3);
+        this.rootSelector.add(field1, field2, field3);
         return this;
     }
 
     public Query selectBy(SObjectField field1, SObjectField field2, SObjectField field3, SObjectField field4) {
-        this.rootSelector.fields.add(field1);
-        this.rootSelector.fields.add(field2);
-        this.rootSelector.fields.add(field3);
-        this.rootSelector.fields.add(field4);
+        this.rootSelector.add(field1, field2, field3, field4);
         return this;
     }
 
@@ -487,37 +488,27 @@ public abstract class Query implements Querable {
         SObjectField field4,
         SObjectField field5
     ) {
-        this.rootSelector.fields.add(field1);
-        this.rootSelector.fields.add(field2);
-        this.rootSelector.fields.add(field3);
-        this.rootSelector.fields.add(field4);
-        this.rootSelector.fields.add(field5);
+        this.rootSelector.add(field1, field2, field3, field4, field5);
         return this;
     }
 
     public Query selectBy(SelectFunction func) {
-        this.rootSelector.funcs.add(func);
+        this.rootSelector.add(func);
         return this;
     }
 
     public Query selectBy(SelectFunction func1, SelectFunction func2) {
-        this.rootSelector.funcs.add(func1);
-        this.rootSelector.funcs.add(func2);
+        this.rootSelector.add(func1, func2);
         return this;
     }
 
     public Query selectBy(SelectFunction func1, SelectFunction func2, SelectFunction func3) {
-        this.rootSelector.funcs.add(func1);
-        this.rootSelector.funcs.add(func2);
-        this.rootSelector.funcs.add(func3);
+        this.rootSelector.add(func1, func2, func3);
         return this;
     }
 
     public Query selectBy(SelectFunction func1, SelectFunction func2, SelectFunction func3, SelectFunction func4) {
-        this.rootSelector.funcs.add(func1);
-        this.rootSelector.funcs.add(func2);
-        this.rootSelector.funcs.add(func3);
-        this.rootSelector.funcs.add(func4);
+        this.rootSelector.add(func1, func2, func3, func4);
         return this;
     }
 
@@ -528,16 +519,12 @@ public abstract class Query implements Querable {
         SelectFunction func4,
         SelectFunction func5
     ) {
-        this.rootSelector.funcs.add(func1);
-        this.rootSelector.funcs.add(func2);
-        this.rootSelector.funcs.add(func3);
-        this.rootSelector.funcs.add(func4);
-        this.rootSelector.funcs.add(func5);
+        this.rootSelector.add(func1, func2, func3, func4, func5);
         return this;
     }
 
     public Query selectBy(String relationName, Query query) {
-        this.rootSelector.queries.put(relationName, (QueryBuilder) query);
+        this.rootSelector.add(relationName, query);
         return this;
     }
 
@@ -647,6 +634,7 @@ public abstract class Query implements Querable {
         }
 
         public Orderer ascending() {
+            this.setAscending(true);
             return this;
         }
 
@@ -656,6 +644,7 @@ public abstract class Query implements Querable {
         }
 
         public Orderer nullsFirst() {
+            this.setNullFirst(true);
             return this;
         }
 
@@ -811,7 +800,7 @@ public abstract class Query implements Querable {
     }
 
     public Query ascending() {
-        // default to true
+        this.rootOrderer.setAscending(true);
         return this;
     }
 
@@ -821,7 +810,7 @@ public abstract class Query implements Querable {
     }
 
     public Query nullsFirst() {
-        // default to true
+        this.rootOrderer.setNullFirst(true);
         return this;
     }
 
@@ -1115,7 +1104,7 @@ public abstract class Query implements Querable {
             return this;
         }
 
-        public void build(List<String> fragments, Map<String, Object> tmpVars) {
+        public virtual void build(List<String> fragments, Map<String, Object> tmpVars) {
             if (this.filters.size() == 0) {
                 return;
             }
@@ -1153,6 +1142,30 @@ public abstract class Query implements Querable {
         private OrLogicalExpression() {
             super(' OR ');
             this.tag = FILTER_OR_TAG;
+        }
+    }
+
+    private class NotLogicalExpression extends LogicalExpression {
+        private NotLogicalExpression() {
+            super('NOT');
+            this.tag = FILTER_NOT_TAG;
+        }
+
+        public override void build(List<String> fragments, Map<String, Object> tmpVars) {
+            if (this.filters.size() == 0) {
+                return;
+            }
+
+            Filter filter = this.filters[0];
+
+            fragments.add(this.operator);
+            if (filter instanceof CompositeFilter) {
+                this.filters[0].build(fragments, tmpVars);
+            } else {
+                fragments.add('(');
+                this.filters[0].build(fragments, tmpVars);
+                fragments.add(')');
+            }
         }
     }
 
@@ -1213,13 +1226,16 @@ public abstract class Query implements Querable {
         this.rootFilter = filter;
         return this;
     }
+    // Logical Statement: notx()
+
+    public static Filter notx(Filter filter) {
+        return new NotLogicalExpression().add(filter);
+    }
+
+    // Logical Statement: orx()
 
     public static CompositeFilter orx() {
         return new OrLogicalExpression();
-    }
-
-    public static CompositeFilter andx() {
-        return new AndLogicalExpression();
     }
 
     public static CompositeFilter orx(Filter filter1, Filter filter2) {
@@ -1261,8 +1277,69 @@ public abstract class Query implements Querable {
         return orx(new List<Filter>{ filter1, filter2, filter3, filter4, filter5, filter6, filter7 });
     }
 
+    public static CompositeFilter orx(
+        Filter filter1,
+        Filter filter2,
+        Filter filter3,
+        Filter filter4,
+        Filter filter5,
+        Filter filter6,
+        Filter filter7,
+        Filter filter8
+    ) {
+        return orx(new List<Filter>{ filter1, filter2, filter3, filter4, filter5, filter6, filter7, filter8 });
+    }
+
+    public static CompositeFilter orx(
+        Filter filter1,
+        Filter filter2,
+        Filter filter3,
+        Filter filter4,
+        Filter filter5,
+        Filter filter6,
+        Filter filter7,
+        Filter filter8,
+        Filter filter9
+    ) {
+        return orx(new List<Filter>{ filter1, filter2, filter3, filter4, filter5, filter6, filter7, filter8, filter9 });
+    }
+
+    public static CompositeFilter orx(
+        Filter filter1,
+        Filter filter2,
+        Filter filter3,
+        Filter filter4,
+        Filter filter5,
+        Filter filter6,
+        Filter filter7,
+        Filter filter8,
+        Filter filter9,
+        Filter filter10
+    ) {
+        return orx(
+            new List<Filter>{
+                filter1,
+                filter2,
+                filter3,
+                filter4,
+                filter5,
+                filter6,
+                filter7,
+                filter8,
+                filter9,
+                filter10
+            }
+        );
+    }
+
     public static CompositeFilter orx(List<Filter> filters) {
         return new OrLogicalExpression().add(filters);
+    }
+
+    // Logical Statement: andx()
+
+    public static CompositeFilter andx() {
+        return new AndLogicalExpression();
     }
 
     public static CompositeFilter andx(Filter filter1, Filter filter2) {
@@ -1302,6 +1379,63 @@ public abstract class Query implements Querable {
         Filter filter7
     ) {
         return andx(new List<Filter>{ filter1, filter2, filter3, filter4, filter5, filter6, filter7 });
+    }
+
+    public static CompositeFilter andx(
+        Filter filter1,
+        Filter filter2,
+        Filter filter3,
+        Filter filter4,
+        Filter filter5,
+        Filter filter6,
+        Filter filter7,
+        Filter filter8
+    ) {
+        return andx(new List<Filter>{ filter1, filter2, filter3, filter4, filter5, filter6, filter7, filter8 });
+    }
+
+    public static CompositeFilter andx(
+        Filter filter1,
+        Filter filter2,
+        Filter filter3,
+        Filter filter4,
+        Filter filter5,
+        Filter filter6,
+        Filter filter7,
+        Filter filter8,
+        Filter filter9
+    ) {
+        return andx(
+            new List<Filter>{ filter1, filter2, filter3, filter4, filter5, filter6, filter7, filter8, filter9 }
+        );
+    }
+
+    public static CompositeFilter andx(
+        Filter filter1,
+        Filter filter2,
+        Filter filter3,
+        Filter filter4,
+        Filter filter5,
+        Filter filter6,
+        Filter filter7,
+        Filter filter8,
+        Filter filter9,
+        Filter filter10
+    ) {
+        return andx(
+            new List<Filter>{
+                filter1,
+                filter2,
+                filter3,
+                filter4,
+                filter5,
+                filter6,
+                filter7,
+                filter8,
+                filter9,
+                filter10
+            }
+        );
     }
 
     public static CompositeFilter andx(List<Filter> filters) {
@@ -3220,32 +3354,33 @@ public abstract class Query implements Querable {
     private static final Integer FILTER_DISTANCE_TAG = 14;
     private static final Integer FILTER_AND_TAG = 15;
     private static final Integer FILTER_OR_TAG = 16;
+    private static final Integer FILTER_NOT_TAG = 17;
 
-    private static final Integer FUNC_GROUPING_TAG = 17;
-    private static final Integer FUNC_COUNT_TAG = 18;
-    private static final Integer FUNC_COUNT_DISTINCT_TAG = 19;
-    private static final Integer FUNC_SUM_TAG = 20;
-    private static final Integer FUNC_AVG_TAG = 21;
-    private static final Integer FUNC_MAX_TAG = 22;
-    private static final Integer FUNC_MIN_TAG = 23;
+    private static final Integer FUNC_GROUPING_TAG = 18;
+    private static final Integer FUNC_COUNT_TAG = 19;
+    private static final Integer FUNC_COUNT_DISTINCT_TAG = 20;
+    private static final Integer FUNC_SUM_TAG = 21;
+    private static final Integer FUNC_AVG_TAG = 22;
+    private static final Integer FUNC_MAX_TAG = 23;
+    private static final Integer FUNC_MIN_TAG = 24;
 
-    private static final Integer CALENDAR_MONTH_TAG = 24;
-    private static final Integer CALENDAR_QUARTER_TAG = 25;
-    private static final Integer CALENDAR_YEAR_TAG = 26;
-    private static final Integer DAY_IN_MONTH_TAG = 27;
-    private static final Integer DAY_IN_WEEK_TAG = 28;
-    private static final Integer DAY_IN_YEAR_TAG = 29;
-    private static final Integer DAY_ONLY_TAG = 30;
-    private static final Integer FISCAL_MONTH_TAG = 31;
-    private static final Integer FISCAL_QUARTER_TAG = 32;
-    private static final Integer FISCAL_YEAR_TAG = 33;
-    private static final Integer HOUR_IN_DAY_TAG = 34;
-    private static final Integer WEEK_IN_MONTH_TAG = 35;
-    private static final Integer WEEK_IN_YEAR_TAG = 36;
+    private static final Integer CALENDAR_MONTH_TAG = 25;
+    private static final Integer CALENDAR_QUARTER_TAG = 26;
+    private static final Integer CALENDAR_YEAR_TAG = 27;
+    private static final Integer DAY_IN_MONTH_TAG = 28;
+    private static final Integer DAY_IN_WEEK_TAG = 29;
+    private static final Integer DAY_IN_YEAR_TAG = 30;
+    private static final Integer DAY_ONLY_TAG = 31;
+    private static final Integer FISCAL_MONTH_TAG = 32;
+    private static final Integer FISCAL_QUARTER_TAG = 33;
+    private static final Integer FISCAL_YEAR_TAG = 34;
+    private static final Integer HOUR_IN_DAY_TAG = 35;
+    private static final Integer WEEK_IN_MONTH_TAG = 36;
+    private static final Integer WEEK_IN_YEAR_TAG = 37;
 
-    private static final Integer FUNC_FORMAT_TAG = 37;
-    private static final Integer FUNC_LABEL_TAG = 38;
-    private static final Integer FUNC_CURRENCY_TAG = 39;
+    private static final Integer FUNC_FORMAT_TAG = 38;
+    private static final Integer FUNC_LABEL_TAG = 39;
+    private static final Integer FUNC_CURRENCY_TAG = 40;
 
     // prettier-ignore
     public interface Querable {
