@@ -31,7 +31,7 @@ An apex SOQL query builder to dynamically build SOQL supporting almost all synta
    - `USING SCOPE` statement.
    - `WITH [DATA CATEGORY]` statement.
 
-3. **Value Objects**: Queries and all clauses in them are value objects. So different query instances are considered equal when built with same parameters.
+3. **Value Objects**: Queries and all clauses are value objects, which means different query instances are considered equal when built with same parameters.
 
    ```java
    // Queries for the same sObject and with same fields selected in the same order
@@ -74,7 +74,7 @@ Here are the naming conventions to increase query readability:
 Here are the naming conventions to avoid conflictions with existing keywords or operators.
 
 1.  Use `<keyword>By()` format for SOQL keywords, such as `selectBy`, `filterBy`, `groupBy`, `havingBy`, `orderBy`.
-2. Use `<operator>x()` format for conflicted operators only, such as `orx()`, `andx()`, `inx()`, `likex()`. No need to memorize when to use, the IDE will highlight there is a confliction, then you will know its time to add the x as suffix.  
+2. Use `<operator>x()` format for conflicted operators only, such as `orx()`, `andx()`, `inx()`, `likex()`. No need to memorize when to follow, the IDE will highlight there is a confliction, then you will know its time to add the x as suffix.  
 
 ## 3. Overview
 
@@ -113,9 +113,17 @@ List<Account> accountList = (List<Account>) Query.of(Account.SObjectType)
 
 ### 3.2 Chaining Order
 
-The chaining order of an query doesn't have to be in the order as they defined in the SOQL, when executed each clause will be under its correct order. This gives advantages when query is built in multiplaces.
+The chaining order of an query doesn't have to be in the order as they defined in the SOQL, when executed each clause will be under its correct order. This gives advantages when query is built in multi-places.
 
-## 4. Select Statement
+## 4. Keywords
+
+There is no SOQL `from ` keyword counterpart, the from is implied when create a Query with the `of` API:
+
+```java
+Query query = Query.of(Account.SOBjectType)
+```
+
+### 4.1 Select Statement
 
 There three types of `selectBy()` statements:
 
@@ -135,7 +143,7 @@ Query query = Query.of(Account.SObjectType)
 
 There can be as many `selectBy()` as needed to chain together
 
-
+4.2 Select Statement
 
 
 
