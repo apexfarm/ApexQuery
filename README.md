@@ -360,7 +360,7 @@ andx().add(filter1, filter2).add(filter3, filter4);
 Some of following params are not labeled with types, this is because they support multiple types. As a rule of thumb, there are three different types can be used for `param1`:
 
 1. An `SObjectField` such as `Account.AnnualRevenue`.
-2. A function such as `TO_LABEL(Account.AccountSource)`.
+2. An function for picklist label, date, distance and aggregation, i.e. `TO_LABEL(Account.AccountSource)`, `CALENDAR_MONTH(CreatedDate)`.
 3. A string such as `'Owner.Profile.Name'`. This is mainly used for parent field referencing.
 
 | SOQL Operators | Apex Query Operators                    | Generated Format                  |

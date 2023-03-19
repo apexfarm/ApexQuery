@@ -838,6 +838,7 @@ public with sharing class QueryTest extends Query {
 
     @isTest
     static void testOperator_Comparison_EQ() {
+        // param1 are SObjectField
         Query.Filter filter;
         filter = eq(Account.BillingCountry, 'China');
         Assert.areEqual(
@@ -905,7 +906,7 @@ public with sharing class QueryTest extends Query {
             Query.of(Account.SObjectType).filterBy(filter).build()
         );
 
-        // Strings
+        // param1 are Strings
         filter = eq('BillingCountry', 'China');
         Assert.areEqual(
             'SELECT Id FROM Account WHERE BillingCountry = \'China\'',
@@ -971,8 +972,1281 @@ public with sharing class QueryTest extends Query {
             'SELECT Id FROM Account WHERE BillingCountry = NULL',
             Query.of(Account.SObjectType).filterBy(filter).build()
         );
+
+        // param1 are AggregateFunction
+        filter = eq(MAX(Account.BillingCountry), 'China');
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) = \'China\'',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = eq(MAX(Account.BillingCountry), getFakeId(Account.SObjectType, 0));
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) = \'001000zzzz00000\'',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = eq(MAX(Account.BillingCountry), true);
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) = true',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = eq(MAX(Account.BillingCountry), 123);
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) = 123',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = eq(MAX(Account.BillingCountry), 123.456);
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) = 123.456',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = eq(MAX(Account.BillingCountry), Datetime.newInstance(2023, 1, 1, 12, 12, 12));
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) = :tmpVar1',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = eq(MAX(Account.BillingCountry), Date.newInstance(2023, 1, 1));
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) = :tmpVar1',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = eq(MAX(Account.BillingCountry), Time.newInstance(12, 12, 12, 12));
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) = :tmpVar1',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = eq(MAX(Account.BillingCountry), LAST_N_DAYS(2));
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) = LAST_N_DAYS:2',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = eq(MAX(Account.BillingCountry), CNY(2000));
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) = CNY2000',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = eqNull(MAX(Account.BillingCountry));
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) = NULL',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        // param1 are others
+        filter = eq(DISTANCE_IN_KILOMETER(Account.ShippingAddress, Location.newInstance(37.775001, -122.41801)), 12.3);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE DISTANCE(ShippingAddress, GEOLOCATION(37.775001, -122.41801), \'km\') = 12.3',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = eq(CALENDAR_MONTH(Account.CreatedDate), 2);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE CALENDAR_MONTH(CreatedDate) = 2',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = eq(TO_LABEL(Account.AccountSource), 'Advertisement');
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE TOLABEL(AccountSource) = \'Advertisement\'',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
     }
 
+    @isTest
+    static void testOperator_Comparison_NE() {
+        // param1 are SObjectField
+        Query.Filter filter;
+        filter = ne(Account.BillingCountry, 'China');
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry != \'China\'',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = ne(Account.BillingCountry, getFakeId(Account.SObjectType, 0));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry != \'001000zzzz00000\'',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = ne(Account.BillingCountry, true);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry != true',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = ne(Account.BillingCountry, 123);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry != 123',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = ne(Account.BillingCountry, 123.456);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry != 123.456',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = ne(Account.BillingCountry, Datetime.newInstance(2023, 1, 1, 12, 12, 12));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry != :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = ne(Account.BillingCountry, Date.newInstance(2023, 1, 1));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry != :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = ne(Account.BillingCountry, Time.newInstance(12, 12, 12, 12));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry != :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = ne(Account.BillingCountry, LAST_N_DAYS(2));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry != LAST_N_DAYS:2',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = ne(Account.BillingCountry, CNY(2000));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry != CNY2000',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = neNull(Account.BillingCountry);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry != NULL',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        // param1 are Strings
+        filter = ne('BillingCountry', 'China');
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry != \'China\'',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = ne('BillingCountry', getFakeId(Account.SObjectType, 0));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry != \'001000zzzz00000\'',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = ne('BillingCountry', true);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry != true',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = ne('BillingCountry', 123);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry != 123',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = ne('BillingCountry', 123.456);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry != 123.456',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = ne('BillingCountry', Datetime.newInstance(2023, 1, 1, 12, 12, 12));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry != :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = ne('BillingCountry', Date.newInstance(2023, 1, 1));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry != :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = ne('BillingCountry', Time.newInstance(12, 12, 12, 12));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry != :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = ne('BillingCountry', LAST_N_DAYS(2));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry != LAST_N_DAYS:2',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = ne('BillingCountry', CNY(2000));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry != CNY2000',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = neNull('BillingCountry');
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry != NULL',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        // param1 are AggregateFunction
+        filter = ne(MAX(Account.BillingCountry), 'China');
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) != \'China\'',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = ne(MAX(Account.BillingCountry), getFakeId(Account.SObjectType, 0));
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) != \'001000zzzz00000\'',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = ne(MAX(Account.BillingCountry), true);
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) != true',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = ne(MAX(Account.BillingCountry), 123);
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) != 123',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = ne(MAX(Account.BillingCountry), 123.456);
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) != 123.456',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = ne(MAX(Account.BillingCountry), Datetime.newInstance(2023, 1, 1, 12, 12, 12));
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) != :tmpVar1',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = ne(MAX(Account.BillingCountry), Date.newInstance(2023, 1, 1));
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) != :tmpVar1',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = ne(MAX(Account.BillingCountry), Time.newInstance(12, 12, 12, 12));
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) != :tmpVar1',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = ne(MAX(Account.BillingCountry), LAST_N_DAYS(2));
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) != LAST_N_DAYS:2',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = ne(MAX(Account.BillingCountry), CNY(2000));
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) != CNY2000',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = neNull(MAX(Account.BillingCountry));
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) != NULL',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        // param1 are others
+        filter = ne(DISTANCE_IN_KILOMETER(Account.ShippingAddress, Location.newInstance(37.775001, -122.41801)), 12.3);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE DISTANCE(ShippingAddress, GEOLOCATION(37.775001, -122.41801), \'km\') != 12.3',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = ne(CALENDAR_MONTH(Account.CreatedDate), 2);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE CALENDAR_MONTH(CreatedDate) != 2',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = ne(TO_LABEL(Account.AccountSource), 'Advertisement');
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE TOLABEL(AccountSource) != \'Advertisement\'',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+    }
+
+    @isTest
+    static void testOperator_Comparison_GT() {
+        // param1 are SObjectField
+        Query.Filter filter;
+        filter = gt(Account.BillingCountry, 'China');
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry > \'China\'',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = gt(Account.BillingCountry, getFakeId(Account.SObjectType, 0));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry > \'001000zzzz00000\'',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = gt(Account.BillingCountry, 123);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry > 123',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = gt(Account.BillingCountry, 123.456);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry > 123.456',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = gt(Account.BillingCountry, Datetime.newInstance(2023, 1, 1, 12, 12, 12));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry > :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = gt(Account.BillingCountry, Date.newInstance(2023, 1, 1));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry > :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = gt(Account.BillingCountry, Time.newInstance(12, 12, 12, 12));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry > :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = gt(Account.BillingCountry, LAST_N_DAYS(2));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry > LAST_N_DAYS:2',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = gt(Account.BillingCountry, CNY(2000));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry > CNY2000',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        // param1 are Strings
+        filter = gt('BillingCountry', 'China');
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry > \'China\'',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = gt('BillingCountry', getFakeId(Account.SObjectType, 0));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry > \'001000zzzz00000\'',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = gt('BillingCountry', 123);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry > 123',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = gt('BillingCountry', 123.456);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry > 123.456',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = gt('BillingCountry', Datetime.newInstance(2023, 1, 1, 12, 12, 12));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry > :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = gt('BillingCountry', Date.newInstance(2023, 1, 1));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry > :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = gt('BillingCountry', Time.newInstance(12, 12, 12, 12));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry > :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = gt('BillingCountry', LAST_N_DAYS(2));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry > LAST_N_DAYS:2',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = gt('BillingCountry', CNY(2000));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry > CNY2000',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        // param1 are AggregateFunction
+        filter = gt(MAX(Account.BillingCountry), 'China');
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) > \'China\'',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = gt(MAX(Account.BillingCountry), getFakeId(Account.SObjectType, 0));
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) > \'001000zzzz00000\'',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = gt(MAX(Account.BillingCountry), 123);
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) > 123',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = gt(MAX(Account.BillingCountry), 123.456);
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) > 123.456',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = gt(MAX(Account.BillingCountry), Datetime.newInstance(2023, 1, 1, 12, 12, 12));
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) > :tmpVar1',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = gt(MAX(Account.BillingCountry), Date.newInstance(2023, 1, 1));
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) > :tmpVar1',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = gt(MAX(Account.BillingCountry), Time.newInstance(12, 12, 12, 12));
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) > :tmpVar1',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = gt(MAX(Account.BillingCountry), LAST_N_DAYS(2));
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) > LAST_N_DAYS:2',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = gt(MAX(Account.BillingCountry), CNY(2000));
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) > CNY2000',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        // param1 are others
+        filter = gt(DISTANCE_IN_KILOMETER(Account.ShippingAddress, Location.newInstance(37.775001, -122.41801)), 12.3);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE DISTANCE(ShippingAddress, GEOLOCATION(37.775001, -122.41801), \'km\') > 12.3',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = gt(CALENDAR_MONTH(Account.CreatedDate), 2);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE CALENDAR_MONTH(CreatedDate) > 2',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = gt(TO_LABEL(Account.AccountSource), 'Advertisement');
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE TOLABEL(AccountSource) > \'Advertisement\'',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+    }
+
+    @isTest
+    static void testOperator_Comparison_GTE() {
+        // param1 are SObjectField
+        Query.Filter filter;
+        filter = gte(Account.BillingCountry, 'China');
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry >= \'China\'',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = gte(Account.BillingCountry, getFakeId(Account.SObjectType, 0));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry >= \'001000zzzz00000\'',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = gte(Account.BillingCountry, 123);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry >= 123',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = gte(Account.BillingCountry, 123.456);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry >= 123.456',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = gte(Account.BillingCountry, Datetime.newInstance(2023, 1, 1, 12, 12, 12));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry >= :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = gte(Account.BillingCountry, Date.newInstance(2023, 1, 1));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry >= :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = gte(Account.BillingCountry, Time.newInstance(12, 12, 12, 12));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry >= :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = gte(Account.BillingCountry, LAST_N_DAYS(2));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry >= LAST_N_DAYS:2',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = gte(Account.BillingCountry, CNY(2000));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry >= CNY2000',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        // param1 are Strings
+        filter = gte('BillingCountry', 'China');
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry >= \'China\'',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = gte('BillingCountry', getFakeId(Account.SObjectType, 0));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry >= \'001000zzzz00000\'',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = gte('BillingCountry', 123);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry >= 123',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = gte('BillingCountry', 123.456);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry >= 123.456',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = gte('BillingCountry', Datetime.newInstance(2023, 1, 1, 12, 12, 12));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry >= :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = gte('BillingCountry', Date.newInstance(2023, 1, 1));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry >= :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = gte('BillingCountry', Time.newInstance(12, 12, 12, 12));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry >= :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = gte('BillingCountry', LAST_N_DAYS(2));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry >= LAST_N_DAYS:2',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = gte('BillingCountry', CNY(2000));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry >= CNY2000',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        // param1 are AggregateFunction
+        filter = gte(MAX(Account.BillingCountry), 'China');
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) >= \'China\'',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = gte(MAX(Account.BillingCountry), getFakeId(Account.SObjectType, 0));
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) >= \'001000zzzz00000\'',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = gte(MAX(Account.BillingCountry), 123);
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) >= 123',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = gte(MAX(Account.BillingCountry), 123.456);
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) >= 123.456',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = gte(MAX(Account.BillingCountry), Datetime.newInstance(2023, 1, 1, 12, 12, 12));
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) >= :tmpVar1',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = gte(MAX(Account.BillingCountry), Date.newInstance(2023, 1, 1));
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) >= :tmpVar1',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = gte(MAX(Account.BillingCountry), Time.newInstance(12, 12, 12, 12));
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) >= :tmpVar1',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = gte(MAX(Account.BillingCountry), LAST_N_DAYS(2));
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) >= LAST_N_DAYS:2',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = gte(MAX(Account.BillingCountry), CNY(2000));
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) >= CNY2000',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        // param1 are others
+        filter = gte(DISTANCE_IN_KILOMETER(Account.ShippingAddress, Location.newInstance(37.775001, -122.41801)), 12.3);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE DISTANCE(ShippingAddress, GEOLOCATION(37.775001, -122.41801), \'km\') >= 12.3',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = gte(CALENDAR_MONTH(Account.CreatedDate), 2);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE CALENDAR_MONTH(CreatedDate) >= 2',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = gte(TO_LABEL(Account.AccountSource), 'Advertisement');
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE TOLABEL(AccountSource) >= \'Advertisement\'',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+    }
+
+    @isTest
+    static void testOperator_Comparison_LT() {
+        // param1 are SObjectField
+        Query.Filter filter;
+        filter = lt(Account.BillingCountry, 'China');
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry < \'China\'',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = lt(Account.BillingCountry, getFakeId(Account.SObjectType, 0));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry < \'001000zzzz00000\'',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = lt(Account.BillingCountry, 123);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry < 123',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = lt(Account.BillingCountry, 123.456);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry < 123.456',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = lt(Account.BillingCountry, Datetime.newInstance(2023, 1, 1, 12, 12, 12));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry < :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = lt(Account.BillingCountry, Date.newInstance(2023, 1, 1));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry < :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = lt(Account.BillingCountry, Time.newInstance(12, 12, 12, 12));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry < :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = lt(Account.BillingCountry, LAST_N_DAYS(2));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry < LAST_N_DAYS:2',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = lt(Account.BillingCountry, CNY(2000));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry < CNY2000',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        // param1 are Strings
+        filter = lt('BillingCountry', 'China');
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry < \'China\'',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = lt('BillingCountry', getFakeId(Account.SObjectType, 0));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry < \'001000zzzz00000\'',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = lt('BillingCountry', 123);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry < 123',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = lt('BillingCountry', 123.456);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry < 123.456',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = lt('BillingCountry', Datetime.newInstance(2023, 1, 1, 12, 12, 12));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry < :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = lt('BillingCountry', Date.newInstance(2023, 1, 1));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry < :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = lt('BillingCountry', Time.newInstance(12, 12, 12, 12));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry < :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = lt('BillingCountry', LAST_N_DAYS(2));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry < LAST_N_DAYS:2',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = lt('BillingCountry', CNY(2000));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry < CNY2000',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        // param1 are AggregateFunction
+        filter = lt(MAX(Account.BillingCountry), 'China');
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) < \'China\'',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = lt(MAX(Account.BillingCountry), getFakeId(Account.SObjectType, 0));
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) < \'001000zzzz00000\'',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = lt(MAX(Account.BillingCountry), 123);
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) < 123',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = lt(MAX(Account.BillingCountry), 123.456);
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) < 123.456',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = lt(MAX(Account.BillingCountry), Datetime.newInstance(2023, 1, 1, 12, 12, 12));
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) < :tmpVar1',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = lt(MAX(Account.BillingCountry), Date.newInstance(2023, 1, 1));
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) < :tmpVar1',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = lt(MAX(Account.BillingCountry), Time.newInstance(12, 12, 12, 12));
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) < :tmpVar1',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = lt(MAX(Account.BillingCountry), LAST_N_DAYS(2));
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) < LAST_N_DAYS:2',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = lt(MAX(Account.BillingCountry), CNY(2000));
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) < CNY2000',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        // param1 are others
+        filter = lt(DISTANCE_IN_KILOMETER(Account.ShippingAddress, Location.newInstance(37.775001, -122.41801)), 12.3);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE DISTANCE(ShippingAddress, GEOLOCATION(37.775001, -122.41801), \'km\') < 12.3',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = lt(CALENDAR_MONTH(Account.CreatedDate), 2);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE CALENDAR_MONTH(CreatedDate) < 2',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = lt(TO_LABEL(Account.AccountSource), 'Advertisement');
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE TOLABEL(AccountSource) < \'Advertisement\'',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+    }
+
+    @isTest
+    static void testOperator_Comparison_LTE() {
+        // param1 are SObjectField
+        Query.Filter filter;
+        filter = lte(Account.BillingCountry, 'China');
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry <= \'China\'',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = lte(Account.BillingCountry, getFakeId(Account.SObjectType, 0));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry <= \'001000zzzz00000\'',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = lte(Account.BillingCountry, 123);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry <= 123',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = lte(Account.BillingCountry, 123.456);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry <= 123.456',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = lte(Account.BillingCountry, Datetime.newInstance(2023, 1, 1, 12, 12, 12));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry <= :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = lte(Account.BillingCountry, Date.newInstance(2023, 1, 1));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry <= :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = lte(Account.BillingCountry, Time.newInstance(12, 12, 12, 12));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry <= :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = lte(Account.BillingCountry, LAST_N_DAYS(2));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry <= LAST_N_DAYS:2',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = lte(Account.BillingCountry, CNY(2000));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry <= CNY2000',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        // param1 are Strings
+        filter = lte('BillingCountry', 'China');
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry <= \'China\'',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = lte('BillingCountry', getFakeId(Account.SObjectType, 0));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry <= \'001000zzzz00000\'',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = lte('BillingCountry', 123);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry <= 123',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = lte('BillingCountry', 123.456);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry <= 123.456',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = lte('BillingCountry', Datetime.newInstance(2023, 1, 1, 12, 12, 12));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry <= :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = lte('BillingCountry', Date.newInstance(2023, 1, 1));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry <= :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = lte('BillingCountry', Time.newInstance(12, 12, 12, 12));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry <= :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = lte('BillingCountry', LAST_N_DAYS(2));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry <= LAST_N_DAYS:2',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = lte('BillingCountry', CNY(2000));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry <= CNY2000',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        // param1 are AggregateFunction
+        filter = lte(MAX(Account.BillingCountry), 'China');
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) <= \'China\'',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = lte(MAX(Account.BillingCountry), getFakeId(Account.SObjectType, 0));
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) <= \'001000zzzz00000\'',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = lte(MAX(Account.BillingCountry), 123);
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) <= 123',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = lte(MAX(Account.BillingCountry), 123.456);
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) <= 123.456',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = lte(MAX(Account.BillingCountry), Datetime.newInstance(2023, 1, 1, 12, 12, 12));
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) <= :tmpVar1',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = lte(MAX(Account.BillingCountry), Date.newInstance(2023, 1, 1));
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) <= :tmpVar1',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = lte(MAX(Account.BillingCountry), Time.newInstance(12, 12, 12, 12));
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) <= :tmpVar1',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = lte(MAX(Account.BillingCountry), LAST_N_DAYS(2));
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) <= LAST_N_DAYS:2',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = lte(MAX(Account.BillingCountry), CNY(2000));
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) <= CNY2000',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        // param1 are others
+        filter = lte(DISTANCE_IN_KILOMETER(Account.ShippingAddress, Location.newInstance(37.775001, -122.41801)), 12.3);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE DISTANCE(ShippingAddress, GEOLOCATION(37.775001, -122.41801), \'km\') <= 12.3',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = lte(CALENDAR_MONTH(Account.CreatedDate), 2);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE CALENDAR_MONTH(CreatedDate) <= 2',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = lte(TO_LABEL(Account.AccountSource), 'Advertisement');
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE TOLABEL(AccountSource) <= \'Advertisement\'',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+    }
+
+    @isTest
+    static void testOperator_Comparison_BETWEEN() {
+        // param1 are SObjectField
+        Query.Filter filter;
+        filter = between(Account.BillingCountry, 'China', 'China');
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE (BillingCountry >= \'China\' AND BillingCountry <= \'China\')',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = between(Account.BillingCountry, getFakeId(Account.SObjectType, 0), getFakeId(Account.SObjectType, 0));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE (BillingCountry >= \'001000zzzz00000\' AND BillingCountry <= \'001000zzzz00000\')',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = between(Account.BillingCountry, 123, 123);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE (BillingCountry >= 123 AND BillingCountry <= 123)',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = between(Account.BillingCountry, 123.456, 123.456);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE (BillingCountry >= 123.456 AND BillingCountry <= 123.456)',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = between(
+            Account.BillingCountry,
+            Datetime.newInstance(2023, 1, 1, 12, 12, 12),
+            Datetime.newInstance(2023, 1, 1, 12, 12, 12)
+        );
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE (BillingCountry >= :tmpVar1 AND BillingCountry <= :tmpVar2)',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = between(Account.BillingCountry, Date.newInstance(2023, 1, 1), Date.newInstance(2023, 1, 1));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE (BillingCountry >= :tmpVar1 AND BillingCountry <= :tmpVar2)',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = between(Account.BillingCountry, Time.newInstance(12, 12, 12, 12), Time.newInstance(12, 12, 12, 12));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE (BillingCountry >= :tmpVar1 AND BillingCountry <= :tmpVar2)',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = between(Account.BillingCountry, LAST_N_DAYS(2), LAST_N_DAYS(2));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE (BillingCountry >= LAST_N_DAYS:2 AND BillingCountry <= LAST_N_DAYS:2)',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = between(Account.BillingCountry, CNY(2000), CNY(2000));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE (BillingCountry >= CNY2000 AND BillingCountry <= CNY2000)',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        // param1 are Strings
+        filter = between('BillingCountry', 'China', 'China');
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE (BillingCountry >= \'China\' AND BillingCountry <= \'China\')',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = between('BillingCountry', getFakeId(Account.SObjectType, 0), getFakeId(Account.SObjectType, 0));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE (BillingCountry >= \'001000zzzz00000\' AND BillingCountry <= \'001000zzzz00000\')',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = between('BillingCountry', 123, 123);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE (BillingCountry >= 123 AND BillingCountry <= 123)',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = between('BillingCountry', 123.456, 123.456);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE (BillingCountry >= 123.456 AND BillingCountry <= 123.456)',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = between(
+            'BillingCountry',
+            Datetime.newInstance(2023, 1, 1, 12, 12, 12),
+            Datetime.newInstance(2023, 1, 1, 12, 12, 12)
+        );
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE (BillingCountry >= :tmpVar1 AND BillingCountry <= :tmpVar2)',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = between('BillingCountry', Date.newInstance(2023, 1, 1), Date.newInstance(2023, 1, 1));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE (BillingCountry >= :tmpVar1 AND BillingCountry <= :tmpVar2)',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = between('BillingCountry', Time.newInstance(12, 12, 12, 12), Time.newInstance(12, 12, 12, 12));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE (BillingCountry >= :tmpVar1 AND BillingCountry <= :tmpVar2)',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = between('BillingCountry', LAST_N_DAYS(2), LAST_N_DAYS(2));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE (BillingCountry >= LAST_N_DAYS:2 AND BillingCountry <= LAST_N_DAYS:2)',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = between('BillingCountry', CNY(2000), CNY(2000));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE (BillingCountry >= CNY2000 AND BillingCountry <= CNY2000)',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        // param1 are AggregateFunction
+        filter = between(MAX(Account.BillingCountry), 'China', 'China');
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING (MAX(BillingCountry) >= \'China\' AND MAX(BillingCountry) <= \'China\')',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = between(
+            MAX(Account.BillingCountry),
+            getFakeId(Account.SObjectType, 0),
+            getFakeId(Account.SObjectType, 0)
+        );
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING (MAX(BillingCountry) >= \'001000zzzz00000\' AND MAX(BillingCountry) <= \'001000zzzz00000\')',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = between(MAX(Account.BillingCountry), 123, 123);
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING (MAX(BillingCountry) >= 123 AND MAX(BillingCountry) <= 123)',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = between(MAX(Account.BillingCountry), 123.456, 123.456);
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING (MAX(BillingCountry) >= 123.456 AND MAX(BillingCountry) <= 123.456)',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = between(
+            MAX(Account.BillingCountry),
+            Datetime.newInstance(2023, 1, 1, 12, 12, 12),
+            Datetime.newInstance(2023, 1, 1, 12, 12, 12)
+        );
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING (MAX(BillingCountry) >= :tmpVar1 AND MAX(BillingCountry) <= :tmpVar2)',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = between(MAX(Account.BillingCountry), Date.newInstance(2023, 1, 1), Date.newInstance(2023, 1, 1));
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING (MAX(BillingCountry) >= :tmpVar1 AND MAX(BillingCountry) <= :tmpVar2)',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = between(
+            MAX(Account.BillingCountry),
+            Time.newInstance(12, 12, 12, 12),
+            Time.newInstance(12, 12, 12, 12)
+        );
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING (MAX(BillingCountry) >= :tmpVar1 AND MAX(BillingCountry) <= :tmpVar2)',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = between(MAX(Account.BillingCountry), LAST_N_DAYS(2), LAST_N_DAYS(2));
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING (MAX(BillingCountry) >= LAST_N_DAYS:2 AND MAX(BillingCountry) <= LAST_N_DAYS:2)',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = between(MAX(Account.BillingCountry), CNY(2000), CNY(2000));
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING (MAX(BillingCountry) >= CNY2000 AND MAX(BillingCountry) <= CNY2000)',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        // param1 are others
+        filter = between(
+            DISTANCE_IN_KILOMETER(Account.ShippingAddress, Location.newInstance(37.775001, -122.41801)),
+            12.3,
+            12.3
+        );
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE (DISTANCE(ShippingAddress, GEOLOCATION(37.775001, -122.41801), \'km\') >= 12.3 AND DISTANCE(ShippingAddress, GEOLOCATION(37.775001, -122.41801), \'km\') <= 12.3)',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = between(CALENDAR_MONTH(Account.CreatedDate), 2, 2);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE (CALENDAR_MONTH(CreatedDate) >= 2 AND CALENDAR_MONTH(CreatedDate) <= 2)',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = between(TO_LABEL(Account.AccountSource), 'Advertisement', 'Advertisement');
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE (TOLABEL(AccountSource) >= \'Advertisement\' AND TOLABEL(AccountSource) <= \'Advertisement\')',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+    }
     // #endregion
     // ============================
 

@@ -1560,6 +1560,9 @@ public abstract class Query implements Querable {
     public static Filter eq(String field, CurrencyLiteral value) {
         return new EQ(field, value);
     }
+    public static Filter eqNull(String field) {
+        return new EQ(field, null);
+    }
 
     // Comparison - EQ - SObjectField
     public static Filter eq(SObjectField field, String value) {
@@ -1589,34 +1592,40 @@ public abstract class Query implements Querable {
     public static Filter eq(SObjectField field, CurrencyLiteral value) {
         return new EQ(field, value);
     }
+    public static Filter eqNull(SObjectField field) {
+        return new EQ(field, null);
+    }
 
     // Comparison - EQ - AggregateFunction
-    public static Filter eq(AggregateFunction field, String value) {
-        return new EQ(field, value);
+    public static Filter eq(AggregateFunction func, String value) {
+        return new EQ(func, value);
     }
-    public static Filter eq(AggregateFunction field, Id value) {
-        return new EQ(field, value);
+    public static Filter eq(AggregateFunction func, Id value) {
+        return new EQ(func, value);
     }
-    public static Filter eq(AggregateFunction field, Boolean value) {
-        return new EQ(field, value);
+    public static Filter eq(AggregateFunction func, Boolean value) {
+        return new EQ(func, value);
     }
-    public static Filter eq(AggregateFunction field, Decimal value) {
-        return new EQ(field, value);
+    public static Filter eq(AggregateFunction func, Decimal value) {
+        return new EQ(func, value);
     }
-    public static Filter eq(AggregateFunction field, Datetime value) {
-        return new EQ(field, value);
+    public static Filter eq(AggregateFunction func, Datetime value) {
+        return new EQ(func, value);
     }
-    public static Filter eq(AggregateFunction field, Date value) {
-        return new EQ(field, value);
+    public static Filter eq(AggregateFunction func, Date value) {
+        return new EQ(func, value);
     }
-    public static Filter eq(AggregateFunction field, Time value) {
-        return new EQ(field, value);
+    public static Filter eq(AggregateFunction func, Time value) {
+        return new EQ(func, value);
     }
-    public static Filter eq(AggregateFunction field, DateLiteral value) {
-        return new EQ(field, value);
+    public static Filter eq(AggregateFunction func, DateLiteral value) {
+        return new EQ(func, value);
     }
-    public static Filter eq(AggregateFunction field, CurrencyLiteral value) {
-        return new EQ(field, value);
+    public static Filter eq(AggregateFunction func, CurrencyLiteral value) {
+        return new EQ(func, value);
+    }
+    public static Filter eqNull(AggregateFunction func) {
+        return new EQ(func, null);
     }
 
     // Comparison - EQ - Others
@@ -1628,12 +1637,8 @@ public abstract class Query implements Querable {
         return new EQ(func, value);
     }
 
-    public static Filter eqNull(String field) {
-        return new EQ(field, null);
-    }
-
-    public static Filter eqNull(SObjectField field) {
-        return new EQ(field, null);
+    public static Filter eq(ToLabelFunction func, String value) {
+        return new EQ(func, value);
     }
 
     // Comparison - NE
@@ -1666,6 +1671,9 @@ public abstract class Query implements Querable {
     public static Filter ne(String field, CurrencyLiteral value) {
         return new NE(field, value);
     }
+    public static Filter neNull(String field) {
+        return new NE(field, null);
+    }
 
     // Comparison - EQ - SObjectField
     public static Filter ne(SObjectField field, String value) {
@@ -1695,34 +1703,40 @@ public abstract class Query implements Querable {
     public static Filter ne(SObjectField field, CurrencyLiteral value) {
         return new NE(field, value);
     }
+    public static Filter neNull(SObjectField field) {
+        return new NE(field, null);
+    }
 
     // Comparison - EQ - AggregateFunction
-    public static Filter ne(AggregateFunction field, String value) {
-        return new NE(field, value);
+    public static Filter ne(AggregateFunction func, String value) {
+        return new NE(func, value);
     }
-    public static Filter ne(AggregateFunction field, Id value) {
-        return new NE(field, value);
+    public static Filter ne(AggregateFunction func, Id value) {
+        return new NE(func, value);
     }
-    public static Filter ne(AggregateFunction field, Boolean value) {
-        return new NE(field, value);
+    public static Filter ne(AggregateFunction func, Boolean value) {
+        return new NE(func, value);
     }
-    public static Filter ne(AggregateFunction field, Decimal value) {
-        return new NE(field, value);
+    public static Filter ne(AggregateFunction func, Decimal value) {
+        return new NE(func, value);
     }
-    public static Filter ne(AggregateFunction field, Datetime value) {
-        return new NE(field, value);
+    public static Filter ne(AggregateFunction func, Datetime value) {
+        return new NE(func, value);
     }
-    public static Filter ne(AggregateFunction field, Date value) {
-        return new NE(field, value);
+    public static Filter ne(AggregateFunction func, Date value) {
+        return new NE(func, value);
     }
-    public static Filter ne(AggregateFunction field, Time value) {
-        return new NE(field, value);
+    public static Filter ne(AggregateFunction func, Time value) {
+        return new NE(func, value);
     }
-    public static Filter ne(AggregateFunction field, DateLiteral value) {
-        return new NE(field, value);
+    public static Filter ne(AggregateFunction func, DateLiteral value) {
+        return new NE(func, value);
     }
-    public static Filter ne(AggregateFunction field, CurrencyLiteral value) {
-        return new NE(field, value);
+    public static Filter ne(AggregateFunction func, CurrencyLiteral value) {
+        return new NE(func, value);
+    }
+    public static Filter neNull(AggregateFunction func) {
+        return new NE(func, null);
     }
 
     // Comparison - EQ - Others
@@ -1734,13 +1748,10 @@ public abstract class Query implements Querable {
         return new NE(func, value);
     }
 
-    public static Filter neNull(String field) {
-        return new NE(field, null);
+    public static Filter ne(ToLabelFunction func, String value) {
+        return new NE(func, value);
     }
 
-    public static Filter neNull(SObjectField field) {
-        return new NE(field, null);
-    }
     // #endregion
     // =============
 
@@ -1753,38 +1764,85 @@ public abstract class Query implements Querable {
         }
     }
 
-    public static Filter gt(SObjectField field, Decimal value) {
+    // Comparison - GT - String
+    public static Filter gt(String field, String value) {
+        return new GT(field, value);
+    }
+    public static Filter gt(String field, Id value) {
+        return new GT(field, value);
+    }
+    public static Filter gt(String field, Decimal value) {
+        return new GT(field, value);
+    }
+    public static Filter gt(String field, Datetime value) {
+        return new GT(field, value);
+    }
+    public static Filter gt(String field, Date value) {
+        return new GT(field, value);
+    }
+    public static Filter gt(String field, Time value) {
+        return new GT(field, value);
+    }
+    public static Filter gt(String field, DateLiteral value) {
+        return new GT(field, value);
+    }
+    public static Filter gt(String field, CurrencyLiteral value) {
         return new GT(field, value);
     }
 
+    // Comparison - GT - SObjectField
+    public static Filter gt(SObjectField field, String value) {
+        return new GT(field, value);
+    }
+    public static Filter gt(SObjectField field, Id value) {
+        return new GT(field, value);
+    }
+    public static Filter gt(SObjectField field, Decimal value) {
+        return new GT(field, value);
+    }
+    public static Filter gt(SObjectField field, Datetime value) {
+        return new GT(field, value);
+    }
+    public static Filter gt(SObjectField field, Date value) {
+        return new GT(field, value);
+    }
+    public static Filter gt(SObjectField field, Time value) {
+        return new GT(field, value);
+    }
+    public static Filter gt(SObjectField field, DateLiteral value) {
+        return new GT(field, value);
+    }
     public static Filter gt(SObjectField field, CurrencyLiteral value) {
         return new GT(field, value);
     }
 
-    public static Filter gt(SObjectField field, DateLiteral value) {
-        return new GT(field, value);
+    // Comparison - GT - AggregateFunction
+    public static Filter gt(AggregateFunction func, String value) {
+        return new GT(func, value);
+    }
+    public static Filter gt(AggregateFunction func, Id value) {
+        return new GT(func, value);
+    }
+    public static Filter gt(AggregateFunction func, Decimal value) {
+        return new GT(func, value);
+    }
+    public static Filter gt(AggregateFunction func, Datetime value) {
+        return new GT(func, value);
+    }
+    public static Filter gt(AggregateFunction func, Date value) {
+        return new GT(func, value);
+    }
+    public static Filter gt(AggregateFunction func, Time value) {
+        return new GT(func, value);
+    }
+    public static Filter gt(AggregateFunction func, DateLiteral value) {
+        return new GT(func, value);
+    }
+    public static Filter gt(AggregateFunction func, CurrencyLiteral value) {
+        return new GT(func, value);
     }
 
-    public static Filter gt(SObjectField field, Date value) {
-        return new GT(field, value);
-    }
-
-    public static Filter gt(SObjectField field, Datetime value) {
-        return new GT(field, value);
-    }
-
-    public static Filter gt(SObjectField field, Time value) {
-        return new GT(field, value);
-    }
-
-    public static Filter gt(SObjectField field, Id value) {
-        return new GT(field, value);
-    }
-
-    public static Filter gt(SObjectField field, String value) {
-        return new GT(field, value);
-    }
-
+    // Comparison - GT - Others
     public static Filter gt(DateFunction func, Integer value) {
         return new GT(func, value);
     }
@@ -1793,7 +1851,7 @@ public abstract class Query implements Querable {
         return new GT(func, value);
     }
 
-    public static Filter gt(AggregateFunction func, Object value) {
+    public static Filter gt(ToLabelFunction func, String value) {
         return new GT(func, value);
     }
 
@@ -1809,38 +1867,85 @@ public abstract class Query implements Querable {
         }
     }
 
-    public static Filter gte(SObjectField field, Decimal value) {
+    // Comparison - GTE - String
+    public static Filter gte(String field, String value) {
+        return new GTE(field, value);
+    }
+    public static Filter gte(String field, Id value) {
+        return new GTE(field, value);
+    }
+    public static Filter gte(String field, Decimal value) {
+        return new GTE(field, value);
+    }
+    public static Filter gte(String field, Datetime value) {
+        return new GTE(field, value);
+    }
+    public static Filter gte(String field, Date value) {
+        return new GTE(field, value);
+    }
+    public static Filter gte(String field, Time value) {
+        return new GTE(field, value);
+    }
+    public static Filter gte(String field, DateLiteral value) {
+        return new GTE(field, value);
+    }
+    public static Filter gte(String field, CurrencyLiteral value) {
         return new GTE(field, value);
     }
 
+    // Comparison - GTE - SObjectField
+    public static Filter gte(SObjectField field, String value) {
+        return new GTE(field, value);
+    }
+    public static Filter gte(SObjectField field, Id value) {
+        return new GTE(field, value);
+    }
+    public static Filter gte(SObjectField field, Decimal value) {
+        return new GTE(field, value);
+    }
+    public static Filter gte(SObjectField field, Datetime value) {
+        return new GTE(field, value);
+    }
+    public static Filter gte(SObjectField field, Date value) {
+        return new GTE(field, value);
+    }
+    public static Filter gte(SObjectField field, Time value) {
+        return new GTE(field, value);
+    }
+    public static Filter gte(SObjectField field, DateLiteral value) {
+        return new GTE(field, value);
+    }
     public static Filter gte(SObjectField field, CurrencyLiteral value) {
         return new GTE(field, value);
     }
 
-    public static Filter gte(SObjectField field, DateLiteral value) {
-        return new GTE(field, value);
+    // Comparison - GTE - AggregateFunction
+    public static Filter gte(AggregateFunction func, String value) {
+        return new GTE(func, value);
+    }
+    public static Filter gte(AggregateFunction func, Id value) {
+        return new GTE(func, value);
+    }
+    public static Filter gte(AggregateFunction func, Decimal value) {
+        return new GTE(func, value);
+    }
+    public static Filter gte(AggregateFunction func, Datetime value) {
+        return new GTE(func, value);
+    }
+    public static Filter gte(AggregateFunction func, Date value) {
+        return new GTE(func, value);
+    }
+    public static Filter gte(AggregateFunction func, Time value) {
+        return new GTE(func, value);
+    }
+    public static Filter gte(AggregateFunction func, DateLiteral value) {
+        return new GTE(func, value);
+    }
+    public static Filter gte(AggregateFunction func, CurrencyLiteral value) {
+        return new GTE(func, value);
     }
 
-    public static Filter gte(SObjectField field, Date value) {
-        return new GTE(field, value);
-    }
-
-    public static Filter gte(SObjectField field, Datetime value) {
-        return new GTE(field, value);
-    }
-
-    public static Filter gte(SObjectField field, Time value) {
-        return new GTE(field, value);
-    }
-
-    public static Filter gte(SObjectField field, Id value) {
-        return new GTE(field, value);
-    }
-
-    public static Filter gte(SObjectField field, String value) {
-        return new GTE(field, value);
-    }
-
+    // Comparison - GTE - Others
     public static Filter gte(DateFunction func, Integer value) {
         return new GTE(func, value);
     }
@@ -1849,7 +1954,7 @@ public abstract class Query implements Querable {
         return new GTE(func, value);
     }
 
-    public static Filter gte(AggregateFunction func, Object value) {
+    public static Filter gte(ToLabelFunction func, String value) {
         return new GTE(func, value);
     }
     // #endregion
@@ -1864,38 +1969,85 @@ public abstract class Query implements Querable {
         }
     }
 
-    public static Filter lt(SObjectField field, Decimal value) {
+    // Comparison - LT - String
+    public static Filter lt(String field, String value) {
+        return new LT(field, value);
+    }
+    public static Filter lt(String field, Id value) {
+        return new LT(field, value);
+    }
+    public static Filter lt(String field, Decimal value) {
+        return new LT(field, value);
+    }
+    public static Filter lt(String field, Datetime value) {
+        return new LT(field, value);
+    }
+    public static Filter lt(String field, Date value) {
+        return new LT(field, value);
+    }
+    public static Filter lt(String field, Time value) {
+        return new LT(field, value);
+    }
+    public static Filter lt(String field, DateLiteral value) {
+        return new LT(field, value);
+    }
+    public static Filter lt(String field, CurrencyLiteral value) {
         return new LT(field, value);
     }
 
+    // Comparison - LT - SObjectField
+    public static Filter lt(SObjectField field, String value) {
+        return new LT(field, value);
+    }
+    public static Filter lt(SObjectField field, Id value) {
+        return new LT(field, value);
+    }
+    public static Filter lt(SObjectField field, Decimal value) {
+        return new LT(field, value);
+    }
+    public static Filter lt(SObjectField field, Datetime value) {
+        return new LT(field, value);
+    }
+    public static Filter lt(SObjectField field, Date value) {
+        return new LT(field, value);
+    }
+    public static Filter lt(SObjectField field, Time value) {
+        return new LT(field, value);
+    }
+    public static Filter lt(SObjectField field, DateLiteral value) {
+        return new LT(field, value);
+    }
     public static Filter lt(SObjectField field, CurrencyLiteral value) {
         return new LT(field, value);
     }
 
-    public static Filter lt(SObjectField field, DateLiteral value) {
-        return new LT(field, value);
+    // Comparison - LT - AggregateFunction
+    public static Filter lt(AggregateFunction func, String value) {
+        return new LT(func, value);
+    }
+    public static Filter lt(AggregateFunction func, Id value) {
+        return new LT(func, value);
+    }
+    public static Filter lt(AggregateFunction func, Decimal value) {
+        return new LT(func, value);
+    }
+    public static Filter lt(AggregateFunction func, Datetime value) {
+        return new LT(func, value);
+    }
+    public static Filter lt(AggregateFunction func, Date value) {
+        return new LT(func, value);
+    }
+    public static Filter lt(AggregateFunction func, Time value) {
+        return new LT(func, value);
+    }
+    public static Filter lt(AggregateFunction func, DateLiteral value) {
+        return new LT(func, value);
+    }
+    public static Filter lt(AggregateFunction func, CurrencyLiteral value) {
+        return new LT(func, value);
     }
 
-    public static Filter lt(SObjectField field, Date value) {
-        return new LT(field, value);
-    }
-
-    public static Filter lt(SObjectField field, Datetime value) {
-        return new LT(field, value);
-    }
-
-    public static Filter lt(SObjectField field, Time value) {
-        return new LT(field, value);
-    }
-
-    public static Filter lt(SObjectField field, Id value) {
-        return new LT(field, value);
-    }
-
-    public static Filter lt(SObjectField field, String value) {
-        return new LT(field, value);
-    }
-
+    // Comparison - LT - Others
     public static Filter lt(DateFunction func, Integer value) {
         return new LT(func, value);
     }
@@ -1904,7 +2056,7 @@ public abstract class Query implements Querable {
         return new LT(func, value);
     }
 
-    public static Filter lt(AggregateFunction func, Object value) {
+    public static Filter lt(ToLabelFunction func, String value) {
         return new LT(func, value);
     }
     // #endregion
@@ -1919,38 +2071,85 @@ public abstract class Query implements Querable {
         }
     }
 
-    public static Filter lte(SObjectField field, Decimal value) {
+    // Comparison - LTE - String
+    public static Filter lte(String field, String value) {
+        return new LTE(field, value);
+    }
+    public static Filter lte(String field, Id value) {
+        return new LTE(field, value);
+    }
+    public static Filter lte(String field, Decimal value) {
+        return new LTE(field, value);
+    }
+    public static Filter lte(String field, Datetime value) {
+        return new LTE(field, value);
+    }
+    public static Filter lte(String field, Date value) {
+        return new LTE(field, value);
+    }
+    public static Filter lte(String field, Time value) {
+        return new LTE(field, value);
+    }
+    public static Filter lte(String field, DateLiteral value) {
+        return new LTE(field, value);
+    }
+    public static Filter lte(String field, CurrencyLiteral value) {
         return new LTE(field, value);
     }
 
+    // Comparison - LTE - SObjectField
+    public static Filter lte(SObjectField field, String value) {
+        return new LTE(field, value);
+    }
+    public static Filter lte(SObjectField field, Id value) {
+        return new LTE(field, value);
+    }
+    public static Filter lte(SObjectField field, Decimal value) {
+        return new LTE(field, value);
+    }
+    public static Filter lte(SObjectField field, Datetime value) {
+        return new LTE(field, value);
+    }
+    public static Filter lte(SObjectField field, Date value) {
+        return new LTE(field, value);
+    }
+    public static Filter lte(SObjectField field, Time value) {
+        return new LTE(field, value);
+    }
+    public static Filter lte(SObjectField field, DateLiteral value) {
+        return new LTE(field, value);
+    }
     public static Filter lte(SObjectField field, CurrencyLiteral value) {
         return new LTE(field, value);
     }
 
-    public static Filter lte(SObjectField field, DateLiteral value) {
-        return new LTE(field, value);
+    // Comparison - LTE - AggregateFunction
+    public static Filter lte(AggregateFunction func, String value) {
+        return new LTE(func, value);
+    }
+    public static Filter lte(AggregateFunction func, Id value) {
+        return new LTE(func, value);
+    }
+    public static Filter lte(AggregateFunction func, Decimal value) {
+        return new LTE(func, value);
+    }
+    public static Filter lte(AggregateFunction func, Datetime value) {
+        return new LTE(func, value);
+    }
+    public static Filter lte(AggregateFunction func, Date value) {
+        return new LTE(func, value);
+    }
+    public static Filter lte(AggregateFunction func, Time value) {
+        return new LTE(func, value);
+    }
+    public static Filter lte(AggregateFunction func, DateLiteral value) {
+        return new LTE(func, value);
+    }
+    public static Filter lte(AggregateFunction func, CurrencyLiteral value) {
+        return new LTE(func, value);
     }
 
-    public static Filter lte(SObjectField field, Date value) {
-        return new LTE(field, value);
-    }
-
-    public static Filter lte(SObjectField field, Datetime value) {
-        return new LTE(field, value);
-    }
-
-    public static Filter lte(SObjectField field, Time value) {
-        return new LTE(field, value);
-    }
-
-    public static Filter lte(SObjectField field, Id value) {
-        return new LTE(field, value);
-    }
-
-    public static Filter lte(SObjectField field, String value) {
-        return new LTE(field, value);
-    }
-
+    // Comparison - LTE - Others
     public static Filter lte(DateFunction func, Integer value) {
         return new LTE(func, value);
     }
@@ -1959,7 +2158,7 @@ public abstract class Query implements Querable {
         return new LTE(func, value);
     }
 
-    public static Filter lte(AggregateFunction func, Object value) {
+    public static Filter lte(ToLabelFunction func, String value) {
         return new LTE(func, value);
     }
     // #endregion
@@ -1967,49 +2166,95 @@ public abstract class Query implements Querable {
 
     // ===============
     // #region between
-    // prettier-ignore
-    public static Filter between(SObjectField field, Decimal fromValue, Decimal toValue) {
-        return andx(gte(field, fromValue), lte(field, toValue));
+    // Comparison - Between - String
+    public static Filter between(String field, String minValue, String maxValue) {
+        return andx(gte(field, minValue), lte(field, maxValue));
     }
-    // prettier-ignore
-    public static Filter between(SObjectField field, CurrencyLiteral fromValue, CurrencyLiteral toValue) {
-        return andx(gte(field, fromValue), lte(field, toValue));
+    public static Filter between(String field, Id minValue, Id maxValue) {
+        return andx(gte(field, minValue), lte(field, maxValue));
     }
-    // prettier-ignore
-    public static Filter between(SObjectField field, DateLiteral fromValue, DateLiteral toValue) {
-        return andx(gte(field, fromValue), lte(field, toValue));
+    public static Filter between(String field, Decimal minValue, Decimal maxValue) {
+        return andx(gte(field, minValue), lte(field, maxValue));
     }
-    // prettier-ignore
-    public static Filter between(SObjectField field, Date fromValue, Date toValue) {
-        return andx(gte(field, fromValue), lte(field, toValue));
+    public static Filter between(String field, Datetime minValue, Datetime maxValue) {
+        return andx(gte(field, minValue), lte(field, maxValue));
     }
-    // prettier-ignore
-    public static Filter between(SObjectField field, Datetime fromValue, Datetime toValue) {
-        return andx(gte(field, fromValue), lte(field, toValue));
+    public static Filter between(String field, Date minValue, Date maxValue) {
+        return andx(gte(field, minValue), lte(field, maxValue));
     }
-    // prettier-ignore
-    public static Filter between(SObjectField field, Time fromValue, Time toValue) {
-        return andx(gte(field, fromValue), lte(field, toValue));
+    public static Filter between(String field, Time minValue, Time maxValue) {
+        return andx(gte(field, minValue), lte(field, maxValue));
     }
-    // prettier-ignore
-    public static Filter between(SObjectField field, Id fromValue, Id toValue) {
-        return andx(gte(field, fromValue), lte(field, toValue));
+    public static Filter between(String field, DateLiteral minValue, DateLiteral maxValue) {
+        return andx(gte(field, minValue), lte(field, maxValue));
     }
-    // prettier-ignore
-    public static Filter between(SObjectField field, String fromValue, String toValue) {
-        return andx(gte(field, fromValue), lte(field, toValue));
+    public static Filter between(String field, CurrencyLiteral minValue, CurrencyLiteral maxValue) {
+        return andx(gte(field, minValue), lte(field, maxValue));
     }
-    // prettier-ignore
-    public static Filter between(DateFunction func, Integer fromValue, Integer toValue) {
-        return andx(gte(func, fromValue), lte(func, toValue));
+
+    // Comparison - Between - SObjectField
+    public static Filter between(SObjectField field, String minValue, String maxValue) {
+        return andx(gte(field, minValue), lte(field, maxValue));
     }
-    // prettier-ignore
-    public static Filter between(DistanceFunction func, Decimal fromValue, Decimal toValue) {
-        return andx(gte(func, fromValue), lte(func, toValue));
+    public static Filter between(SObjectField field, Id minValue, Id maxValue) {
+        return andx(gte(field, minValue), lte(field, maxValue));
     }
-    // prettier-ignore
-    public static Filter between(AggregateFunction func, Object fromValue, Object toValue) {
-        return andx(gte(func, fromValue), lte(func, toValue));
+    public static Filter between(SObjectField field, Decimal minValue, Decimal maxValue) {
+        return andx(gte(field, minValue), lte(field, maxValue));
+    }
+    public static Filter between(SObjectField field, Datetime minValue, Datetime maxValue) {
+        return andx(gte(field, minValue), lte(field, maxValue));
+    }
+    public static Filter between(SObjectField field, Date minValue, Date maxValue) {
+        return andx(gte(field, minValue), lte(field, maxValue));
+    }
+    public static Filter between(SObjectField field, Time minValue, Time maxValue) {
+        return andx(gte(field, minValue), lte(field, maxValue));
+    }
+    public static Filter between(SObjectField field, DateLiteral minValue, DateLiteral maxValue) {
+        return andx(gte(field, minValue), lte(field, maxValue));
+    }
+    public static Filter between(SObjectField field, CurrencyLiteral minValue, CurrencyLiteral maxValue) {
+        return andx(gte(field, minValue), lte(field, maxValue));
+    }
+
+    // Comparison - Between - AggregateFunction
+    public static Filter between(AggregateFunction func, String minValue, String maxValue) {
+        return andx(gte(func, minValue), lte(func, maxValue));
+    }
+    public static Filter between(AggregateFunction func, Id minValue, Id maxValue) {
+        return andx(gte(func, minValue), lte(func, maxValue));
+    }
+    public static Filter between(AggregateFunction func, Decimal minValue, Decimal maxValue) {
+        return andx(gte(func, minValue), lte(func, maxValue));
+    }
+    public static Filter between(AggregateFunction func, Datetime minValue, Datetime maxValue) {
+        return andx(gte(func, minValue), lte(func, maxValue));
+    }
+    public static Filter between(AggregateFunction func, Date minValue, Date maxValue) {
+        return andx(gte(func, minValue), lte(func, maxValue));
+    }
+    public static Filter between(AggregateFunction func, Time minValue, Time maxValue) {
+        return andx(gte(func, minValue), lte(func, maxValue));
+    }
+    public static Filter between(AggregateFunction func, DateLiteral minValue, DateLiteral maxValue) {
+        return andx(gte(func, minValue), lte(func, maxValue));
+    }
+    public static Filter between(AggregateFunction func, CurrencyLiteral minValue, CurrencyLiteral maxValue) {
+        return andx(gte(func, minValue), lte(func, maxValue));
+    }
+
+    // Comparison - Between - Others
+    public static Filter between(DateFunction func, Integer minValue, Integer maxValue) {
+        return andx(gte(func, minValue), lte(func, maxValue));
+    }
+
+    public static Filter between(DistanceFunction func, Decimal minValue, Decimal maxValue) {
+        return andx(gte(func, minValue), lte(func, maxValue));
+    }
+
+    public static Filter between(ToLabelFunction func, String minValue, String maxValue) {
+        return andx(gte(func, minValue), lte(func, maxValue));
     }
     // #endregion
     // ===============
@@ -2365,7 +2610,7 @@ public abstract class Query implements Querable {
     // ================
     // #region distance
 
-    public class DistanceFunction implements Function, FilterFunction, OrderFunction {
+    public class DistanceFunction implements Function, OrderFunction {
         private SObjectField field { get; set; }
         private Location geo { get; set; }
         private String unit { get; set; }
@@ -2381,7 +2626,7 @@ public abstract class Query implements Querable {
                 String.valueOf(this.field) +
                 ', GEOLOCATION(' +
                 this.geo.latitude +
-                ',' +
+                ', ' +
                 this.geo.longitude +
                 '), \'' +
                 this.unit +
@@ -2497,9 +2742,6 @@ public abstract class Query implements Querable {
     public interface OrderFunction extends Function {
     }
 
-    public interface FilterFunction extends Function {
-    }
-
     public virtual class GenericFunction implements Function {
         private Object fieldOrFunc { get; set; }
         private String name { get; set; }
@@ -2539,7 +2781,7 @@ public abstract class Query implements Querable {
         }
     }
 
-    public class ToLabelFunction extends GenericFunction implements SelectFunction, FilterFunction {
+    public class ToLabelFunction extends GenericFunction implements SelectFunction {
         private ToLabelFunction(Object fieldOrFunc) {
             super(fieldOrFunc, 'TOLABEL', FUNC_LABEL_TAG);
         }
