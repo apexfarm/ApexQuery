@@ -17,6 +17,12 @@
 
 @isTest
 public with sharing class QueryTest extends Query {
+    static String getFakeId(Schema.SObjectType objectType, Integer index) {
+        return objectType.getDescribe().getKeyPrefix() +
+            '000zzzz' + // start from a large Id to avoid confliction during unit test.
+            String.valueOf(index).leftPad(5, '0');
+    }
+
     static void makeData() {
         // prettier-ignore
         List<Account> accountList = new List<Account> {
@@ -119,6 +125,91 @@ public with sharing class QueryTest extends Query {
 
         selector = Query.selector().add(Account.Description, Account.BillingCountry, Account.BillingState);
         Query.Selector anotherSelector = Query.selector().add(Account.Id, Account.Name).add(selector);
+        accountQuery = Query.of(Account.SObjectType).selectBy(anotherSelector);
+        Assert.areEqual(
+            'SELECT Id, Name, Description, BillingCountry, BillingState FROM Account',
+            accountQuery.build()
+        );
+    }
+
+    @isTest
+    static void testKeyword_Select_Strings_Parents() {
+        makeData();
+        Query contactQuery = Query.of(Contact.SObjectType)
+            .selectBy(Contact.Id, Contact.Name)
+            .selectBy('Account.Owner.Name')
+            .selectBy('FORMAT(Account.AnnualRevenue)', 'TOLABEL(Account.AccountSource)');
+        Assert.areEqual(
+            'SELECT Id, Name, Account.Owner.Name, FORMAT(Account.AnnualRevenue), TOLABEL(Account.AccountSource) FROM Contact',
+            contactQuery.build()
+        );
+        List<Contact> contacts = (List<Contact>) contactQuery.run();
+        Assert.areEqual(4, contacts.size());
+    }
+
+    @isTest
+    static void testKeyword_Select_Strings() {
+        // Inline Styles
+        Query accountQuery = Query.of(Account.SObjectType).selectBy('Id');
+        Assert.areEqual('SELECT Id FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).selectBy('Id', 'Name');
+        Assert.areEqual('SELECT Id, Name FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).selectBy('Id', 'Name', 'Description');
+        Assert.areEqual('SELECT Id, Name, Description FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).selectBy('Id', 'Name', 'Description', 'BillingCountry');
+        Assert.areEqual('SELECT Id, Name, Description, BillingCountry FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType)
+            .selectBy('Id', 'Name', 'Description', 'BillingCountry', 'BillingState');
+        Assert.areEqual(
+            'SELECT Id, Name, Description, BillingCountry, BillingState FROM Account',
+            accountQuery.build()
+        );
+
+        accountQuery = Query.of(Account.SObjectType)
+            .selectBy('Id', 'Name')
+            .selectBy('Description', 'BillingCountry', 'BillingState');
+        Assert.areEqual(
+            'SELECT Id, Name, Description, BillingCountry, BillingState FROM Account',
+            accountQuery.build()
+        );
+
+        // Outline Styles
+        Query.Selector selector = Query.selector().add('Id');
+        accountQuery = Query.of(Account.SObjectType).selectBy(selector);
+        Assert.areEqual('SELECT Id FROM Account', accountQuery.build());
+
+        selector = Query.selector().add('Id', 'Name');
+        accountQuery = Query.of(Account.SObjectType).selectBy(selector);
+        Assert.areEqual('SELECT Id, Name FROM Account', accountQuery.build());
+
+        selector = Query.selector().add('Id', 'Name', 'Description');
+        accountQuery = Query.of(Account.SObjectType).selectBy(selector);
+        Assert.areEqual('SELECT Id, Name, Description FROM Account', accountQuery.build());
+
+        selector = Query.selector().add('Id', 'Name', 'Description', 'BillingCountry');
+        accountQuery = Query.of(Account.SObjectType).selectBy(selector);
+        Assert.areEqual('SELECT Id, Name, Description, BillingCountry FROM Account', accountQuery.build());
+
+        selector = Query.selector().add('Id', 'Name', 'Description', 'BillingCountry', 'BillingState');
+        accountQuery = Query.of(Account.SObjectType).selectBy(selector);
+        Assert.areEqual(
+            'SELECT Id, Name, Description, BillingCountry, BillingState FROM Account',
+            accountQuery.build()
+        );
+
+        selector = Query.selector().add('Id', 'Name').add('Description', 'BillingCountry', 'BillingState');
+        accountQuery = Query.of(Account.SObjectType).selectBy(selector);
+        Assert.areEqual(
+            'SELECT Id, Name, Description, BillingCountry, BillingState FROM Account',
+            accountQuery.build()
+        );
+
+        selector = Query.selector().add('Description', 'BillingCountry', 'BillingState');
+        Query.Selector anotherSelector = Query.selector().add('Id', 'Name').add(selector);
         accountQuery = Query.of(Account.SObjectType).selectBy(anotherSelector);
         Assert.areEqual(
             'SELECT Id, Name, Description, BillingCountry, BillingState FROM Account',
@@ -744,6 +835,143 @@ public with sharing class QueryTest extends Query {
 
     // ============================
     // #region Comparison Operators
+
+    @isTest
+    static void testOperator_Comparison_EQ() {
+        Query.Filter filter;
+        filter = eq(Account.BillingCountry, 'China');
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry = \'China\'',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = eq(Account.BillingCountry, getFakeId(Account.SObjectType, 0));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry = \'001000zzzz00000\'',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = eq(Account.BillingCountry, true);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry = true',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = eq(Account.BillingCountry, 123);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry = 123',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = eq(Account.BillingCountry, 123.456);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry = 123.456',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = eq(Account.BillingCountry, Datetime.newInstance(2023, 1, 1, 12, 12, 12));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry = :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = eq(Account.BillingCountry, Date.newInstance(2023, 1, 1));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry = :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = eq(Account.BillingCountry, Time.newInstance(12, 12, 12, 12));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry = :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = eq(Account.BillingCountry, LAST_N_DAYS(2));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry = LAST_N_DAYS:2',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = eq(Account.BillingCountry, CNY(2000));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry = CNY2000',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = eqNull(Account.BillingCountry);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry = NULL',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        // Strings
+        filter = eq('BillingCountry', 'China');
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry = \'China\'',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = eq('BillingCountry', getFakeId(Account.SObjectType, 0));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry = \'001000zzzz00000\'',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = eq('BillingCountry', true);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry = true',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = eq('BillingCountry', 123);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry = 123',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = eq('BillingCountry', 123.456);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry = 123.456',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = eq('BillingCountry', Datetime.newInstance(2023, 1, 1, 12, 12, 12));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry = :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = eq('BillingCountry', Date.newInstance(2023, 1, 1));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry = :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = eq('BillingCountry', Time.newInstance(12, 12, 12, 12));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry = :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = eq('BillingCountry', LAST_N_DAYS(2));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry = LAST_N_DAYS:2',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = eq('BillingCountry', CNY(2000));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry = CNY2000',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = eqNull('BillingCountry');
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry = NULL',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+    }
 
     // #endregion
     // ============================

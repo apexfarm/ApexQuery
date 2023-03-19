@@ -286,6 +286,12 @@ public abstract class Query implements Querable {
     // #region Select
 
     public interface Selector {
+        Selector add(String field);
+        Selector add(String field1, String field2);
+        Selector add(String field1, String field2, String field3);
+        Selector add(String field1, String field2, String field3, String field4);
+        Selector add(String field1, String field2, String field3, String field4, String field5);
+
         Selector add(SObjectField field);
         Selector add(SObjectField field1, SObjectField field2);
         Selector add(SObjectField field1, SObjectField field2, SObjectField field3);
@@ -297,6 +303,7 @@ public abstract class Query implements Querable {
             SObjectField field4,
             SObjectField field5
         );
+
         Selector add(SelectFunction func);
         Selector add(SelectFunction func1, SelectFunction func2);
         Selector add(SelectFunction func1, SelectFunction func2, SelectFunction func3);
@@ -347,6 +354,41 @@ public abstract class Query implements Querable {
 
             SelectorImpl that = (SelectorImpl) obj;
             return this.selections == that.selections;
+        }
+
+        public Selector add(String field) {
+            this.selections.add(field);
+            return this;
+        }
+
+        public Selector add(String field1, String field2) {
+            this.selections.add(field1);
+            this.selections.add(field2);
+            return this;
+        }
+
+        public Selector add(String field1, String field2, String field3) {
+            this.selections.add(field1);
+            this.selections.add(field2);
+            this.selections.add(field3);
+            return this;
+        }
+
+        public Selector add(String field1, String field2, String field3, String field4) {
+            this.selections.add(field1);
+            this.selections.add(field2);
+            this.selections.add(field3);
+            this.selections.add(field4);
+            return this;
+        }
+
+        public Selector add(String field1, String field2, String field3, String field4, String field5) {
+            this.selections.add(field1);
+            this.selections.add(field2);
+            this.selections.add(field3);
+            this.selections.add(field4);
+            this.selections.add(field5);
+            return this;
         }
 
         public Selector add(SObjectField field) {
@@ -488,6 +530,31 @@ public abstract class Query implements Querable {
         SObjectField field4,
         SObjectField field5
     ) {
+        this.rootSelector.add(field1, field2, field3, field4, field5);
+        return this;
+    }
+
+    public Query selectBy(String field) {
+        this.rootSelector.add(field);
+        return this;
+    }
+
+    public Query selectBy(String field1, String field2) {
+        this.rootSelector.add(field1, field2);
+        return this;
+    }
+
+    public Query selectBy(String field1, String field2, String field3) {
+        this.rootSelector.add(field1, field2, field3);
+        return this;
+    }
+
+    public Query selectBy(String field1, String field2, String field3, String field4) {
+        this.rootSelector.add(field1, field2, field3, field4);
+        return this;
+    }
+
+    public Query selectBy(String field1, String field2, String field3, String field4, String field5) {
         this.rootSelector.add(field1, field2, field3, field4, field5);
         return this;
     }
@@ -1185,13 +1252,15 @@ public abstract class Query implements Querable {
         public virtual void build(List<String> fragments, Map<String, Object> tmpVars) {
             fragments.add(String.valueOf(this.fieldOrFunc));
             fragments.add(this.operator);
-            if (
+            if (this.value == null) {
+                fragments.add('NULL');
+            } else if (
                 this.value instanceof List<Object> ||
                 this.value instanceof Datetime ||
                 this.value instanceof Date ||
                 this.value instanceof Time
             ) {
-                String var = 'tmpVar' + tmpVars.size() + 1;
+                String var = 'tmpVar' + (tmpVars.size() + 1);
                 tmpVars.put(var, this.value);
                 fragments.add(':');
                 fragments.add(var);
@@ -1461,36 +1530,212 @@ public abstract class Query implements Querable {
         }
     }
 
-    // TODO: strong types of eq and ne
+    // Comparison - EQ
+    // Comparison - EQ - String
 
-    public static Filter eq(SObjectField field, Object value) {
+    public static Filter eq(String field, String value) {
+        return new EQ(field, value);
+    }
+    public static Filter eq(String field, Id value) {
+        return new EQ(field, value);
+    }
+    public static Filter eq(String field, Boolean value) {
+        return new EQ(field, value);
+    }
+    public static Filter eq(String field, Decimal value) {
+        return new EQ(field, value);
+    }
+    public static Filter eq(String field, Datetime value) {
+        return new EQ(field, value);
+    }
+    public static Filter eq(String field, Date value) {
+        return new EQ(field, value);
+    }
+    public static Filter eq(String field, Time value) {
+        return new EQ(field, value);
+    }
+    public static Filter eq(String field, DateLiteral value) {
+        return new EQ(field, value);
+    }
+    public static Filter eq(String field, CurrencyLiteral value) {
         return new EQ(field, value);
     }
 
-    public static Filter ne(SObjectField field, Object value) {
-        return new NE(field, value);
+    // Comparison - EQ - SObjectField
+    public static Filter eq(SObjectField field, String value) {
+        return new EQ(field, value);
+    }
+    public static Filter eq(SObjectField field, Id value) {
+        return new EQ(field, value);
+    }
+    public static Filter eq(SObjectField field, Boolean value) {
+        return new EQ(field, value);
+    }
+    public static Filter eq(SObjectField field, Decimal value) {
+        return new EQ(field, value);
+    }
+    public static Filter eq(SObjectField field, Datetime value) {
+        return new EQ(field, value);
+    }
+    public static Filter eq(SObjectField field, Date value) {
+        return new EQ(field, value);
+    }
+    public static Filter eq(SObjectField field, Time value) {
+        return new EQ(field, value);
+    }
+    public static Filter eq(SObjectField field, DateLiteral value) {
+        return new EQ(field, value);
+    }
+    public static Filter eq(SObjectField field, CurrencyLiteral value) {
+        return new EQ(field, value);
+    }
+
+    // Comparison - EQ - AggregateFunction
+    public static Filter eq(AggregateFunction field, String value) {
+        return new EQ(field, value);
+    }
+    public static Filter eq(AggregateFunction field, Id value) {
+        return new EQ(field, value);
+    }
+    public static Filter eq(AggregateFunction field, Boolean value) {
+        return new EQ(field, value);
+    }
+    public static Filter eq(AggregateFunction field, Decimal value) {
+        return new EQ(field, value);
+    }
+    public static Filter eq(AggregateFunction field, Datetime value) {
+        return new EQ(field, value);
+    }
+    public static Filter eq(AggregateFunction field, Date value) {
+        return new EQ(field, value);
+    }
+    public static Filter eq(AggregateFunction field, Time value) {
+        return new EQ(field, value);
+    }
+    public static Filter eq(AggregateFunction field, DateLiteral value) {
+        return new EQ(field, value);
+    }
+    public static Filter eq(AggregateFunction field, CurrencyLiteral value) {
+        return new EQ(field, value);
+    }
+
+    // Comparison - EQ - Others
+    public static Filter eq(DistanceFunction field, Decimal value) {
+        return new EQ(field, value);
     }
 
     public static Filter eq(DateFunction func, Integer value) {
         return new EQ(func, value);
     }
 
+    public static Filter eqNull(String field) {
+        return new EQ(field, null);
+    }
+
+    public static Filter eqNull(SObjectField field) {
+        return new EQ(field, null);
+    }
+
+    // Comparison - NE
+    // Comparison - NE - String
+
+    public static Filter ne(String field, String value) {
+        return new NE(field, value);
+    }
+    public static Filter ne(String field, Id value) {
+        return new NE(field, value);
+    }
+    public static Filter ne(String field, Boolean value) {
+        return new NE(field, value);
+    }
+    public static Filter ne(String field, Decimal value) {
+        return new NE(field, value);
+    }
+    public static Filter ne(String field, Datetime value) {
+        return new NE(field, value);
+    }
+    public static Filter ne(String field, Date value) {
+        return new NE(field, value);
+    }
+    public static Filter ne(String field, Time value) {
+        return new NE(field, value);
+    }
+    public static Filter ne(String field, DateLiteral value) {
+        return new NE(field, value);
+    }
+    public static Filter ne(String field, CurrencyLiteral value) {
+        return new NE(field, value);
+    }
+
+    // Comparison - EQ - SObjectField
+    public static Filter ne(SObjectField field, String value) {
+        return new NE(field, value);
+    }
+    public static Filter ne(SObjectField field, Id value) {
+        return new NE(field, value);
+    }
+    public static Filter ne(SObjectField field, Boolean value) {
+        return new NE(field, value);
+    }
+    public static Filter ne(SObjectField field, Decimal value) {
+        return new NE(field, value);
+    }
+    public static Filter ne(SObjectField field, Datetime value) {
+        return new NE(field, value);
+    }
+    public static Filter ne(SObjectField field, Date value) {
+        return new NE(field, value);
+    }
+    public static Filter ne(SObjectField field, Time value) {
+        return new NE(field, value);
+    }
+    public static Filter ne(SObjectField field, DateLiteral value) {
+        return new NE(field, value);
+    }
+    public static Filter ne(SObjectField field, CurrencyLiteral value) {
+        return new NE(field, value);
+    }
+
+    // Comparison - EQ - AggregateFunction
+    public static Filter ne(AggregateFunction field, String value) {
+        return new NE(field, value);
+    }
+    public static Filter ne(AggregateFunction field, Id value) {
+        return new NE(field, value);
+    }
+    public static Filter ne(AggregateFunction field, Boolean value) {
+        return new NE(field, value);
+    }
+    public static Filter ne(AggregateFunction field, Decimal value) {
+        return new NE(field, value);
+    }
+    public static Filter ne(AggregateFunction field, Datetime value) {
+        return new NE(field, value);
+    }
+    public static Filter ne(AggregateFunction field, Date value) {
+        return new NE(field, value);
+    }
+    public static Filter ne(AggregateFunction field, Time value) {
+        return new NE(field, value);
+    }
+    public static Filter ne(AggregateFunction field, DateLiteral value) {
+        return new NE(field, value);
+    }
+    public static Filter ne(AggregateFunction field, CurrencyLiteral value) {
+        return new NE(field, value);
+    }
+
+    // Comparison - EQ - Others
+    public static Filter ne(DistanceFunction field, Decimal value) {
+        return new NE(field, value);
+    }
+
     public static Filter ne(DateFunction func, Integer value) {
         return new NE(func, value);
     }
 
-    public static Filter eq(AggregateFunction func, Object value) {
-        return new EQ(func, value);
-    }
-
-    public static Filter ne(AggregateFunction func, Object value) {
-        return new NE(func, value);
-    }
-
-    // TODO: support isnull?
-
-    public static Filter eqNull(SObjectField field) {
-        return new EQ(field, null);
+    public static Filter neNull(String field) {
+        return new NE(field, null);
     }
 
     public static Filter neNull(SObjectField field) {
@@ -3402,6 +3647,12 @@ public abstract class Query implements Querable {
         // [{FOR VIEW  | FOR REFERENCE} ]
         //![UPDATE {TRACKING|VIEWSTAT} ]
         // [FOR UPDATE]
+
+        Query selectBy(String field);
+        Query selectBy(String field1, String field2);
+        Query selectBy(String field1, String field2, String field3);
+        Query selectBy(String field1, String field2, String field3, String field4);
+        Query selectBy(String field1, String field2, String field3, String field4, String field5);
 
         Query selectBy(SObjectField field);
         Query selectBy(SObjectField field1, SObjectField field2);

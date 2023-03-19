@@ -118,10 +118,11 @@ Query query = Query.of(Account.SOBjectType);
 
 #### Inline Select
 
-There are three types of `selectBy()` statements, each accepts different input types:
+There are four types of `selectBy()` statements, each accepts different input types:
 
 1. Accept only `SObjectField` as parameters, such as: `Account.Name`. The number of params is from 1 to 5.
-2. Accept only functions as parameters, such as: `TO_LABEL(Account.AnnualRevenel)`. The number of params is from 1 to 5.
+2. Accept only functions as parameters, such as: `FORMAT(Account.AnnualRevenue)`. The number of params is from 1 to 5.
+2. Accept only `String` as parameters, such as: `'Name'`. The number of params is from 1 to 5. Strings are the most versatile inputs, they can support fields and functions, and additionally references to parent fields as well. You will need this when the above two reaches their limitations.
 3. Accept a child relationship subquery as parameter.
 
 **Note**: These `selectBy()` methods can chain from one to another, so developers can select as many fields as they want.
@@ -132,7 +133,9 @@ Query query = Query.of(Account.SObjectType)
     .selectBy(Account.Name, Account.BillingCountry, Account.BillingState)
     // #2. all params are functions
     .selectBy(FORMAT(CONVERT_CURRENCY(Account.AnnualRevenue)))
-    // #3. one subquery for child relationship "Contacts"
+    // #3. all params are strings
+    .selectBy('Owner.Profile.Id', 'TOLABEL(Owner.EmailEncodingKey)')
+    // #4. one subquery for child relationship "Contacts"
     .selectBy('Contacts', Query.of(Contact.SObjectType).selectBy(Contact.Name));
 ```
 
@@ -156,7 +159,7 @@ Query query = Query.of(Account.SObjectType)
 
 ### 4.3 Where Statement
 
-The where statement method is not called ~~whereBy~~ but `filterBy()`. Both comparison expression and logical statement are `Query.Filter` types, so they can be supplied to the `filterBy(Filter filter)` API.
+The where statement method is called `filterBy()` but not ~~whereBy~~. Both comparison expression and logical statement are `Query.Filter` types, so they can be supplied to the `filterBy(Filter filter)` API.
 
 ```java
 Query query = Query.of(Account.SObjectType)
@@ -354,12 +357,18 @@ andx().add(filter1, filter2).add(filter3, filter4);
 
 ### 5.2 Comparison Operators
 
-Some of following params are not typed, this is because they support multiple types. For example, `param1` can be a `SObjectField` and as well as a function operating one a `SObjectField`, i.e. `TO_LABEL(Account.AnnualRevenue)`.
+Some of following params are not labeled with types, this is because they support multiple types. As a rule of thumb, there are three different types can be used for `param1`:
+
+1. An `SObjectField` such as `Account.AnnualRevenue`.
+2. A function such as `TO_LABEL(Account.AccountSource)`.
+3. A string such as `'Owner.Profile.Name'`. This is mainly used for parent field referencing.
 
 | SOQL Operators | Apex Query Operators                    | Generated Format                  |
 | -------------- | --------------------------------------- | --------------------------------- |
 | **=**          | `eq(param1, param2)`                    | `param1 = param2`                 |
+|                | `eqNull(param1)`                        | `param1 = NULL`                   |
 | **!=**         | `ne(param1, param2)`                    | `param1 != param2`                |
+|                | `neNull(param1)`                        | `param1 != NULL`                  |
 | **\<**         | `lt(param1, param2)`                    | `param1 < param2`                 |
 | **\<=**        | `lte(param1, param2)`                   | `param1 <= param2`                |
 | **\>**         | `gt(param1, param2)`                    | `param1 > param2`                 |
