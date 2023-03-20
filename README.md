@@ -2,7 +2,7 @@
 
 ![](https://img.shields.io/badge/version-1.0-brightgreen.svg) ![](https://img.shields.io/badge/build-passing-brightgreen.svg) ![](https://img.shields.io/badge/coverage-98%25-brightgreen.svg)
 
-A better Apex SOQL query builder. Using a query builder to build dynamic SOQL gives many advantages:
+Using a query builder to build dynamic SOQL gives many advantages:
 
 1. **More efficient**: No need to deal with string concatenation, and handsfree from handling binding variable names.
 2. **Less error-prone**: APIs are carefully designed with strong types, cannot pass wrong values.
