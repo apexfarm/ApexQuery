@@ -283,7 +283,7 @@ public abstract class Query implements Querable {
     // ============
 
     // ==============
-    // #region Select
+    // #region SELECT
 
     public interface Selector {
         Selector add(String field);
@@ -599,7 +599,7 @@ public abstract class Query implements Querable {
     // ==============
 
     // ================
-    // #region Order By
+    // #region ORDER BY
 
     private virtual class OrderByClause {
         private Object fieldOrFunc { get; set; }
@@ -889,7 +889,7 @@ public abstract class Query implements Querable {
     // ================
 
     // ================
-    // #region Group By
+    // #region GROUP BY
     public interface Grouper {
         Grouper add(SObjectField field);
         Grouper add(SObjectField field1, SObjectField field2);
@@ -1131,7 +1131,7 @@ public abstract class Query implements Querable {
     // ================
 
     // ==============
-    // #region Having
+    // #region HAVING
 
     public Query havingBy(Filter filter) {
         this.rootHaving = filter;
@@ -1198,44 +1198,6 @@ public abstract class Query implements Querable {
         }
     }
 
-    private class AndLogicalExpression extends LogicalExpression {
-        private AndLogicalExpression() {
-            super(' AND ');
-            this.tag = FILTER_AND_TAG;
-        }
-    }
-
-    private class OrLogicalExpression extends LogicalExpression {
-        private OrLogicalExpression() {
-            super(' OR ');
-            this.tag = FILTER_OR_TAG;
-        }
-    }
-
-    private class NotLogicalExpression extends LogicalExpression {
-        private NotLogicalExpression() {
-            super('NOT');
-            this.tag = FILTER_NOT_TAG;
-        }
-
-        public override void build(List<String> fragments, Map<String, Object> tmpVars) {
-            if (this.filters.size() == 0) {
-                return;
-            }
-
-            Filter filter = this.filters[0];
-
-            fragments.add(this.operator);
-            if (filter instanceof CompositeFilter) {
-                this.filters[0].build(fragments, tmpVars);
-            } else {
-                fragments.add('(');
-                this.filters[0].build(fragments, tmpVars);
-                fragments.add(')');
-            }
-        }
-    }
-
     private abstract class ComparisonExpression implements Filter {
         private Object fieldOrFunc { get; set; }
         private String operator { get; set; }
@@ -1294,6 +1256,50 @@ public abstract class Query implements Querable {
     public Query filterBy(Filter filter) {
         this.rootFilter = filter;
         return this;
+    }
+
+    // #endregion
+    // ==============
+
+    // ==========================
+    // #region Operator - Logical
+
+    private class AndLogicalExpression extends LogicalExpression {
+        private AndLogicalExpression() {
+            super(' AND ');
+            this.tag = FILTER_AND_TAG;
+        }
+    }
+
+    private class OrLogicalExpression extends LogicalExpression {
+        private OrLogicalExpression() {
+            super(' OR ');
+            this.tag = FILTER_OR_TAG;
+        }
+    }
+
+    private class NotLogicalExpression extends LogicalExpression {
+        private NotLogicalExpression() {
+            super('NOT');
+            this.tag = FILTER_NOT_TAG;
+        }
+
+        public override void build(List<String> fragments, Map<String, Object> tmpVars) {
+            if (this.filters.size() == 0) {
+                return;
+            }
+
+            Filter filter = this.filters[0];
+
+            fragments.add(this.operator);
+            if (filter instanceof CompositeFilter) {
+                this.filters[0].build(fragments, tmpVars);
+            } else {
+                fragments.add('(');
+                this.filters[0].build(fragments, tmpVars);
+                fragments.add(')');
+            }
+        }
     }
     // Logical Statement: notx()
 
@@ -1510,12 +1516,11 @@ public abstract class Query implements Querable {
     public static CompositeFilter andx(List<Filter> filters) {
         return new AndLogicalExpression().add(filters);
     }
-
     // #endregion
-    // ==================
+    // ==========================
 
-    // =============
-    // #region =, !=
+    // ========================
+    // #region Operator - =, !=
     private class EQ extends ComparisonExpression {
         private EQ(Object fieldOrFunc, Object value) {
             super(fieldOrFunc, ' = ', value);
@@ -1753,10 +1758,10 @@ public abstract class Query implements Querable {
     }
 
     // #endregion
-    // =============
+    // ========================
 
-    // =========
-    // #region >
+    // ====================
+    // #region Operator - >
     private class GT extends ComparisonExpression {
         private GT(Object fieldOrFunc, Object value) {
             super(fieldOrFunc, ' > ', value);
@@ -1843,11 +1848,11 @@ public abstract class Query implements Querable {
     }
 
     // Comparison - GT - Others
-    public static Filter gt(DateFunction func, Integer value) {
+    public static Filter gt(DistanceFunction func, Decimal value) {
         return new GT(func, value);
     }
 
-    public static Filter gt(DistanceFunction func, Decimal value) {
+    public static Filter gt(DateFunction func, Integer value) {
         return new GT(func, value);
     }
 
@@ -1856,10 +1861,10 @@ public abstract class Query implements Querable {
     }
 
     // #endregion
-    // ==========
+    // ====================
 
-    // ==========
-    // #region >=
+    // =====================
+    // #region Operator - >=
     private class GTE extends ComparisonExpression {
         private GTE(Object fieldOrFunc, Object value) {
             super(fieldOrFunc, ' >= ', value);
@@ -1946,11 +1951,11 @@ public abstract class Query implements Querable {
     }
 
     // Comparison - GTE - Others
-    public static Filter gte(DateFunction func, Integer value) {
+    public static Filter gte(DistanceFunction func, Decimal value) {
         return new GTE(func, value);
     }
 
-    public static Filter gte(DistanceFunction func, Decimal value) {
+    public static Filter gte(DateFunction func, Integer value) {
         return new GTE(func, value);
     }
 
@@ -1958,10 +1963,10 @@ public abstract class Query implements Querable {
         return new GTE(func, value);
     }
     // #endregion
-    // ===========
+    // =====================
 
-    // ==========
-    // #region <
+    // ====================
+    // #region Operator - <
     private class LT extends ComparisonExpression {
         private LT(Object fieldOrFunc, Object value) {
             super(fieldOrFunc, ' < ', value);
@@ -2048,11 +2053,11 @@ public abstract class Query implements Querable {
     }
 
     // Comparison - LT - Others
-    public static Filter lt(DateFunction func, Integer value) {
+    public static Filter lt(DistanceFunction func, Decimal value) {
         return new LT(func, value);
     }
 
-    public static Filter lt(DistanceFunction func, Decimal value) {
+    public static Filter lt(DateFunction func, Integer value) {
         return new LT(func, value);
     }
 
@@ -2060,10 +2065,10 @@ public abstract class Query implements Querable {
         return new LT(func, value);
     }
     // #endregion
-    // ==========
+    // ====================
 
-    // ==========
-    // #region <=
+    // =====================
+    // #region Operator - <=
     private class LTE extends ComparisonExpression {
         private LTE(Object fieldOrFunc, Object value) {
             super(fieldOrFunc, ' <= ', value);
@@ -2150,11 +2155,11 @@ public abstract class Query implements Querable {
     }
 
     // Comparison - LTE - Others
-    public static Filter lte(DateFunction func, Integer value) {
+    public static Filter lte(DistanceFunction func, Decimal value) {
         return new LTE(func, value);
     }
 
-    public static Filter lte(DistanceFunction func, Decimal value) {
+    public static Filter lte(DateFunction func, Integer value) {
         return new LTE(func, value);
     }
 
@@ -2162,10 +2167,10 @@ public abstract class Query implements Querable {
         return new LTE(func, value);
     }
     // #endregion
-    // ==========
+    // =====================
 
-    // ===============
-    // #region between
+    // ==========================
+    // #region Operator - between
     // Comparison - Between - String
     public static Filter between(String field, String minValue, String maxValue) {
         return andx(gte(field, minValue), lte(field, maxValue));
@@ -2245,11 +2250,11 @@ public abstract class Query implements Querable {
     }
 
     // Comparison - Between - Others
-    public static Filter between(DateFunction func, Integer minValue, Integer maxValue) {
+    public static Filter between(DistanceFunction func, Decimal minValue, Decimal maxValue) {
         return andx(gte(func, minValue), lte(func, maxValue));
     }
 
-    public static Filter between(DistanceFunction func, Decimal minValue, Decimal maxValue) {
+    public static Filter between(DateFunction func, Integer minValue, Integer maxValue) {
         return andx(gte(func, minValue), lte(func, maxValue));
     }
 
@@ -2257,10 +2262,10 @@ public abstract class Query implements Querable {
         return andx(gte(func, minValue), lte(func, maxValue));
     }
     // #endregion
-    // ===============
+    // ==========================
 
-    // ============
-    // #region like
+    // =======================
+    // #region Operator - like
     private class LikeX extends ComparisonExpression {
         private LikeX(Object fieldOrFunc, String value) {
             super(fieldOrFunc, ' LIKE ', value);
@@ -2281,38 +2286,64 @@ public abstract class Query implements Querable {
         }
     }
 
+    public static Filter likex(String field, String value) {
+        return new LikeX(field, value);
+    }
     public static Filter likex(SObjectField field, String value) {
         return new LikeX(field, value);
     }
-
-    public static Filter nlike(SObjectField field, String value) {
-        return new NLike(field, value);
-    }
-
     public static Filter likex(AggregateFunction func, String value) {
         return new LikeX(func, value);
     }
+    public static Filter likex(ToLabelFunction func, String value) {
+        return new LikeX(func, value);
+    }
 
+    public static Filter nlike(String field, String value) {
+        return new NLike(field, value);
+    }
+    public static Filter nlike(SObjectField field, String value) {
+        return new NLike(field, value);
+    }
     public static Filter nlike(AggregateFunction func, String value) {
         return new NLike(func, value);
     }
+    public static Filter nlike(ToLabelFunction func, String value) {
+        return new NLike(func, value);
+    }
     // #endregion
-    // ============
+    // =======================
 
-    // ====================================
-    // #region inx, nin, includes, excludes
+    // ===============================================
+    // #region Operator - includes, excludes, inx, nin
     private class Includes extends ComparisonExpression {
-        private Includes(SObjectField field, List<String> values) {
-            super(field, 'INCLUDES', values);
+        private Includes(Object field, List<String> values) {
+            super(field, ' INCLUDES ', values);
             this.tag = FILTER_INCLUDES_TAG;
         }
     }
 
     private class Excludes extends ComparisonExpression {
-        private Excludes(SObjectField field, List<String> values) {
-            super(field, 'EXCLUDES', values);
+        private Excludes(Object field, List<String> values) {
+            super(field, ' EXCLUDES ', values);
             this.tag = FILTER_EXCLUDES_TAG;
         }
+    }
+
+    public static Filter includes(String field, List<String> values) {
+        return new Includes(field, values);
+    }
+
+    public static Filter includes(SObjectField field, List<String> values) {
+        return new Includes(field, values);
+    }
+
+    public static Filter excludes(String field, List<String> values) {
+        return new Excludes(field, values);
+    }
+
+    public static Filter excludes(SObjectField field, List<String> values) {
+        return new Excludes(field, values);
     }
 
     private class INX extends ComparisonExpression {
@@ -2324,23 +2355,21 @@ public abstract class Query implements Querable {
 
     private class NIN extends ComparisonExpression {
         private NIN(Object fieldOrFunc, List<Object> values) {
-            super(fieldOrFunc, 'NOT IN', values);
+            super(fieldOrFunc, ' NOT IN ', values);
             this.tag = FILTER_NIN_TAG;
         }
     }
 
     private virtual class INX_Query extends ComparisonExpression {
-        private INX_Query(SObjectField field, Boolean isNot, Query query) {
-            super(field, isNot ? 'NOT IN' : 'IN', query);
+        private INX_Query(Object field, Boolean isNot, Query query) {
+            super(field, isNot ? ' NOT IN ' : ' IN ', query);
             this.tag = FILTER_INX_Query_TAG;
         }
 
         public override void build(List<String> fragments, Map<String, Object> tmpVars) {
             if (this.value instanceof QueryBuilder) {
                 fragments.add(String.valueOf(this.fieldOrFunc));
-                fragments.add(' ');
                 fragments.add(this.operator);
-                fragments.add(' ');
                 fragments.add('(');
                 ((QueryBuilder) this.value).buildSoql(fragments, tmpVars);
                 fragments.add(')');
@@ -2348,289 +2377,272 @@ public abstract class Query implements Querable {
         }
     }
 
-    public static Filter includes(SObjectField field, String value) {
-        return new Includes(field, new List<String>{ value });
+    // Comparison - INX
+    // Comparison - INX - String
+    public static Filter inx(String field, List<String> values) {
+        return new INX(field, values);
+    }
+    public static Filter inx(String field, List<Id> values) {
+        return new INX(field, values);
+    }
+    public static Filter inx(String field, List<SObject> values) {
+        return new INX(field, values);
+    }
+    public static Filter inx(String field, List<Boolean> values) {
+        return new INX(field, values);
+    }
+    public static Filter inx(String field, List<Decimal> values) {
+        return new INX(field, values);
+    }
+    public static Filter inx(String field, List<Datetime> values) {
+        return new INX(field, values);
+    }
+    public static Filter inx(String field, List<Date> values) {
+        return new INX(field, values);
+    }
+    public static Filter inx(String field, List<Time> values) {
+        return new INX(field, values);
+    }
+    public static Filter inx(String field, List<DateLiteral> values) {
+        return new INX(field, values);
+    }
+    public static Filter inx(String field, List<CurrencyLiteral> values) {
+        return new INX(field, values);
+    }
+    public static Filter inx(String field, Query query) {
+        return new INX_Query(field, false, query);
     }
 
-    public static Filter includes(SObjectField field, String value1, String value2) {
-        return new Includes(field, new List<String>{ value1, value2 });
+    // Comparison - INX - SObjectField
+    public static Filter inx(SObjectField field, List<String> values) {
+        return new INX(field, values);
+    }
+    public static Filter inx(SObjectField field, List<Id> values) {
+        return new INX(field, values);
+    }
+    public static Filter inx(SObjectField field, List<SObject> values) {
+        return new INX(field, values);
+    }
+    public static Filter inx(SObjectField field, List<Boolean> values) {
+        return new INX(field, values);
+    }
+    public static Filter inx(SObjectField field, List<Decimal> values) {
+        return new INX(field, values);
+    }
+    public static Filter inx(SObjectField field, List<Datetime> values) {
+        return new INX(field, values);
+    }
+    public static Filter inx(SObjectField field, List<Date> values) {
+        return new INX(field, values);
+    }
+    public static Filter inx(SObjectField field, List<Time> values) {
+        return new INX(field, values);
+    }
+    public static Filter inx(SObjectField field, List<DateLiteral> values) {
+        return new INX(field, values);
+    }
+    public static Filter inx(SObjectField field, List<CurrencyLiteral> values) {
+        return new INX(field, values);
+    }
+    public static Filter inx(SObjectField field, Query query) {
+        return new INX_Query(field, false, query);
     }
 
-    public static Filter includes(SObjectField field, String value1, String value2, String value3) {
-        return new Includes(field, new List<String>{ value1, value2, value3 });
+    // Comparison - INX - AggregateFunction
+    public static Filter inx(AggregateFunction field, List<String> values) {
+        return new INX(field, values);
     }
-
-    public static Filter includes(SObjectField field, String value1, String value2, String value3, String value4) {
-        return new Includes(field, new List<String>{ value1, value2, value3, value4 });
+    public static Filter inx(AggregateFunction field, List<Id> values) {
+        return new INX(field, values);
     }
-
-    public static Filter includes(
-        SObjectField field,
-        String value1,
-        String value2,
-        String value3,
-        String value4,
-        String value5
-    ) {
-        return new Includes(field, new List<String>{ value1, value2, value3, value4, value5 });
+    public static Filter inx(AggregateFunction field, List<SObject> values) {
+        return new INX(field, values);
     }
-
-    public static Filter includes(SObjectField field, List<String> values) {
-        return new Includes(field, values);
+    public static Filter inx(AggregateFunction field, List<Boolean> values) {
+        return new INX(field, values);
     }
-
-    public static Filter excludes(SObjectField field, String value) {
-        return new Excludes(field, new List<String>{ value });
+    public static Filter inx(AggregateFunction field, List<Decimal> values) {
+        return new INX(field, values);
     }
-
-    public static Filter excludes(SObjectField field, String value1, String value2) {
-        return new Excludes(field, new List<String>{ value1, value2 });
+    public static Filter inx(AggregateFunction field, List<Datetime> values) {
+        return new INX(field, values);
     }
-
-    public static Filter excludes(SObjectField field, String value1, String value2, String value3) {
-        return new Excludes(field, new List<String>{ value1, value2, value3 });
+    public static Filter inx(AggregateFunction field, List<Date> values) {
+        return new INX(field, values);
     }
-
-    public static Filter excludes(SObjectField field, String value1, String value2, String value3, String value4) {
-        return new Excludes(field, new List<String>{ value1, value2, value3, value4 });
+    public static Filter inx(AggregateFunction field, List<Time> values) {
+        return new INX(field, values);
     }
-
-    public static Filter excludes(
-        SObjectField field,
-        String value1,
-        String value2,
-        String value3,
-        String value4,
-        String value5
-    ) {
-        return new Excludes(field, new List<String>{ value1, value2, value3, value4, value5 });
+    public static Filter inx(AggregateFunction field, List<DateLiteral> values) {
+        return new INX(field, values);
     }
-
-    public static Filter excludes(SObjectField field, List<String> values) {
-        return new Excludes(field, values);
-    }
-
-    public static Filter inx(SObjectField field, Object value) {
-        return new INX(field, new List<Object>{ value });
-    }
-
-    public static Filter inx(SObjectField field, Object value1, Object value2) {
-        return new INX(field, new List<Object>{ value1, value2 });
-    }
-
-    public static Filter inx(SObjectField field, Object value1, Object value2, Object value3) {
-        return new INX(field, new List<Object>{ value1, value2, value3 });
-    }
-
-    public static Filter inx(SObjectField field, Object value1, Object value2, Object value3, Object value4) {
-        return new INX(field, new List<Object>{ value1, value2, value3, value4 });
-    }
-
-    public static Filter inx(
-        SObjectField field,
-        Object value1,
-        Object value2,
-        Object value3,
-        Object value4,
-        Object value5
-    ) {
-        return new INX(field, new List<Object>{ value1, value2, value3, value4, value5 });
-    }
-
-    public static Filter inx(SObjectField field, List<Object> values) {
+    public static Filter inx(AggregateFunction field, List<CurrencyLiteral> values) {
         return new INX(field, values);
     }
 
-    public static Filter inx(AggregateFunction func, String value) {
-        return new INX(func, new List<String>{ value });
-    }
-
-    public static Filter inx(AggregateFunction func, String value1, String value2) {
-        return new INX(func, new List<String>{ value1, value2 });
-    }
-
-    public static Filter inx(AggregateFunction func, String value1, String value2, String value3) {
-        return new INX(func, new List<String>{ value1, value2, value3 });
-    }
-
-    public static Filter inx(AggregateFunction func, String value1, String value2, String value3, String value4) {
-        return new INX(func, new List<String>{ value1, value2, value3, value4 });
-    }
-
-    public static Filter inx(
-        AggregateFunction func,
-        String value1,
-        String value2,
-        String value3,
-        String value4,
-        String value5
-    ) {
-        return new INX(func, new List<String>{ value1, value2, value3, value4, value5 });
-    }
-
-    public static Filter inx(AggregateFunction func, List<String> values) {
+    // Comparison - INX - Others
+    public static Filter inx(DistanceFunction func, List<Decimal> values) {
         return new INX(func, values);
-    }
-
-    public static Filter inx(DateFunction func, Integer value) {
-        return new INX(func, new List<Integer>{ value });
-    }
-
-    public static Filter inx(DateFunction func, Integer value1, Integer value2) {
-        return new INX(func, new List<Integer>{ value1, value2 });
-    }
-
-    public static Filter inx(DateFunction func, Integer value1, Integer value2, Integer value3) {
-        return new INX(func, new List<Integer>{ value1, value2, value3 });
-    }
-
-    public static Filter inx(DateFunction func, Integer value1, Integer value2, Integer value3, Integer value4) {
-        return new INX(func, new List<Integer>{ value1, value2, value3, value4 });
-    }
-
-    public static Filter inx(
-        DateFunction field,
-        Integer value1,
-        Integer value2,
-        Integer value3,
-        Integer value4,
-        Integer value5
-    ) {
-        return new INX(field, new List<Integer>{ value1, value2, value3, value4, value5 });
     }
 
     public static Filter inx(DateFunction func, List<Integer> values) {
         return new INX(func, values);
     }
 
-    public static Filter nin(SObjectField field, Object value) {
-        return new NIN(field, new List<Object>{ value });
-    }
-
-    public static Filter nin(SObjectField field, Object value1, Object value2) {
-        return new NIN(field, new List<Object>{ value1, value2 });
-    }
-
-    public static Filter nin(SObjectField field, Object value1, Object value2, Object value3) {
-        return new NIN(field, new List<Object>{ value1, value2, value3 });
-    }
-
-    public static Filter nin(SObjectField field, Object value1, Object value2, Object value3, Object value4) {
-        return new NIN(field, new List<Object>{ value1, value2, value3, value4 });
-    }
-
-    public static Filter nin(
-        SObjectField field,
-        Object value1,
-        Object value2,
-        Object value3,
-        Object value4,
-        Object value5
-    ) {
-        return new NIN(field, new List<Object>{ value1, value2, value3, value4, value5 });
-    }
-
-    public static Filter nin(SObjectField field, List<Object> values) {
+    // Comparison - NIN
+    // Comparison - NIN - String
+    public static Filter nin(String field, List<String> values) {
         return new NIN(field, values);
     }
-
-    public static Filter nin(AggregateFunction func, Object value) {
-        return new NIN(func, new List<Object>{ value });
+    public static Filter nin(String field, List<Id> values) {
+        return new NIN(field, values);
     }
-
-    public static Filter nin(AggregateFunction func, Object value1, Object value2) {
-        return new NIN(func, new List<Object>{ value1, value2 });
+    public static Filter nin(String field, List<SObject> values) {
+        return new NIN(field, values);
     }
-
-    public static Filter nin(AggregateFunction func, Object value1, Object value2, Object value3) {
-        return new NIN(func, new List<Object>{ value1, value2, value3 });
+    public static Filter nin(String field, List<Boolean> values) {
+        return new NIN(field, values);
     }
-
-    public static Filter nin(AggregateFunction func, Object value1, Object value2, Object value3, Object value4) {
-        return new NIN(func, new List<Object>{ value1, value2, value3, value4 });
+    public static Filter nin(String field, List<Decimal> values) {
+        return new NIN(field, values);
     }
-
-    public static Filter nin(
-        AggregateFunction func,
-        Object value1,
-        Object value2,
-        Object value3,
-        Object value4,
-        Object value5
-    ) {
-        return new NIN(func, new List<Object>{ value1, value2, value3, value4, value5 });
+    public static Filter nin(String field, List<Datetime> values) {
+        return new NIN(field, values);
     }
-
-    public static Filter nin(AggregateFunction func, List<Object> values) {
-        return new NIN(func, values);
+    public static Filter nin(String field, List<Date> values) {
+        return new NIN(field, values);
     }
-
-    public static Filter nin(DateFunction func, Integer value) {
-        return new NIN(func, new List<Integer>{ value });
+    public static Filter nin(String field, List<Time> values) {
+        return new NIN(field, values);
     }
-
-    public static Filter nin(DateFunction func, Integer value1, Integer value2) {
-        return new NIN(func, new List<Integer>{ value1, value2 });
+    public static Filter nin(String field, List<DateLiteral> values) {
+        return new NIN(field, values);
     }
-
-    public static Filter nin(DateFunction func, Integer value1, Integer value2, Integer value3) {
-        return new NIN(func, new List<Integer>{ value1, value2, value3 });
+    public static Filter nin(String field, List<CurrencyLiteral> values) {
+        return new NIN(field, values);
     }
-
-    public static Filter nin(DateFunction func, Integer value1, Integer value2, Integer value3, Integer value4) {
-        return new NIN(func, new List<Integer>{ value1, value2, value3, value4 });
-    }
-
-    public static Filter nin(
-        DateFunction field,
-        Integer value1,
-        Integer value2,
-        Integer value3,
-        Integer value4,
-        Integer value5
-    ) {
-        return new NIN(field, new List<Integer>{ value1, value2, value3, value4, value5 });
-    }
-
-    public static Filter nin(DateFunction func, List<Object> values) {
-        return new NIN(func, values);
-    }
-
-    public static Filter inx(SObjectField field, Query query) {
+    public static Filter nin(String field, Query query) {
         return new INX_Query(field, false, query);
     }
 
+    // Comparison - NIN - SObjectField
+    public static Filter nin(SObjectField field, List<String> values) {
+        return new NIN(field, values);
+    }
+    public static Filter nin(SObjectField field, List<Id> values) {
+        return new NIN(field, values);
+    }
+    public static Filter nin(SObjectField field, List<SObject> values) {
+        return new NIN(field, values);
+    }
+    public static Filter nin(SObjectField field, List<Boolean> values) {
+        return new NIN(field, values);
+    }
+    public static Filter nin(SObjectField field, List<Decimal> values) {
+        return new NIN(field, values);
+    }
+    public static Filter nin(SObjectField field, List<Datetime> values) {
+        return new NIN(field, values);
+    }
+    public static Filter nin(SObjectField field, List<Date> values) {
+        return new NIN(field, values);
+    }
+    public static Filter nin(SObjectField field, List<Time> values) {
+        return new NIN(field, values);
+    }
+    public static Filter nin(SObjectField field, List<DateLiteral> values) {
+        return new NIN(field, values);
+    }
+    public static Filter nin(SObjectField field, List<CurrencyLiteral> values) {
+        return new NIN(field, values);
+    }
     public static Filter nin(SObjectField field, Query query) {
-        return new INX_Query(field, true, query);
+        return new INX_Query(field, false, query);
+    }
+
+    // Comparison - NIN - AggregateFunction
+    public static Filter nin(AggregateFunction func, List<String> values) {
+        return new NIN(func, values);
+    }
+    public static Filter nin(AggregateFunction func, List<Id> values) {
+        return new NIN(func, values);
+    }
+    public static Filter nin(AggregateFunction func, List<SObject> values) {
+        return new NIN(func, values);
+    }
+    public static Filter nin(AggregateFunction func, List<Boolean> values) {
+        return new NIN(func, values);
+    }
+    public static Filter nin(AggregateFunction func, List<Decimal> values) {
+        return new NIN(func, values);
+    }
+    public static Filter nin(AggregateFunction func, List<Datetime> values) {
+        return new NIN(func, values);
+    }
+    public static Filter nin(AggregateFunction func, List<Date> values) {
+        return new NIN(func, values);
+    }
+    public static Filter nin(AggregateFunction func, List<Time> values) {
+        return new NIN(func, values);
+    }
+    public static Filter nin(AggregateFunction func, List<DateLiteral> values) {
+        return new NIN(func, values);
+    }
+    public static Filter nin(AggregateFunction func, List<CurrencyLiteral> values) {
+        return new NIN(func, values);
+    }
+
+    // Comparison - NIN - Others
+    public static Filter nin(DistanceFunction func, List<Decimal> values) {
+        return new NIN(func, values);
+    }
+
+    public static Filter nin(DateFunction func, List<Integer> values) {
+        return new NIN(func, values);
     }
 
     // #endregion
-    // ====================================
+    // ===============================================
 
     // ================
-    // #region distance
+    // #region Function
 
-    public class DistanceFunction implements Function, OrderFunction {
-        private SObjectField field { get; set; }
-        private Location geo { get; set; }
-        private String unit { get; set; }
+    public interface Function {
+    }
 
-        private DistanceFunction(SObjectField field, Location geo, String unit) {
-            this.field = field;
-            this.geo = geo;
-            this.unit = unit;
+    public interface SelectFunction extends Function {
+    }
+
+    public interface OrderFunction extends Function {
+    }
+
+    public virtual class GenericFunction implements Function {
+        private Object fieldOrFunc { get; set; }
+        private String name { get; set; }
+        private Integer tag { get; set; }
+        private String alias { get; set; }
+
+        private GenericFunction(Object fieldOrFunc, String name, Integer tag) {
+            this.fieldOrFunc = fieldOrFunc;
+            this.name = name;
+            this.tag = tag;
+        }
+
+        private GenericFunction(Object fieldOrFunc, String name, Integer tag, String alias) {
+            this.fieldOrFunc = fieldOrFunc;
+            this.name = name;
+            this.tag = tag;
+            this.alias = alias;
         }
 
         public override String toString() {
-            return 'DISTANCE(' +
-                String.valueOf(this.field) +
-                ', GEOLOCATION(' +
-                this.geo.latitude +
-                ', ' +
-                this.geo.longitude +
-                '), \'' +
-                this.unit +
-                '\')';
+            if (this.alias == null && this.fieldOrFunc == null) {
+                return this.name + '()';
+            } else if (this.alias == null) {
+                return this.name + '(' + this.fieldOrFunc + ')';
+            } else {
+                return String.format('{0}({1}) {2}', new List<Object>{ this.name, this.fieldOrFunc, this.alias });
+            }
         }
 
         public Boolean equals(Object obj) {
@@ -2638,30 +2650,16 @@ public abstract class Query implements Querable {
                 return true;
             }
 
-            DistanceFunction that = (DistanceFunction) obj;
-
-            return this.field == that.field &&
-                this.geo.latitude == that.geo.latitude &&
-                this.geo.longitude == that.geo.longitude;
+            GenericFunction that = (GenericFunction) obj;
+            return this.tag == that.tag && this.fieldOrFunc == that.fieldOrFunc;
         }
-    }
-
-    private static final String DISTANCE_UNIT_KM = 'km';
-    private static final String DISTANCE_UNIT_MI = 'mi';
-
-    public static DistanceFunction DISTANCE_IN_KILOMETER(SObjectField field, Location geo) {
-        return new DistanceFunction(field, geo, DISTANCE_UNIT_KM);
-    }
-
-    public static DistanceFunction DISTANCE_IN_MILE(SObjectField field, Location geo) {
-        return new DistanceFunction(field, geo, DISTANCE_UNIT_MI);
     }
 
     // #endregion
     // ================
 
-    // ======================
-    // #region Aggregate
+    // ============================
+    // #region Function - Aggregate
     public class AggregateFunction extends GenericFunction implements SelectFunction, OrderFunction {
         private AggregateFunction(Object field, String name, Integer tag, String alias) {
             super(field, name, tag, alias);
@@ -2728,58 +2726,10 @@ public abstract class Query implements Querable {
         return new AggregateFunction(field, 'MIN', FUNC_MIN_TAG, alias);
     }
     // #endregion
-    // ================
+    // ============================
 
-    // ======================
-    // #region Function
-
-    public interface Function {
-    }
-
-    public interface SelectFunction extends Function {
-    }
-
-    public interface OrderFunction extends Function {
-    }
-
-    public virtual class GenericFunction implements Function {
-        private Object fieldOrFunc { get; set; }
-        private String name { get; set; }
-        private Integer tag { get; set; }
-        private String alias { get; set; }
-
-        private GenericFunction(Object fieldOrFunc, String name, Integer tag) {
-            this.fieldOrFunc = fieldOrFunc;
-            this.name = name;
-            this.tag = tag;
-        }
-
-        private GenericFunction(Object fieldOrFunc, String name, Integer tag, String alias) {
-            this.fieldOrFunc = fieldOrFunc;
-            this.name = name;
-            this.tag = tag;
-            this.alias = alias;
-        }
-
-        public override String toString() {
-            if (this.alias == null && this.fieldOrFunc == null) {
-                return this.name + '()';
-            } else if (this.alias == null) {
-                return this.name + '(' + this.fieldOrFunc + ')';
-            } else {
-                return String.format('{0}({1}) {2}', new List<Object>{ this.name, this.fieldOrFunc, this.alias });
-            }
-        }
-
-        public Boolean equals(Object obj) {
-            if (this === obj) {
-                return true;
-            }
-
-            GenericFunction that = (GenericFunction) obj;
-            return this.tag == that.tag && this.fieldOrFunc == that.fieldOrFunc;
-        }
-    }
+    // =================================
+    // #region Function - ToLabel/Format
 
     public class ToLabelFunction extends GenericFunction implements SelectFunction {
         private ToLabelFunction(Object fieldOrFunc) {
@@ -2804,12 +2754,64 @@ public abstract class Query implements Querable {
     public static FormatFunction FORMAT(CurrencyFunction func) {
         return new FormatFunction(func);
     }
+    // #endregion
+    // =================================
+
+    // ===========================
+    // #region Function - Distance
+
+    public class DistanceFunction implements Function, OrderFunction {
+        private SObjectField field { get; set; }
+        private Location geo { get; set; }
+        private String unit { get; set; }
+
+        private DistanceFunction(SObjectField field, Location geo, String unit) {
+            this.field = field;
+            this.geo = geo;
+            this.unit = unit;
+        }
+
+        public override String toString() {
+            return 'DISTANCE(' +
+                String.valueOf(this.field) +
+                ', GEOLOCATION(' +
+                this.geo.latitude +
+                ', ' +
+                this.geo.longitude +
+                '), \'' +
+                this.unit +
+                '\')';
+        }
+
+        public Boolean equals(Object obj) {
+            if (this === obj) {
+                return true;
+            }
+
+            DistanceFunction that = (DistanceFunction) obj;
+
+            return this.field == that.field &&
+                this.geo.latitude == that.geo.latitude &&
+                this.geo.longitude == that.geo.longitude;
+        }
+    }
+
+    private static final String DISTANCE_UNIT_KM = 'km';
+    private static final String DISTANCE_UNIT_MI = 'mi';
+
+    public static DistanceFunction DISTANCE_IN_KILOMETER(SObjectField field, Location geo) {
+        return new DistanceFunction(field, geo, DISTANCE_UNIT_KM);
+    }
+
+    public static DistanceFunction DISTANCE_IN_MILE(SObjectField field, Location geo) {
+        return new DistanceFunction(field, geo, DISTANCE_UNIT_MI);
+    }
 
     // #endregion
-    // ======================
+    // ===========================
 
-    // =====================
-    // #region Currency
+    // ===========================
+    // #region Function - Currency
 
     public class CurrencyFunction extends GenericFunction implements SelectFunction {
         private CurrencyFunction(SObjectField field) {
@@ -3451,10 +3453,10 @@ public abstract class Query implements Querable {
     }
 
     // #endregion
-    // ======================
+    // ===========================
 
-    // =====================
-    // #region Date
+    // =======================
+    // #region Function - Date
 
     public class DateFunction extends GenericFunction implements SelectFunction {
         private DateFunction(Object fieldOrFunc, String name, Integer tag) {
@@ -3822,7 +3824,7 @@ public abstract class Query implements Querable {
     }
 
     // #endregion
-    // =====================
+    // =======================
 
     // Filter Tags
     private static final Integer FILTER_EQ_TAG = 1;

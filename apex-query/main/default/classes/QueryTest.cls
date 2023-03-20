@@ -2247,6 +2247,666 @@ public with sharing class QueryTest extends Query {
             Query.of(Account.SObjectType).filterBy(filter).build()
         );
     }
+
+    @isTest
+    static void testOperator_Comparison_LIKE() {
+        Query.Filter filter;
+        filter = likex(Account.BillingCountry, '%China%');
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry LIKE \'%China%\'',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = likex('BillingCountry', '%China%');
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry LIKE \'%China%\'',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = likex(MAX(Account.BillingCountry), '%China%');
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) LIKE \'%China%\'',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = likex(TO_LABEL(Account.BillingCountry), '%China%');
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE TOLABEL(BillingCountry) LIKE \'%China%\'',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = nlike(Account.BillingCountry, '%China%');
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE (NOT BillingCountry LIKE \'%China%\')',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = nlike('BillingCountry', '%China%');
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE (NOT BillingCountry LIKE \'%China%\')',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = nlike(MAX(Account.BillingCountry), '%China%');
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING (NOT MAX(BillingCountry) LIKE \'%China%\')',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = nlike(TO_LABEL(Account.BillingCountry), '%China%');
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE (NOT TOLABEL(BillingCountry) LIKE \'%China%\')',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+    }
+
+    @isTest
+    static void testOperator_Comparison_INCLUDES() {
+        Query.Filter filter;
+        filter = includes(Account.BillingCountry, new List<String>{ 'AAA', 'BBB', 'CCC', 'DDD', 'EEE' });
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry INCLUDES :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = includes('BillingCountry', new List<String>{ 'AAA', 'BBB', 'CCC', 'DDD', 'EEE' });
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry INCLUDES :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+    }
+
+    @isTest
+    static void testOperator_Comparison_EXCLUDES() {
+        Query.Filter filter;
+        filter = excludes(Account.BillingCountry, new List<String>{ 'AAA', 'BBB', 'CCC', 'DDD', 'EEE' });
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry EXCLUDES :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = excludes('BillingCountry', new List<String>{ 'AAA', 'BBB', 'CCC', 'DDD', 'EEE' });
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry EXCLUDES :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+    }
+
+    @isTest
+    static void testOperator_Comparison_INX() {
+        Query contactQuery = Query.of(Contact.SObjectType).selectBy(Contact.AccountId);
+        Query.Filter filter;
+
+        // SObjectField
+        filter = inx(Account.BillingCountry, new List<String>{ 'AAA', 'BBB', null });
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry IN :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = inx(
+            Account.BillingCountry,
+            new List<Id>{ getFakeId(Account.SObjectType, 0), getFakeId(Account.SObjectType, 1), null }
+        );
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry IN :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = inx(
+            Account.BillingCountry,
+            new List<Account>{
+                new Account(Id = getFakeId(Account.SObjectType, 0)),
+                new Account(Id = getFakeId(Account.SObjectType, 1)),
+                null
+            }
+        );
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry IN :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = inx(Account.BillingCountry, new List<Boolean>{ true, false, null });
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry IN :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = inx(Account.BillingCountry, new List<Decimal>{ 123.456, 789, null });
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry IN :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = inx(
+            Account.BillingCountry,
+            new List<Datetime>{
+                Datetime.newInstance(2023, 1, 1, 12, 12, 12),
+                Datetime.newInstance(2023, 2, 2, 12, 12, 12),
+                null
+            }
+        );
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry IN :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = inx(
+            Account.BillingCountry,
+            new List<Date>{ Date.newInstance(2023, 1, 1), Date.newInstance(2023, 2, 2), null }
+        );
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry IN :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = inx(
+            Account.BillingCountry,
+            new List<Time>{ Time.newInstance(12, 0, 0, 0), Time.newInstance(11, 0, 0, 0), null }
+        );
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry IN :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = inx(Account.BillingCountry, new List<DateLiteral>{ YESTERDAY(), TODAY(), null });
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry IN :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = inx(Account.BillingCountry, new List<CurrencyLiteral>{ CNY(2000), USD(3000), null });
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry IN :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = inx(Account.BillingCountry, new List<CurrencyLiteral>{ CNY(2000), USD(3000), null });
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry IN :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = inx(Account.Id, contactQuery);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE Id IN (SELECT AccountId FROM Contact)',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        // String
+        filter = inx('BillingCountry', new List<String>{ 'AAA', 'BBB', null });
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry IN :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = inx(
+            'BillingCountry',
+            new List<Id>{ getFakeId(Account.SObjectType, 0), getFakeId(Account.SObjectType, 1), null }
+        );
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry IN :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = inx(
+            'BillingCountry',
+            new List<Account>{
+                new Account(Id = getFakeId(Account.SObjectType, 0)),
+                new Account(Id = getFakeId(Account.SObjectType, 1)),
+                null
+            }
+        );
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry IN :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = inx('BillingCountry', new List<Boolean>{ true, false, null });
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry IN :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = inx('BillingCountry', new List<Decimal>{ 123.456, 789, null });
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry IN :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = inx(
+            'BillingCountry',
+            new List<Datetime>{
+                Datetime.newInstance(2023, 1, 1, 12, 12, 12),
+                Datetime.newInstance(2023, 2, 2, 12, 12, 12),
+                null
+            }
+        );
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry IN :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = inx(
+            'BillingCountry',
+            new List<Date>{ Date.newInstance(2023, 1, 1), Date.newInstance(2023, 2, 2), null }
+        );
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry IN :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = inx(
+            'BillingCountry',
+            new List<Time>{ Time.newInstance(12, 0, 0, 0), Time.newInstance(11, 0, 0, 0), null }
+        );
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry IN :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = inx('BillingCountry', new List<DateLiteral>{ YESTERDAY(), TODAY(), null });
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry IN :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = inx('BillingCountry', new List<CurrencyLiteral>{ CNY(2000), USD(3000), null });
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry IN :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = inx('BillingCountry', new List<CurrencyLiteral>{ CNY(2000), USD(3000), null });
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry IN :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = inx(Account.Id, contactQuery);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE Id IN (SELECT AccountId FROM Contact)',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        // AggregateFunction
+        filter = inx(MAX(Account.BillingCountry), new List<String>{ 'AAA', 'BBB', null });
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) IN :tmpVar1',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = inx(
+            MAX(Account.BillingCountry),
+            new List<Id>{ getFakeId(Account.SObjectType, 0), getFakeId(Account.SObjectType, 1), null }
+        );
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) IN :tmpVar1',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = inx(
+            MAX(Account.BillingCountry),
+            new List<Account>{
+                new Account(Id = getFakeId(Account.SObjectType, 0)),
+                new Account(Id = getFakeId(Account.SObjectType, 1)),
+                null
+            }
+        );
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) IN :tmpVar1',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = inx(MAX(Account.BillingCountry), new List<Boolean>{ true, false, null });
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) IN :tmpVar1',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = inx(MAX(Account.BillingCountry), new List<Decimal>{ 123.456, 789, null });
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) IN :tmpVar1',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = inx(
+            MAX(Account.BillingCountry),
+            new List<Datetime>{
+                Datetime.newInstance(2023, 1, 1, 12, 12, 12),
+                Datetime.newInstance(2023, 2, 2, 12, 12, 12),
+                null
+            }
+        );
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) IN :tmpVar1',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = inx(
+            MAX(Account.BillingCountry),
+            new List<Date>{ Date.newInstance(2023, 1, 1), Date.newInstance(2023, 2, 2), null }
+        );
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) IN :tmpVar1',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = inx(
+            MAX(Account.BillingCountry),
+            new List<Time>{ Time.newInstance(12, 0, 0, 0), Time.newInstance(11, 0, 0, 0), null }
+        );
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) IN :tmpVar1',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = inx(MAX(Account.BillingCountry), new List<DateLiteral>{ YESTERDAY(), TODAY(), null });
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) IN :tmpVar1',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = inx(MAX(Account.BillingCountry), new List<CurrencyLiteral>{ CNY(2000), USD(3000), null });
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) IN :tmpVar1',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = inx(MAX(Account.BillingCountry), new List<CurrencyLiteral>{ CNY(2000), USD(3000), null });
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) IN :tmpVar1',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+    }
+
+    @isTest
+    static void testOperator_Comparison_NIN() {
+        Query contactQuery = Query.of(Contact.SObjectType).selectBy(Contact.AccountId);
+        Query.Filter filter;
+
+        // SObjectField
+        filter = nin(Account.BillingCountry, new List<String>{ 'AAA', 'BBB', null });
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry NOT IN :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = nin(
+            Account.BillingCountry,
+            new List<Id>{ getFakeId(Account.SObjectType, 0), getFakeId(Account.SObjectType, 1), null }
+        );
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry NOT IN :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = nin(
+            Account.BillingCountry,
+            new List<Account>{
+                new Account(Id = getFakeId(Account.SObjectType, 0)),
+                new Account(Id = getFakeId(Account.SObjectType, 1)),
+                null
+            }
+        );
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry NOT IN :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = nin(Account.BillingCountry, new List<Boolean>{ true, false, null });
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry NOT IN :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = nin(Account.BillingCountry, new List<Decimal>{ 123.456, 789, null });
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry NOT IN :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = nin(
+            Account.BillingCountry,
+            new List<Datetime>{
+                Datetime.newInstance(2023, 1, 1, 12, 12, 12),
+                Datetime.newInstance(2023, 2, 2, 12, 12, 12),
+                null
+            }
+        );
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry NOT IN :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = nin(
+            Account.BillingCountry,
+            new List<Date>{ Date.newInstance(2023, 1, 1), Date.newInstance(2023, 2, 2), null }
+        );
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry NOT IN :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = nin(
+            Account.BillingCountry,
+            new List<Time>{ Time.newInstance(12, 0, 0, 0), Time.newInstance(11, 0, 0, 0), null }
+        );
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry NOT IN :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = nin(Account.BillingCountry, new List<DateLiteral>{ YESTERDAY(), TODAY(), null });
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry NOT IN :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = nin(Account.BillingCountry, new List<CurrencyLiteral>{ CNY(2000), USD(3000), null });
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry NOT IN :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = nin(Account.BillingCountry, new List<CurrencyLiteral>{ CNY(2000), USD(3000), null });
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry NOT IN :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = nin(Account.Id, contactQuery);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE Id IN (SELECT AccountId FROM Contact)',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        // String
+        filter = nin('BillingCountry', new List<String>{ 'AAA', 'BBB', null });
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry NOT IN :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = nin(
+            'BillingCountry',
+            new List<Id>{ getFakeId(Account.SObjectType, 0), getFakeId(Account.SObjectType, 1), null }
+        );
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry NOT IN :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = nin(
+            'BillingCountry',
+            new List<Account>{
+                new Account(Id = getFakeId(Account.SObjectType, 0)),
+                new Account(Id = getFakeId(Account.SObjectType, 1)),
+                null
+            }
+        );
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry NOT IN :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = nin('BillingCountry', new List<Boolean>{ true, false, null });
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry NOT IN :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = nin('BillingCountry', new List<Decimal>{ 123.456, 789, null });
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry NOT IN :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = nin(
+            'BillingCountry',
+            new List<Datetime>{
+                Datetime.newInstance(2023, 1, 1, 12, 12, 12),
+                Datetime.newInstance(2023, 2, 2, 12, 12, 12),
+                null
+            }
+        );
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry NOT IN :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = nin(
+            'BillingCountry',
+            new List<Date>{ Date.newInstance(2023, 1, 1), Date.newInstance(2023, 2, 2), null }
+        );
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry NOT IN :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = nin(
+            'BillingCountry',
+            new List<Time>{ Time.newInstance(12, 0, 0, 0), Time.newInstance(11, 0, 0, 0), null }
+        );
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry NOT IN :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = nin('BillingCountry', new List<DateLiteral>{ YESTERDAY(), TODAY(), null });
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry NOT IN :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = nin('BillingCountry', new List<CurrencyLiteral>{ CNY(2000), USD(3000), null });
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry NOT IN :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = nin('BillingCountry', new List<CurrencyLiteral>{ CNY(2000), USD(3000), null });
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry NOT IN :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = nin(Account.Id, contactQuery);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE Id IN (SELECT AccountId FROM Contact)',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        // AggregateFunction
+        filter = nin(MAX(Account.BillingCountry), new List<String>{ 'AAA', 'BBB', null });
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) NOT IN :tmpVar1',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = nin(
+            MAX(Account.BillingCountry),
+            new List<Id>{ getFakeId(Account.SObjectType, 0), getFakeId(Account.SObjectType, 1), null }
+        );
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) NOT IN :tmpVar1',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = nin(
+            MAX(Account.BillingCountry),
+            new List<Account>{
+                new Account(Id = getFakeId(Account.SObjectType, 0)),
+                new Account(Id = getFakeId(Account.SObjectType, 1)),
+                null
+            }
+        );
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) NOT IN :tmpVar1',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = nin(MAX(Account.BillingCountry), new List<Boolean>{ true, false, null });
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) NOT IN :tmpVar1',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = nin(MAX(Account.BillingCountry), new List<Decimal>{ 123.456, 789, null });
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) NOT IN :tmpVar1',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = nin(
+            MAX(Account.BillingCountry),
+            new List<Datetime>{
+                Datetime.newInstance(2023, 1, 1, 12, 12, 12),
+                Datetime.newInstance(2023, 2, 2, 12, 12, 12),
+                null
+            }
+        );
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) NOT IN :tmpVar1',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = nin(
+            MAX(Account.BillingCountry),
+            new List<Date>{ Date.newInstance(2023, 1, 1), Date.newInstance(2023, 2, 2), null }
+        );
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) NOT IN :tmpVar1',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = nin(
+            MAX(Account.BillingCountry),
+            new List<Time>{ Time.newInstance(12, 0, 0, 0), Time.newInstance(11, 0, 0, 0), null }
+        );
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) NOT IN :tmpVar1',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = nin(MAX(Account.BillingCountry), new List<DateLiteral>{ YESTERDAY(), TODAY(), null });
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) NOT IN :tmpVar1',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = nin(MAX(Account.BillingCountry), new List<CurrencyLiteral>{ CNY(2000), USD(3000), null });
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) NOT IN :tmpVar1',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        filter = nin(MAX(Account.BillingCountry), new List<CurrencyLiteral>{ CNY(2000), USD(3000), null });
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) NOT IN :tmpVar1',
+            Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+    }
     // #endregion
     // ============================
 
@@ -2432,7 +3092,7 @@ public with sharing class QueryTest extends Query {
                 andx()
                     .add(eq(CALENDAR_YEAR(Contact.Birthdate), 2023))
                     .add(eq(CALENDAR_MONTH(Contact.Birthdate), 1))
-                    .add(inx(CALENDAR_MONTH(Contact.Birthdate), 1, 2, 3, 4))
+                    .add(inx(CALENDAR_MONTH(Contact.Birthdate), new List<Integer> { 1, 2, 3, 4 }))
                     .add(between(CALENDAR_MONTH(Contact.Birthdate), 1, 4))
             )
             .run();
@@ -2775,9 +3435,9 @@ public with sharing class QueryTest extends Query {
             .havingBy(
                 andx()
                     .add(likex(MIN(Account.BillingState), '%i%'))
-                    .add(inx(MIN(Account.BillingState), 'Shanghai', 'Beijing'))
+                    .add(inx(MIN(Account.BillingState), new List<String> {'Shanghai', 'Beijing'}))
                     .add(likex(MAX(Account.BillingState), '%i%'))
-                    .add(inx(MAX(Account.BillingState), 'Shanghai', 'Beijing'))
+                    .add(inx(MAX(Account.BillingState), new List<String> {'Shanghai', 'Beijing'}))
             )
             .orderBy(GROUPING(Account.BillingCountry)).nullsLast().descending()
             .run();
