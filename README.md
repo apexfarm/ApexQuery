@@ -2,29 +2,39 @@
 
 ![](https://img.shields.io/badge/version-1.0-brightgreen.svg) ![](https://img.shields.io/badge/build-passing-brightgreen.svg) ![](https://img.shields.io/badge/coverage-%3E95%25-brightgreen.svg)
 
-An Apex SOQL query builder to dynamically build SOQL supporting almost all syntaxes.
+An Apex SOQL query builder to dynamically build SOQL supporting almost all syntaxes. When doing dynamic SOQL, a query builder has the following advantages:
 
-| Environment           | Installation Link                                            | Version |
-| --------------------- | ------------------------------------------------------------ | ------- |
+1. **More efficient**: No need to deal with string concatenation, and handsfree from handling binding variable names.
+2. **Less error-prone**: APIs are carefully designed with strong types, cannot pass wrong values.
+
+| Environment           | Installation Link                                                                                                                                         | Version |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
 | Production, Developer | <a target="_blank" href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t2v000007CfgQAAS"><img src="docs/images/deploy-button.png"></a> | ver 1.0 |
-| Sandbox               | <a target="_blank" href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t2v000007CfgQAAS"><img src="docs/images/deploy-button.png"></a> | ver 1.0 |
+| Sandbox               | <a target="_blank" href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t2v000007CfgQAAS"><img src="docs/images/deploy-button.png"></a>  | ver 1.0 |
 
 ## Table of Contents
 
-
-
-
-
 ## 1. Design Principles
 
-1. **Highly Compatible**: Support all syntaxes and features of SOQL, except the following features as of current state: 
+1. **Highly Compatible**: Support all syntaxes and functions of SOQL, except the following syntaxes as of current state:
 
-   - `TYPEOF` statement.
    - `USING SCOPE` statement.
    - `WITH [DATA CATEGORY]` statement.
 
 2. **Highly Composable**: Clauses can be created standalone for select, where, order by and group by statements. They can be passed around, modified, and composed into queries in a later stage. This is the sole reason we choose a query builder.
-
+   
+   ```java
+   Query.Selector selector = selector().add(Account.Id, Account.Name);
+   Query.Filter filter = andx(
+       gt(Account.AnnualRevenue, 2000), 
+       lt(Account.AnnualRevenue, 2000));
+   Query.Orderer orderer = orderer().add(Account.CreatedDate).descending().nullsLast();
+   
+   List<Account> accounts = (List<Account>) Query.of(Account.SObjecType)
+       .selectBy(selector).filterBy(filter).orderBy(orderer)
+       .run();
+   ```
+   
 3. **Value Objects**: Queries and all clauses are value objects, which means different query instances are considered equal when built with same parameters in the same order.
 
    ```java
@@ -35,38 +45,29 @@ An Apex SOQL query builder to dynamically build SOQL supporting almost all synta
    );
    ```
 
-4. **Strong Types**: Strong types are enforced when possible, not only for the field parameters, but also for other inputs, so developers can make less mistakes when construct queries.
-
-   ````java
-   // Example 1: date function can only be compared with an Integer.
-   qt(CALENDAR_MONTH(Contact.Birthdate), 1);   // pass
-   qt(CALENDAR_MONTH(Contact.Birthdate), 'A'); // fail
-   ````
-
-
 ## 2. Naming Conventions
 
 <p align="center">
     <img src="./docs/images/query-sample-1.png#2023-03-19" width=700>
 </p>
 
-### 2.1 Readability
+### 2.1 Naming Readability
 
 Here are the naming conventions to increase query readability:
 
 |               | Description                                                  | Naming Convention | Reasoning                                                    | Examples                                                     |
 | ------------- | ------------------------------------------------------------ | ----------------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
 | **Keywords**  | These are backbone structures of a SOQL.                     | camelCase         | Keywords should easily remind users to their SOQL counterparts. | `selectBy`, `filterBy`, `groupBy`, `havingBy`, `orderBy`     |
-| **Operators** | These are mainly logical and comparison operators.           | lower case        | Operators should be small and short to be operator-like, therefore MongoDB operators are used as reference. | `eq`, `ne`, `gt`, `gte`, `lt`, `lte`, `inx`, `nin`           |
+| **Operators** | These are mainly logical and comparison operators.           | camelCase         | Operators should be small and short to be operator-like, abbreviation is used when appropriate. | `eq`, `ne`, `gt`, `gte`, `lt`, `lte`, `inx`, `nin`           |
 | **Functions** | These are used to perform aggregation, formatting, and date accessing etc. | UPPER_CASE        | This gives best readability, because it can be easily noticed when appear among many lower case characters of field names, keywords and operators. | `COUNT`, `MAX`, `TO_LABEL`, `FORMAT`, `CALENDAR_MONTH`, `FISCAL_YEAR` |
-| **Literals**  | These are mainly date and currency literals.                 | UPPER_CASE        | Those are constant-like values, so static constant variable naming convention is preferred. | `LAST_90_DAYS()`, `LAST_N_DAYS(30)`, `USD(100)`, `CYN(888)`  |
+| **Literals**  | There are only date and currency literals.                   | UPPER_CASE        | Those are constant-like values, so static constant variable naming convention is preferred. | `LAST_90_DAYS()`, `LAST_N_DAYS(30)`, `USD(100)`, `CYN(888)`  |
 
-### 2.2 Confliction
+### 2.2 Naming Confliction
 
 Here are the naming conventions to avoid conflictions with existing keywords or operators.
 
 1.  Use `<keyword>By()` format for SOQL keywords, such as `selectBy`, `filterBy`, `groupBy`, `havingBy`, `orderBy`.
-2. Use `<operator>x()` format for conflicted operators only, such as `orx()`, `andx()`, `inx()`, `likex()`. No need to memorize when to follow, the IDE will highlight there is a confliction, then you will know its time to add the x as suffix.  
+2.  Use `<operator>x()` format for conflicted operators only, such as `orx()`, `andx()`, `inx()`, `likex()`. No need to memorize when to follow this pattern, the IDE will highlight there is a confliction, then you will know its time to add the x suffix.
 
 ## 3. Overview
 
@@ -76,7 +77,7 @@ When possible, your classes can extend the `Query` class before using it to buil
 
 ```java
 public with sharing class AccountSelector extends Query {
-    
+
 }
 ```
 
@@ -106,7 +107,7 @@ An Id field will be added if no fields are selected.
 
 ## 4. Keywords
 
-### 4.1 From  Statement
+### 4.1 From Statement
 
 All queries are created with the a simple call to `Query.of(sobjectType)` API, which can be considered as the SOQL `from ` keyword counterpart.
 
@@ -120,10 +121,10 @@ Query query = Query.of(Account.SOBjectType);
 
 There are four types of `selectBy()` statements, each accepts different input types:
 
-1. Accept only `SObjectField` as parameters, such as: `Account.Name`. The number of params is from 1 to 5.
-2. Accept only functions as parameters, such as: `FORMAT(Account.AnnualRevenue)`. The number of params is from 1 to 5.
-2. Accept only `String` as parameters, such as: `'Name'`. The number of params is from 1 to 5. Strings are the most versatile inputs, they can support fields and functions, and additionally references to parent fields as well. You will need this when the above two reaches their limitations.
-3. Accept a child relationship subquery as parameter.
+1. Accept only `SObjectField` as parameters, such as: `Account.Name`. The number of params can be 1 to 5.
+2. Accept only functions as parameters, such as: `FORMAT(Account.AnnualRevenue)`. The number of params can be 1 to 5.
+3. Accept only `String` as parameters. The number of params can be 1 to 5. Use this only for parent field references. Although it supports functions as well, I would recommend to directly use the above function with a string field instead.
+4. Accept a child relationship subquery as parameter.
 
 **Note**: These `selectBy()` methods can chain from one to another, so developers can select as many fields as they want.
 
@@ -132,7 +133,7 @@ Query query = Query.of(Account.SObjectType)
     // #1. all params are fields
     .selectBy(Account.Name, Account.BillingCountry, Account.BillingState)
     // #2. all params are functions
-    .selectBy(FORMAT(CONVERT_CURRENCY(Account.AnnualRevenue)))
+    .selectBy(FORMAT(CONVERT_CURRENCY(Account.AnnualRevenue)), TO_LABEL('Owner.LocaleSidKey'))
     // #3. all params are strings
     .selectBy('Owner.Profile.Id', 'TOLABEL(Owner.EmailEncodingKey)')
     // #4. one subquery for child relationship "Contacts"
@@ -141,7 +142,7 @@ Query query = Query.of(Account.SObjectType)
 
 #### Outline Select
 
-Use a `selector()` to compose the field selection outside of a query. And one selector can be added to another one for reuse. The selector  `add` methods support the same inputs as the `selectBy()` introduced in the above section.
+Use a `selector()` to compose the field selection outside of a query. And one selector can be added to another one for reuse. The selector `add` methods support the same inputs as the `selectBy()` introduced in the above section.
 
 ```java
 Query.Selector selector = Query.selector()
@@ -157,18 +158,45 @@ Query query = Query.of(Account.SObjectType)
     .selectBy(anotherSelector); // selector can be comsumed by a query
 ```
 
+#### TYPEOF Select
+
+Use `typeof()` to construct a SOQL TYPEOF statement.
+
+1. The `then()` method only support maximum 5 number of parameters, but multiple then methods can be chained to add more fields.
+2. Previously used `SObjectType` can be used in `when()` again, new fields will be added against the same `SObjectType`.
+3. multiple `elsex()` methods can be chained to add more fields.
+4. The `typeof()` can be create standalone outside a query.
+
+```java
+Query query = Query.of(Task.SObjecType)
+    .selectBy(typeof(Task.What)
+        .when(Account.SObjectType)
+              .then(Account.Phone, Account.NumberOfEmployees)
+        .when(Opportunity.SObjectType) // #1 multiple then methods can be chained
+              .then(Opportunity.Amount, Opportunity.CloseDate)
+              .then(Opportunity.ExpectedRevenue, Opportunity.Description)
+        .when(Account.SObjectType)     // #2 previously used SObjectType can be used again
+              .then(Account.BillingCountry, Account.BillingState)
+        .elsex(Task.Name, Task.IsRecurrence)
+        .elsex(Task.Email, Task.Phone) // #3 multiple elsex methods can be chained
+    );
+
+Query.TypeOf typeOfWhat = typeof(Task.SObjecType)
+    .when().then().elsex() ... ;      // #4 TypeOf can be created standalone
+```
+
 ### 4.3 Where Statement
 
-The where statement method is called `filterBy()` but not ~~whereBy~~. Both comparison expression and logical statement are `Query.Filter` types, so they can be supplied to the `filterBy(Filter filter)` API.
+The where statement method is called `filterBy()` but not ~~whereBy~~. Both comparison expression and logical statement are `Query.Filter` types, which can be supplied to the `filterBy(Filter filter)` API.
 
 ```java
 Query query = Query.of(Account.SObjectType)
 	.selectBy(Account.Name)
-	.filterBy(gt(Account.AnnualRevenue, 2000)); // #1. single comparison
+	.filterBy(gt(Account.AnnualRevenue, 2000)); // #1. a single comparison expression
 
 Query query = Query.of(Account.SObjectType)
 	.selectBy(Account.Name)
-	.filterBy(andx()                            // #2. single logical statement
+	.filterBy(andx()                            // #2. a single logical statement
         .add(gt(Account.AnnualRevenue, 2000))
         .add(lt(Account.AnnualRevenue, 6000))
     );
@@ -215,6 +243,44 @@ Query.Filter filter = orx()
     );
 ```
 
+#### Compare with Null
+
+We can compare a field against null with `neNull()` and `eqNull()` operators. The `inx()` and `nin()` operators also support null checking.
+
+```java
+Query.Filter filter = andx()
+    .add(neNull(Account.AnnualRevenue))
+    .add(eqNull(Account.BillingCountry))
+    .add(inx(Account.BillingState, new List<String> { 'Beijing', null }))
+    .add(nin(Account.BillingState, new List<String> { 'Shanghai', null }))
+);
+```
+
+#### Compare with List
+
+I saw in some projects, developers using equality operator to compare an Id field against a list of `SObject`, this is working but not a recommended. We shall use `IN` operator to do such comparison instead.
+
+```java
+// some accounts queried elsewhere
+List<Account> accounts = ... ; 
+
+// Wrong: = is used
+List<Contact> contacts = [SELECT Id, Name FROM Contact WHERE AccountId = :accounts];
+
+// Correct: IN is used
+List<Contact> contacts = [SELECT Id, Name FROM Contact WHERE AccountId IN :accounts];
+```
+
+And in Apex Query, `List<SObject>` only works with `inx`, `nin` operators, but not `eq` and `ne`.
+
+```java
+List<Account> accounts = ... ; // some accounts queried elsewhere
+List<Contact> contacts = List<Contact> Query.of(Contact.SObjectType)
+    .selectBy(Contact.Id, Contact.Name)
+    .filterBy(inx(Contact.AccountId, accounts))
+    .run();
+```
+
 ### 4.4 Order By Statement
 
 #### Inline Order By
@@ -222,7 +288,7 @@ Query.Filter filter = orx()
 There are two types of `orderBy()` statements, each accepts different input types:
 
 1. Accept only `SObjectField` as parameters, such as: `Account.Name`. The number of params is from 1 to 5.
-2. Accept only functions as parameters, such as: `DISTANCE_IN_MILE(...)`. The number of params is from 1 to 5.
+2. Accept only functions as parameters, such as: `DISTANCE_IN_KM(...)`. The number of params is from 1 to 5.
 
 **Note**: These `orderBy()` methods can chain from one to another, so developers can order by as many fields as they want.
 
@@ -232,7 +298,7 @@ Query query = Query.of(Account.SObjectType)
     // #1. all params are fields
     .orderBy(Account.BillingCountry, Account.BillingState)
     // #2. all params are functions
-    .orderBy(DISTANCE_IN_MILE(Account.ShippingAddress, Location.newInstance(37.775000, -122.41800)));
+    .orderBy(DISTANCE_IN_KM(Account.ShippingAddress, Location.newInstance(37.775000, -122.41800)));
 ```
 
 Every `orderBy()` supports an optional trailing call to `descending()` and `nullsLast()`. Ordering fields are default to `ascending()` and `nullsFirst()` behaviors, you can but not necessarily to declare them explicitly. The ascending and nulls logic will be applied to all the fields or functions used by the previous `orderBy()` next to them. If different sorting logics need to be applied to each field, just separate them into different `orderBy()` methods.
@@ -256,10 +322,10 @@ Use a `orderer()` to compose the field ordering logic outside of a query. And on
 
 ```java
 Query.Orderer orderer = Query.orderer()
-    .orderBy(DISTANCE_IN_MILE(Account.ShippingAddress, Location.newInstance(37.775000, -122.41800)));
+    .add(DISTANCE_IN_MI(Account.ShippingAddress, Location.newInstance(37.775000, -122.41800)));
 
 Query.Orderer anotherOrderer = Query.orderer()
-    .orderBy(Account.BillingCountry, Account.BillingState).descending().nullsLast()
+    .add(Account.BillingCountry, Account.BillingState).descending().nullsLast()
     .add(orderer);            // orderer can be consumed by another orderer
 
 Query query = Query.of(Account.SObjectType)
@@ -309,7 +375,7 @@ Query query = Query.of(Account.SObjectType)
 
 #### Outline Group By
 
-Use a `grouper()` to compose the the field grouping outside of a query. And one grouper can be added to another one for reuse. The grouper  `add` methods support the same inputs as the `groupBy()` introduced in the above section.
+Use a `grouper()` to compose the the field grouping outside of a query. And one grouper can be added to another one for reuse. The grouper `add` methods support the same inputs as the `groupBy()` introduced in the above section.
 
 ```java
 Query.Grouper grouper = Query.grouper()
@@ -323,8 +389,6 @@ Query query = Query.of(Account.SObjectType)
     .selectBy(AVG(Account.AnnualRevenue), SUM(Account.AnnualRevenue))
     .groupBy(anotherGrouper); // grouper can be comsumed by a query
 ```
-
-
 
 ## 5. Operator References
 
@@ -340,58 +404,144 @@ andx().add(filter1, filter2, filter3, filter4);
 andx().add(filter1, filter2).add(filter3, filter4);
 ```
 
-| AND                                                          | Generated Format                         |
-| ------------------------------------------------------------ | ---------------------------------------- |
-| `andx(Filter filter1, Filter filter2)`                       | `(filter1 AND filter2)`                  |
-| `andx(Filter filter1, Filter filter2, ... Filter filter10)`  | `(filter1 AND filter2 ... AND filter10)` |
-| `andx(List<Filter> filters)`                                 | `(filter1 AND filter2 ...)`              |
-| `andx().add(Filter filter1, Filter filter2)`                 | `(filter1 AND filter2)`                  |
+| AND                                                               | Generated Format                         |
+| ----------------------------------------------------------------- | ---------------------------------------- |
+| `andx(Filter filter1, Filter filter2)`                            | `(filter1 AND filter2)`                  |
+| `andx(Filter filter1, Filter filter2, ... Filter filter10)`       | `(filter1 AND filter2 ... AND filter10)` |
+| `andx(List<Filter> filters)`                                      | `(filter1 AND filter2 ...)`              |
+| `andx().add(Filter filter1, Filter filter2)`                      | `(filter1 AND filter2)`                  |
 | `andx().add(Filter filter1, Filter filter2, ... Filter filter10)` | `(filter1 AND filter2 ... AND filter10)` |
-| **OR**                                                       |                                          |
-| `orx(Filter filter1, Filter filter2)`                        | `(filter1 OR filter2)`                   |
-| `andx(Filter filter1, Filter filter2, ... Filter filter10)`  | `(filter1 OR filter2 ... OR filter10)`   |
-| `orx().add(Filter filter1, Filter filter2)`                  | `(filter1 OR filter2)`                   |
-| `orx().add(Filter filter1, Filter filter2, ... Filter filter10)` | `(filter1 OR filter2 ... OR filter10)`   |
-| **NOT**                                                      |                                          |
-| `notx(Filter filter)`                                        | `NOT(filter)`                            |
+| **OR**                                                            |                                          |
+| `orx(Filter filter1, Filter filter2)`                             | `(filter1 OR filter2)`                   |
+| `andx(Filter filter1, Filter filter2, ... Filter filter10)`       | `(filter1 OR filter2 ... OR filter10)`   |
+| `orx().add(Filter filter1, Filter filter2)`                       | `(filter1 OR filter2)`                   |
+| `orx().add(Filter filter1, Filter filter2, ... Filter filter10)`  | `(filter1 OR filter2 ... OR filter10)`   |
+| **NOT**                                                           |                                          |
+| `notx(Filter filter)`                                             | `NOT(filter)`                            |
 
 ### 5.2 Comparison Operators
 
-Some of following params are not labeled with types, this is because they support multiple types. As a rule of thumb, there are three different types can be used for `param1`:
+Some of following params are not labeled with types, this is because they support multiple types. As a rule of thumb, there are three different types can be used for `param`:
 
 1. An `SObjectField` such as `Account.AnnualRevenue`.
 2. An function for picklist label, date, distance and aggregation, i.e. `TO_LABEL(Account.AccountSource)`, `CALENDAR_MONTH(CreatedDate)`.
 3. A string such as `'Owner.Profile.Name'`. This is mainly used for parent field referencing.
 
-| SOQL Operators | Apex Query Operators                    | Generated Format                  |
-| -------------- | --------------------------------------- | --------------------------------- |
-| **=**          | `eq(param1, param2)`                    | `param1 = param2`                 |
-|                | `eqNull(param1)`                        | `param1 = NULL`                   |
-| **!=**         | `ne(param1, param2)`                    | `param1 != param2`                |
-|                | `neNull(param1)`                        | `param1 != NULL`                  |
-| **\<**         | `lt(param1, param2)`                    | `param1 < param2`                 |
-| **\<=**        | `lte(param1, param2)`                   | `param1 <= param2`                |
-| **\>**         | `gt(param1, param2)`                    | `param1 > param2`                 |
-| **\>=**        | `gte(param1, param2)`                   | `param1 >= param2`                |
-|                | `between(param1, min, max)`             | `param1 >= min AND param1 <= max` |
-| **LIKE**       | `likex(param1, param2)`                 | `param1 LIKE param2`              |
-| **NOT LIKE**   | `nlike(param1, param2)`                 | `(NOT param1 LIKE param2)`        |
-| **IN**         | `inx(param1, List<Object> params)`      | `param1 IN :params`               |
-| **NOT IN**     | `nin(param1, List<Object> params)`      | `param1 NOT IN :params`           |
-| **INCLUDES**   | `includes(param1, List<String> params)` | `param1 INCLUDES :params`         |
-| **EXCLUDES**   | `excludes(param1, List<String> params)` | `param1 EXCLUDES :params`         |
+| SOQL Operators | Apex Query Operators                   | Generated Format                          |
+| -------------- | -------------------------------------- | ----------------------------------------- |
+| **=**          | `eq(param, value)`                     | `param = value`                           |
+|                | `eqNull(param)`                        | `param = NULL`                            |
+| **!=**         | `ne(param, value)`                     | `param != value`                          |
+|                | `neNull(param)`                        | `param != NULL`                           |
+| **\<**         | `lt(param, value)`                     | `param < value`                           |
+| **\<=**        | `lte(param, value)`                    | `param <= value`                          |
+| **\>**         | `gt(param, value)`                     | `param > value`                           |
+| **\>=**        | `gte(param, value)`                    | `param >= value`                          |
+|                | `between(param, minValue, maxValue)`   | `param >= minValue AND param <= maxValue` |
+| **LIKE**       | `likex(param, value)`                  | `param LIKE value`                        |
+| **NOT LIKE**   | `nlike(param, value)`                  | `(NOT param LIKE value)`                  |
+| **IN**         | `inx(param, List<Object> values)`      | `param IN :values`                        |
+| **NOT IN**     | `nin(param, List<Object> values)`      | `param NOT IN :values`                    |
+| **INCLUDES**   | `includes(param, List<String> values)` | `param INCLUDES :values`                  |
+| **EXCLUDES**   | `excludes(param, List<String> values)` | `param EXCLUDES :values`                  |
 
 ## 6. Function References
 
-#### 6.1 Aggregate Functions
+### 6.1 Aggregate Functions
 
-| Function                             |      |      |
-| ------------------------------------ | ---- | ---- |
-| `COUNT(SObjectField field)`          |      |      |
-| `COUNT_DISTINCT(SObjectField field)` |      |      |
-| `GROUPING(SObjectField field)`       |      |      |
-| `SUM(SObjectField field)`            |      |      |
-| `AVG(SObjectField field)`            |      |      |
-| `MAX(SObjectField field)`            |      |      |
-| `MIN(SObjectField field)`            |      |      |
+| Static Methods                 | Generated Format              |
+| ------------------------------ | ----------------------------- |
+| `COUNT(field)`                 | `COUNT(field)`                |
+| `COUNT(field, alias)`          | `COUNT(field) alias`          |
+| `COUNT_DISTINCT(field)`        | `COUNT_DISTINCT(field)`       |
+| `COUNT_DISTINCT(field, alias)` | `COUNT_DISTINCT(field) alias` |
+| `GROUPING(field)`              | `GROUPING(field)`             |
+| `GROUPING(field, alias)`       | `GROUPING(field) alias`       |
+| `SUM(field)`                   | `SUM(field)`                  |
+| `SUM(field, alias)`            | `SUM(field) alias`            |
+| `AVG(field)`                   | `AVG(field)`                  |
+| `AVG(field, alias)`            | `AVG(field) alias`            |
+| `MAX(field)`                   | `MAX(field)`                  |
+| `MAX(field, alias)`            | `MAX(field) alias`            |
+| `MIN(field)`                   | `MIN(field)`                  |
+| `MIN(field, alias)`            | `MIN(field) alias`            |
 
+### 6.2 Date/Time Functions
+
+The following functions operating on Date, Time and Datetime fields. **Note**: Date functions can only be used in where conditions, and group by statements. When used in group by, of course it can appear in select and having as well. Date functions cannot be used inside any other functions, as well as the above aggregate functions.
+
+```java
+Query query = Query.of(Opportunity.SObjectType)
+    .selectBy(CALENDAR_YEAR(Opportunity.CreatedDate), SUM(Opportunity.Amount))
+    .groupBy(CALENDAR_YEAR(Opportunity.CreatedDate));
+```
+
+| Static Methods            | Description                                                  |
+| ------------------------- | ------------------------------------------------------------ |
+| `CONVERT_TIMEZONE(field)` | Convert datetime fields to the user’s time zone. **Note**: You can only use `CONVERT_TIMEZONE()` in a date function. |
+| `CALENDAR_MONTH(field)`   | Returns a number representing the calendar month of a date field. |
+| `CALENDAR_QUARTER(field)` | Returns a number representing the calendar quarter of a date field. |
+| `CALENDAR_YEAR(field)`    | Returns a number representing the calendar year of a date field. |
+| `DAY_IN_MONTH(field)`     | Returns a number representing the day in the month of a date field. |
+| `DAY_IN_WEEK(field)`      | Returns a number representing the day of the week for a date field. |
+| `DAY_IN_YEAR(field)`      | Returns a number representing the day in the year for a date field. |
+| `DAY_ONLY(field)`         | Returns a date representing the day portion of a datetime field. |
+| `FISCAL_MONTH(field)`     | Returns a number representing the fiscal month of a date field. |
+| `FISCAL_QUARTER(field)`   | Returns a number representing the fiscal quarter of a date field. |
+| `FISCAL_YEAR(field)`      | Returns a number representing the fiscal year of a date field. |
+| `HOUR_IN_DAY(field)`      | Returns a number representing the hour in the day for a datetime field. |
+| `WEEK_IN_MONTH(field)`    | Returns a number representing the week in the month for a date field. |
+| `WEEK_IN_YEAR(field)`     | Returns a number representing the week in the year for a date field. |
+
+### 6.3 Other Functions
+
+Here is an example how to generate a location-based comparison expression.
+
+```java
+Query.Filter filter = lt(DISTANCE_IN_KM(Account.ShippingAddreess, Location.newInstance(37.775000, -122.41800)), 20);
+```
+
+| Static Methods                        | Generated Format                                             |
+| ------------------------------------- | ------------------------------------------------------------ |
+| `TO_LABEL(field) `                    | `TOLABEL(field)`                                             |
+| `FORMAT(field)`                       | `FORMAT(field)`                                              |
+| `CONVERT_CURRENCY(field)`             | `CONVERTCURRENCY(field)`                                     |
+| `DISTANCE_IN_KM(field, Location geo)` | `DISTANCE(ShippingAddress, GEOLOCATION(37.775,-122.418), 'km')` |
+| `DISTANCE_IN_MI(field, Location geo)` | `DISTANCE(ShippingAddress, GEOLOCATION(37.775,-122.418), 'mi')` |
+
+## 7. Literal References
+
+### 7.1 Date Literals
+
+Here are all the available date literals referenced from Salesforce ([link](https://developer.salesforce.com/docs/atlas.en-us.soql_sosl.meta/soql_sosl/sforce_api_calls_soql_select_dateformats.htm)). They can be created with corresponding methods, and passed into comparison operators working with them.
+
+```java
+Query.Filter filter = orx()
+    .add(eq(Account.CreatedDate, YESTERDAY()))
+    .add(eq(Account.AnnualRevenual, LAST_N_DAYS(5)))
+);
+```
+
+>  `YESTERDAY()`, `TODAY()`, `TOMORROW()`, `LAST_WEEK()`, `THIS_WEEK()`, `NEXT_WEEK()`, `LAST_MONTH()`, `THIS_MONTH()`, `NEXT_MONTH()`, `LAST_90_DAYS()`, `NEXT_90_DAYS()`, `THIS_QUARTER()`, `LAST_QUARTER()`, `NEXT_QUARTER()`, `THIS_YEAR()`, `LAST_YEAR()`, `NEXT_YEAR()`, `THIS_FISCAL_QUARTER()`, `LAST_FISCAL_QUARTER()`, `NEXT_FISCAL_QUARTER()`, `THIS_FISCAL_YEAR()`, `LAST_FISCAL_YEAR()`, `NEXT_FISCAL_YEAR()`
+>
+> `LAST_N_DAYS(Integer n)`, `NEXT_N_DAYS(Integer n)`, `N_DAYS_AGO(Integer n)`, `NEXT_N_WEEKS(Integer n)`, `LAST_N_WEEKS(Integer n)`, `N_WEEKS_AGO(Integer n)`, `NEXT_N_MONTHS(Integer n)`, `LAST_N_MONTHS(Integer n)`, `N_MONTHS_AGO(Integer n)`, `NEXT_N_QUARTERS(Integer n)`, `LAST_N_QUARTERS(Integer n)`, `N_QUARTERS_AGO(Integer n)`, `NEXT_N_YEARS(Integer n)`, `LAST_N_YEARS(Integer n)`, `N_YEARS_AGO(Integer n)`, `NEXT_N_FISCAL_QUARTERS(Integer n)`, `N_FISCAL_QUARTERS_AGO(Integer n)`, `NEXT_N_FISCAL_YEARS(Integer n)`, `LAST_N_FISCAL_YEARS(Integer n)`, `N_FISCAL_YEARS_AGO(Integer n)`
+
+### 7.2 Currency Literals
+
+Here are all the available currency ISO codes referenced from Salesforce ([link](https://help.salesforce.com/s/articleView?language=en_US&id=sf.admin_supported_currencies.htm)). They can be created with corresponding methods, and passed into comparison operators working with them.
+
+```java
+Query.Filter filter = orx()
+    .add(eq(Account.AnnualRevenual, USD(2000)))
+    .add(eq(Account.AnnualRevenual, CNY(2000)))
+    .add(eq(Account.AnnualRevenual, ISO('TRY', 2000)))
+);
+```
+
+**NOTE**: TRY is an Apex keyword, so it can not have a corresponding method, instead TRY currency can be generated with a general `ISO` method. In case Salesforce introduced new currencies, which are not ported into Apex Query library, the `ISO` method can be used temporarily.
+
+> AED, AFN, ALL, AMD, ANG, AOA, ARS, AUD, AWG, AZN, BAM, BBD, BDT, BGN, BHD, BIF, BMD, BND, BOB, BRL, BSD, BTN, BWP, BYN, BZD, CAD, CDF, CHF, CLP, CNY, COP, CRC, CSD, CUP, CVE, CZK, DJF, DKK, DOP, DZD, EGP, ERN, ETB, EUR, FJD, FKP, GBP, GEL, GHS, GIP, GMD, GNF, GTQ, GYD, HKD, HNL, HRK, HTG, HUF, IDR, ILS, INR, IQD, IRR, ISK, JMD, JOD, JPY, KES, KGS, KHR, KMF, KPW, KRW, KWD, KYD, KZT, LAK, LBP, LKR, LRD, LYD, MAD, MDL, MGA, MKD, MMK, MOP, MRU, MUR, MWK, MXN, MYR, MZN, NAD, NGN, NIO, NOK, NPR, NZD, OMR, PAB, PEN, PGK, PHP, PKR, PLN, PYG, QAR, RON, RSD, RUB, RWF, SAR, SBD, SCR, SDG, SEK, SGD, SHP, SLE, SLL, SOS, SRD, STN, SYP, SZL, THB, TJS, TND, TOP, ~~TRY~~, TTD, TWD, TZS, UAH, UGX, USD, UYU, UZS, VES, VND, VUV, WST, XAF, XCD, XOF, XPF, YER, ZAR
+
+## 8. **License**
+
+Apache 2.0

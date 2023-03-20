@@ -59,6 +59,120 @@ public with sharing class QueryTest extends Query {
     // #region Keyword Select
 
     @isTest
+    static void testKeyword_Select_TypeOf() {
+        // prettier-ignore
+        Query accountQuery = Query.of(Account.SObjectType)
+            .selectBy(
+                typeof('What')
+                    .when(Account.SObjectType)
+                        .then(Account.Phone, Account.NumberOfEmployees)
+                    .when(Contact.SObjectType)
+                        .then(Contact.Name, Contact.Birthdate)
+                        .then(Contact.Department, Contact.Email)
+                    .when(Account.SObjectType)
+                        .then(Account.BillingCountry, Account.BillingState)
+                    .elsex('Id', 'Status')
+                    .elsex('Email', 'Phone')
+            );
+        Assert.areEqual(
+            'SELECT TYPEOF What ' +
+            'WHEN Account THEN Phone, NumberOfEmployees, BillingCountry, BillingState ' +
+            'WHEN Contact THEN Name, Birthdate, Department, Email ' +
+            'ELSE Id, Status, Email, Phone END FROM Account',
+            accountQuery.build()
+        );
+
+        Query.TypeOf typeOfWhat = typeof('What').when(Account.SObjectType);
+        Assert.areEqual(
+            'SELECT TYPEOF What WHEN Account END FROM Account',
+            Query.of(Account.SObjectType).selectBy(typeOfWhat).build()
+        );
+
+        // SObjectFields
+        typeOfWhat = typeof('What').when(Account.SObjectType).then(Account.Name).elsex(Contact.Name);
+        Assert.areEqual(
+            'SELECT TYPEOF What WHEN Account THEN Name ELSE Name END FROM Account',
+            Query.of(Account.SObjectType).selectBy(typeOfWhat).build()
+        );
+
+        typeOfWhat = typeof('What')
+            .when(Account.SObjectType)
+            .then(Account.Name, Account.Name)
+            .elsex(Contact.Name, Contact.Name);
+        Assert.areEqual(
+            'SELECT TYPEOF What WHEN Account THEN Name, Name ELSE Name, Name END FROM Account',
+            Query.of(Account.SObjectType).selectBy(typeOfWhat).build()
+        );
+
+        typeOfWhat = typeof('What')
+            .when(Account.SObjectType)
+            .then(Account.Name, Account.Name, Account.Name)
+            .elsex(Contact.Name, Contact.Name, Contact.Name);
+        Assert.areEqual(
+            'SELECT TYPEOF What WHEN Account THEN Name, Name, Name ELSE Name, Name, Name END FROM Account',
+            Query.of(Account.SObjectType).selectBy(typeOfWhat).build()
+        );
+
+        typeOfWhat = typeof('What')
+            .when(Account.SObjectType)
+            .then(Account.Name, Account.Name, Account.Name, Account.Name)
+            .elsex(Contact.Name, Contact.Name, Contact.Name, Contact.Name);
+        Assert.areEqual(
+            'SELECT TYPEOF What WHEN Account THEN Name, Name, Name, Name ELSE Name, Name, Name, Name END FROM Account',
+            Query.of(Account.SObjectType).selectBy(typeOfWhat).build()
+        );
+
+        typeOfWhat = typeof('What')
+            .when(Account.SObjectType)
+            .then(Account.Name, Account.Name, Account.Name, Account.Name, Account.Name)
+            .elsex(Contact.Name, Contact.Name, Contact.Name, Contact.Name, Contact.Name);
+        Assert.areEqual(
+            'SELECT TYPEOF What WHEN Account THEN Name, Name, Name, Name, Name ELSE Name, Name, Name, Name, Name END FROM Account',
+            Query.of(Account.SObjectType).selectBy(typeOfWhat).build()
+        );
+
+        // Strings
+        typeOfWhat = typeof('What').when(Account.SObjectType).then('Name').elsex('Name');
+        Assert.areEqual(
+            'SELECT TYPEOF What WHEN Account THEN Name ELSE Name END FROM Account',
+            Query.of(Account.SObjectType).selectBy(typeOfWhat).build()
+        );
+
+        typeOfWhat = typeof('What').when(Account.SObjectType).then('Name', 'Name').elsex('Name', 'Name');
+        Assert.areEqual(
+            'SELECT TYPEOF What WHEN Account THEN Name, Name ELSE Name, Name END FROM Account',
+            Query.of(Account.SObjectType).selectBy(typeOfWhat).build()
+        );
+
+        typeOfWhat = typeof('What')
+            .when(Account.SObjectType)
+            .then('Name', 'Name', 'Name')
+            .elsex('Name', 'Name', 'Name');
+        Assert.areEqual(
+            'SELECT TYPEOF What WHEN Account THEN Name, Name, Name ELSE Name, Name, Name END FROM Account',
+            Query.of(Account.SObjectType).selectBy(typeOfWhat).build()
+        );
+
+        typeOfWhat = typeof('What')
+            .when(Account.SObjectType)
+            .then('Name', 'Name', 'Name', 'Name')
+            .elsex('Name', 'Name', 'Name', 'Name');
+        Assert.areEqual(
+            'SELECT TYPEOF What WHEN Account THEN Name, Name, Name, Name ELSE Name, Name, Name, Name END FROM Account',
+            Query.of(Account.SObjectType).selectBy(typeOfWhat).build()
+        );
+
+        typeOfWhat = typeof('What')
+            .when(Account.SObjectType)
+            .then('Name', 'Name', 'Name', 'Name', 'Name')
+            .elsex('Name', 'Name', 'Name', 'Name', 'Name');
+        Assert.areEqual(
+            'SELECT TYPEOF What WHEN Account THEN Name, Name, Name, Name, Name ELSE Name, Name, Name, Name, Name END FROM Account',
+            Query.of(Account.SObjectType).selectBy(typeOfWhat).build()
+        );
+    }
+
+    @isTest
     static void testKeyword_Select_Fields() {
         // Inline Styles
         Query accountQuery = Query.of(Account.SObjectType).selectBy(Account.Id);
@@ -407,32 +521,33 @@ public with sharing class QueryTest extends Query {
             'OR (AnnualRevenue < 1000 AND BillingCountry = \'China\' AND BillingState = \'Shanghai\'))',
             accountQuery.build()
         );
-    }
 
-    @isTest
-    static void testKeyword_Where_traditional_Style() {
-        Query.Filter filter = orx(
-            andx(eq(Account.BillingCountry, 'China'), eq(Account.BillingState, 'Beijing')),
-            andx(eq(Account.BillingCountry, 'China'), eq(Account.BillingState, 'Shanghai'))
+        // Traditional Style
+        filter = orx(
+            andx(
+                gt(Account.AnnualRevenue, 1000),
+                eq(Account.BillingCountry, 'China'),
+                eq(Account.BillingState, 'Beijing')
+            ),
+            andx(
+                lt(Account.AnnualRevenue, 1000),
+                eq(Account.BillingCountry, 'China'),
+                eq(Account.BillingState, 'Shanghai')
+            )
         );
-        Query accountQuery = Query.of(Account.SObjectType).filterBy(filter);
+        accountQuery = Query.of(Account.SObjectType).filterBy(filter);
         Assert.areEqual(
             'SELECT Id FROM Account WHERE ((AnnualRevenue > 1000 AND BillingCountry = \'China\' AND BillingState = \'Beijing\') ' +
             'OR (AnnualRevenue < 1000 AND BillingCountry = \'China\' AND BillingState = \'Shanghai\'))',
             accountQuery.build()
-        );
-
-        filter = orx(
-            andx(eq(Account.BillingCountry, 'China'), eq(Account.BillingState, 'Beijing')),
-            andx(eq(Account.BillingCountry, 'China'), eq(Account.BillingState, 'Shanghai'))
         );
     }
 
     // #endregion
     // =====================
 
-    // ========================
-    // #region Operator Logical
+    // ==========================
+    // #region Operator - Logical
 
     @isTest
     static void testOperator_Logical_Not_Commafree() {
@@ -831,10 +946,10 @@ public with sharing class QueryTest extends Query {
     }
 
     // #endregion
-    // =====================
+    // ==========================
 
-    // ============================
-    // #region Comparison Operators
+    // =============================
+    // #region Operator - Comparison
 
     @isTest
     static void testOperator_Comparison_EQ() {
@@ -1041,7 +1156,7 @@ public with sharing class QueryTest extends Query {
         );
 
         // param1 are others
-        filter = eq(DISTANCE_IN_KILOMETER(Account.ShippingAddress, Location.newInstance(37.775001, -122.41801)), 12.3);
+        filter = eq(DISTANCE_IN_KM(Account.ShippingAddress, Location.newInstance(37.775001, -122.41801)), 12.3);
         Assert.areEqual(
             'SELECT Id FROM Account WHERE DISTANCE(ShippingAddress, GEOLOCATION(37.775001, -122.41801), \'km\') = 12.3',
             Query.of(Account.SObjectType).filterBy(filter).build()
@@ -1265,7 +1380,7 @@ public with sharing class QueryTest extends Query {
         );
 
         // param1 are others
-        filter = ne(DISTANCE_IN_KILOMETER(Account.ShippingAddress, Location.newInstance(37.775001, -122.41801)), 12.3);
+        filter = ne(DISTANCE_IN_KM(Account.ShippingAddress, Location.newInstance(37.775001, -122.41801)), 12.3);
         Assert.areEqual(
             'SELECT Id FROM Account WHERE DISTANCE(ShippingAddress, GEOLOCATION(37.775001, -122.41801), \'km\') != 12.3',
             Query.of(Account.SObjectType).filterBy(filter).build()
@@ -1453,7 +1568,7 @@ public with sharing class QueryTest extends Query {
         );
 
         // param1 are others
-        filter = gt(DISTANCE_IN_KILOMETER(Account.ShippingAddress, Location.newInstance(37.775001, -122.41801)), 12.3);
+        filter = gt(DISTANCE_IN_KM(Account.ShippingAddress, Location.newInstance(37.775001, -122.41801)), 12.3);
         Assert.areEqual(
             'SELECT Id FROM Account WHERE DISTANCE(ShippingAddress, GEOLOCATION(37.775001, -122.41801), \'km\') > 12.3',
             Query.of(Account.SObjectType).filterBy(filter).build()
@@ -1641,7 +1756,7 @@ public with sharing class QueryTest extends Query {
         );
 
         // param1 are others
-        filter = gte(DISTANCE_IN_KILOMETER(Account.ShippingAddress, Location.newInstance(37.775001, -122.41801)), 12.3);
+        filter = gte(DISTANCE_IN_KM(Account.ShippingAddress, Location.newInstance(37.775001, -122.41801)), 12.3);
         Assert.areEqual(
             'SELECT Id FROM Account WHERE DISTANCE(ShippingAddress, GEOLOCATION(37.775001, -122.41801), \'km\') >= 12.3',
             Query.of(Account.SObjectType).filterBy(filter).build()
@@ -1829,7 +1944,7 @@ public with sharing class QueryTest extends Query {
         );
 
         // param1 are others
-        filter = lt(DISTANCE_IN_KILOMETER(Account.ShippingAddress, Location.newInstance(37.775001, -122.41801)), 12.3);
+        filter = lt(DISTANCE_IN_KM(Account.ShippingAddress, Location.newInstance(37.775001, -122.41801)), 12.3);
         Assert.areEqual(
             'SELECT Id FROM Account WHERE DISTANCE(ShippingAddress, GEOLOCATION(37.775001, -122.41801), \'km\') < 12.3',
             Query.of(Account.SObjectType).filterBy(filter).build()
@@ -2017,7 +2132,7 @@ public with sharing class QueryTest extends Query {
         );
 
         // param1 are others
-        filter = lte(DISTANCE_IN_KILOMETER(Account.ShippingAddress, Location.newInstance(37.775001, -122.41801)), 12.3);
+        filter = lte(DISTANCE_IN_KM(Account.ShippingAddress, Location.newInstance(37.775001, -122.41801)), 12.3);
         Assert.areEqual(
             'SELECT Id FROM Account WHERE DISTANCE(ShippingAddress, GEOLOCATION(37.775001, -122.41801), \'km\') <= 12.3',
             Query.of(Account.SObjectType).filterBy(filter).build()
@@ -2226,7 +2341,7 @@ public with sharing class QueryTest extends Query {
 
         // param1 are others
         filter = between(
-            DISTANCE_IN_KILOMETER(Account.ShippingAddress, Location.newInstance(37.775001, -122.41801)),
+            DISTANCE_IN_KM(Account.ShippingAddress, Location.newInstance(37.775001, -122.41801)),
             12.3,
             12.3
         );
@@ -2908,7 +3023,538 @@ public with sharing class QueryTest extends Query {
         );
     }
     // #endregion
-    // ============================
+    // =============================
+
+    // ================
+    // #region Function
+
+    @isTest
+    static void testFunction_Aggregate() {
+        Query accountQuery;
+
+        // SObjectField
+        accountQuery = Query.of(Account.SObjectType).selectBy(GROUPING(Account.Name), GROUPING(Account.Name, 'alias'));
+        Assert.areEqual('SELECT GROUPING(Name), GROUPING(Name) alias FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).selectBy(COUNT(Account.Name), COUNT(Account.Name, 'alias'));
+        Assert.areEqual('SELECT COUNT(Name), COUNT(Name) alias FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType)
+            .selectBy(COUNT_DISTINCT(Account.Name), COUNT_DISTINCT(Account.Name, 'alias'));
+        Assert.areEqual('SELECT COUNT_DISTINCT(Name), COUNT_DISTINCT(Name) alias FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).selectBy(SUM(Account.Name), SUM(Account.Name, 'alias'));
+        Assert.areEqual('SELECT SUM(Name), SUM(Name) alias FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).selectBy(AVG(Account.Name), AVG(Account.Name, 'alias'));
+        Assert.areEqual('SELECT AVG(Name), AVG(Name) alias FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).selectBy(MAX(Account.Name), MAX(Account.Name, 'alias'));
+        Assert.areEqual('SELECT MAX(Name), MAX(Name) alias FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).selectBy(MIN(Account.Name), MIN(Account.Name, 'alias'));
+        Assert.areEqual('SELECT MIN(Name), MIN(Name) alias FROM Account', accountQuery.build());
+
+        // String
+        accountQuery = Query.of(Account.SObjectType).selectBy(GROUPING('Name'), GROUPING('Name', 'alias'));
+        Assert.areEqual('SELECT GROUPING(Name), GROUPING(Name) alias FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).selectBy(COUNT('Name'), COUNT('Name', 'alias'));
+        Assert.areEqual('SELECT COUNT(Name), COUNT(Name) alias FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).selectBy(COUNT_DISTINCT('Name'), COUNT_DISTINCT('Name', 'alias'));
+        Assert.areEqual('SELECT COUNT_DISTINCT(Name), COUNT_DISTINCT(Name) alias FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).selectBy(SUM('Name'), SUM('Name', 'alias'));
+        Assert.areEqual('SELECT SUM(Name), SUM(Name) alias FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).selectBy(AVG('Name'), AVG('Name', 'alias'));
+        Assert.areEqual('SELECT AVG(Name), AVG(Name) alias FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).selectBy(MAX('Name'), MAX('Name', 'alias'));
+        Assert.areEqual('SELECT MAX(Name), MAX(Name) alias FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).selectBy(MIN('Name'), MIN('Name', 'alias'));
+        Assert.areEqual('SELECT MIN(Name), MIN(Name) alias FROM Account', accountQuery.build());
+    }
+
+    @isTest
+    static void testFunction_Date() {
+        Query accountQuery;
+
+        // SObjecType
+        accountQuery = Query.of(Account.SObjectType).selectBy(CALENDAR_MONTH(Account.CreatedDate));
+        Assert.areEqual('SELECT CALENDAR_MONTH(CreatedDate) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).selectBy(CALENDAR_QUARTER(Account.CreatedDate));
+        Assert.areEqual('SELECT CALENDAR_QUARTER(CreatedDate) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).selectBy(CALENDAR_YEAR(Account.CreatedDate));
+        Assert.areEqual('SELECT CALENDAR_YEAR(CreatedDate) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).selectBy(DAY_IN_MONTH(Account.CreatedDate));
+        Assert.areEqual('SELECT DAY_IN_MONTH(CreatedDate) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).selectBy(DAY_IN_WEEK(Account.CreatedDate));
+        Assert.areEqual('SELECT DAY_IN_WEEK(CreatedDate) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).selectBy(DAY_IN_YEAR(Account.CreatedDate));
+        Assert.areEqual('SELECT DAY_IN_YEAR(CreatedDate) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).selectBy(DAY_ONLY(Account.CreatedDate));
+        Assert.areEqual('SELECT DAY_ONLY(CreatedDate) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).selectBy(FISCAL_MONTH(Account.CreatedDate));
+        Assert.areEqual('SELECT FISCAL_MONTH(CreatedDate) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).selectBy(FISCAL_QUARTER(Account.CreatedDate));
+        Assert.areEqual('SELECT FISCAL_QUARTER(CreatedDate) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).selectBy(FISCAL_YEAR(Account.CreatedDate));
+        Assert.areEqual('SELECT FISCAL_YEAR(CreatedDate) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).selectBy(HOUR_IN_DAY(Account.CreatedDate));
+        Assert.areEqual('SELECT HOUR_IN_DAY(CreatedDate) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).selectBy(WEEK_IN_MONTH(Account.CreatedDate));
+        Assert.areEqual('SELECT WEEK_IN_MONTH(CreatedDate) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).selectBy(WEEK_IN_YEAR(Account.CreatedDate));
+        Assert.areEqual('SELECT WEEK_IN_YEAR(CreatedDate) FROM Account', accountQuery.build());
+
+        // Strings
+        accountQuery = Query.of(Account.SObjectType).selectBy(CALENDAR_MONTH('CreatedDate'));
+        Assert.areEqual('SELECT CALENDAR_MONTH(CreatedDate) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).selectBy(CALENDAR_QUARTER('CreatedDate'));
+        Assert.areEqual('SELECT CALENDAR_QUARTER(CreatedDate) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).selectBy(CALENDAR_YEAR('CreatedDate'));
+        Assert.areEqual('SELECT CALENDAR_YEAR(CreatedDate) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).selectBy(DAY_IN_MONTH('CreatedDate'));
+        Assert.areEqual('SELECT DAY_IN_MONTH(CreatedDate) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).selectBy(DAY_IN_WEEK('CreatedDate'));
+        Assert.areEqual('SELECT DAY_IN_WEEK(CreatedDate) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).selectBy(DAY_IN_YEAR('CreatedDate'));
+        Assert.areEqual('SELECT DAY_IN_YEAR(CreatedDate) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).selectBy(DAY_ONLY('CreatedDate'));
+        Assert.areEqual('SELECT DAY_ONLY(CreatedDate) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).selectBy(FISCAL_MONTH('CreatedDate'));
+        Assert.areEqual('SELECT FISCAL_MONTH(CreatedDate) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).selectBy(FISCAL_QUARTER('CreatedDate'));
+        Assert.areEqual('SELECT FISCAL_QUARTER(CreatedDate) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).selectBy(FISCAL_YEAR('CreatedDate'));
+        Assert.areEqual('SELECT FISCAL_YEAR(CreatedDate) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).selectBy(HOUR_IN_DAY('CreatedDate'));
+        Assert.areEqual('SELECT HOUR_IN_DAY(CreatedDate) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).selectBy(WEEK_IN_MONTH('CreatedDate'));
+        Assert.areEqual('SELECT WEEK_IN_MONTH(CreatedDate) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).selectBy(WEEK_IN_YEAR('CreatedDate'));
+        Assert.areEqual('SELECT WEEK_IN_YEAR(CreatedDate) FROM Account', accountQuery.build());
+
+        // CONVERT_TIMEZONE - Strings
+        accountQuery = Query.of(Account.SObjectType).selectBy(CALENDAR_MONTH(CONVERT_TIMEZONE('CreatedDate')));
+        Assert.areEqual('SELECT CALENDAR_MONTH(CONVERTTIMEZONE(CreatedDate)) FROM Account', accountQuery.build());
+
+        // CONVERT_TIMEZONE - SObjectField
+        accountQuery = Query.of(Account.SObjectType).selectBy(CALENDAR_MONTH(CONVERT_TIMEZONE(Account.CreatedDate)));
+        Assert.areEqual('SELECT CALENDAR_MONTH(CONVERTTIMEZONE(CreatedDate)) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).selectBy(CALENDAR_QUARTER(CONVERT_TIMEZONE(Account.CreatedDate)));
+        Assert.areEqual('SELECT CALENDAR_QUARTER(CONVERTTIMEZONE(CreatedDate)) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).selectBy(CALENDAR_YEAR(CONVERT_TIMEZONE(Account.CreatedDate)));
+        Assert.areEqual('SELECT CALENDAR_YEAR(CONVERTTIMEZONE(CreatedDate)) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).selectBy(DAY_IN_MONTH(CONVERT_TIMEZONE(Account.CreatedDate)));
+        Assert.areEqual('SELECT DAY_IN_MONTH(CONVERTTIMEZONE(CreatedDate)) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).selectBy(DAY_IN_WEEK(CONVERT_TIMEZONE(Account.CreatedDate)));
+        Assert.areEqual('SELECT DAY_IN_WEEK(CONVERTTIMEZONE(CreatedDate)) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).selectBy(DAY_IN_YEAR(CONVERT_TIMEZONE(Account.CreatedDate)));
+        Assert.areEqual('SELECT DAY_IN_YEAR(CONVERTTIMEZONE(CreatedDate)) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).selectBy(DAY_ONLY(CONVERT_TIMEZONE(Account.CreatedDate)));
+        Assert.areEqual('SELECT DAY_ONLY(CONVERTTIMEZONE(CreatedDate)) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).selectBy(FISCAL_MONTH(CONVERT_TIMEZONE(Account.CreatedDate)));
+        Assert.areEqual('SELECT FISCAL_MONTH(CONVERTTIMEZONE(CreatedDate)) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).selectBy(FISCAL_QUARTER(CONVERT_TIMEZONE(Account.CreatedDate)));
+        Assert.areEqual('SELECT FISCAL_QUARTER(CONVERTTIMEZONE(CreatedDate)) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).selectBy(FISCAL_YEAR(CONVERT_TIMEZONE(Account.CreatedDate)));
+        Assert.areEqual('SELECT FISCAL_YEAR(CONVERTTIMEZONE(CreatedDate)) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).selectBy(HOUR_IN_DAY(CONVERT_TIMEZONE(Account.CreatedDate)));
+        Assert.areEqual('SELECT HOUR_IN_DAY(CONVERTTIMEZONE(CreatedDate)) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).selectBy(WEEK_IN_MONTH(CONVERT_TIMEZONE(Account.CreatedDate)));
+        Assert.areEqual('SELECT WEEK_IN_MONTH(CONVERTTIMEZONE(CreatedDate)) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).selectBy(WEEK_IN_YEAR(CONVERT_TIMEZONE(Account.CreatedDate)));
+        Assert.areEqual('SELECT WEEK_IN_YEAR(CONVERTTIMEZONE(CreatedDate)) FROM Account', accountQuery.build());
+    }
+
+    @isTest
+    static void testFunction_Others() {
+        Query accountQuery;
+
+        accountQuery = Query.of(Account.SObjectType).selectBy(TO_LABEL(Account.AccountSource));
+        Assert.areEqual('SELECT TOLABEL(AccountSource) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).selectBy(TO_LABEL('AccountSource'));
+        Assert.areEqual('SELECT TOLABEL(AccountSource) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).selectBy(CONVERT_CURRENCY(Account.AnnualRevenue));
+        Assert.areEqual('SELECT CONVERTCURRENCY(AnnualRevenue) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).selectBy(CONVERT_CURRENCY('AnnualRevenue'));
+        Assert.areEqual('SELECT CONVERTCURRENCY(AnnualRevenue) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).selectBy(FORMAT(Account.AnnualRevenue));
+        Assert.areEqual('SELECT FORMAT(AnnualRevenue) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).selectBy(FORMAT('AnnualRevenue'));
+        Assert.areEqual('SELECT FORMAT(AnnualRevenue) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).selectBy(FORMAT(CONVERT_CURRENCY(Account.AnnualRevenue)));
+        Assert.areEqual('SELECT FORMAT(CONVERTCURRENCY(AnnualRevenue)) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType)
+            .filterBy(lt(DISTANCE_IN_MI(Account.ShippingAddress, Location.newInstance(37.775000, -122.41800)), 20));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE DISTANCE(ShippingAddress, GEOLOCATION(37.775, -122.418), \'mi\') < 20',
+            accountQuery.build()
+        );
+
+        accountQuery = Query.of(Account.SObjectType)
+            .filterBy(lt(DISTANCE_IN_MI('ShippingAddress', Location.newInstance(37.775000, -122.41800)), 20));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE DISTANCE(ShippingAddress, GEOLOCATION(37.775, -122.418), \'mi\') < 20',
+            accountQuery.build()
+        );
+
+        accountQuery = Query.of(Account.SObjectType)
+            .filterBy(lt(DISTANCE_IN_KM(Account.ShippingAddress, Location.newInstance(37.775000, -122.41800)), 20));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE DISTANCE(ShippingAddress, GEOLOCATION(37.775, -122.418), \'km\') < 20',
+            accountQuery.build()
+        );
+
+        accountQuery = Query.of(Account.SObjectType)
+            .filterBy(lt(DISTANCE_IN_KM('ShippingAddress', Location.newInstance(37.775000, -122.41800)), 20));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE DISTANCE(ShippingAddress, GEOLOCATION(37.775, -122.418), \'km\') < 20',
+            accountQuery.build()
+        );
+    }
+    // #endregion
+    // ================
+
+    // ===============
+    // #region Literal
+    @isTest
+    static void testLiteral_Date() {
+        Query accountQuery = Query.of(Account.SObjectType)
+            .filterBy(
+                orx()
+                    .add(eq(Account.CreatedDate, YESTERDAY()))
+                    .add(eq(Account.CreatedDate, TODAY()))
+                    .add(eq(Account.CreatedDate, TOMORROW()))
+                    .add(eq(Account.CreatedDate, LAST_WEEK()))
+                    .add(eq(Account.CreatedDate, THIS_WEEK()))
+                    .add(eq(Account.CreatedDate, NEXT_WEEK()))
+                    .add(eq(Account.CreatedDate, LAST_MONTH()))
+                    .add(eq(Account.CreatedDate, THIS_MONTH()))
+                    .add(eq(Account.CreatedDate, NEXT_MONTH()))
+                    .add(eq(Account.CreatedDate, LAST_90_DAYS()))
+                    .add(eq(Account.CreatedDate, NEXT_90_DAYS()))
+                    .add(eq(Account.CreatedDate, THIS_QUARTER()))
+                    .add(eq(Account.CreatedDate, LAST_QUARTER()))
+                    .add(eq(Account.CreatedDate, NEXT_QUARTER()))
+                    .add(eq(Account.CreatedDate, THIS_YEAR()))
+                    .add(eq(Account.CreatedDate, LAST_YEAR()))
+                    .add(eq(Account.CreatedDate, NEXT_YEAR()))
+                    .add(eq(Account.CreatedDate, THIS_FISCAL_QUARTER()))
+                    .add(eq(Account.CreatedDate, LAST_FISCAL_QUARTER()))
+                    .add(eq(Account.CreatedDate, NEXT_FISCAL_QUARTER()))
+                    .add(eq(Account.CreatedDate, THIS_FISCAL_YEAR()))
+                    .add(eq(Account.CreatedDate, LAST_FISCAL_YEAR()))
+                    .add(eq(Account.CreatedDate, NEXT_FISCAL_YEAR()))
+                    .add(eq(Account.CreatedDate, LAST_N_DAYS(3)))
+                    .add(eq(Account.CreatedDate, NEXT_N_DAYS(3)))
+                    .add(eq(Account.CreatedDate, N_DAYS_AGO(3)))
+                    .add(eq(Account.CreatedDate, NEXT_N_WEEKS(3)))
+                    .add(eq(Account.CreatedDate, LAST_N_WEEKS(3)))
+                    .add(eq(Account.CreatedDate, N_WEEKS_AGO(3)))
+                    .add(eq(Account.CreatedDate, NEXT_N_MONTHS(3)))
+                    .add(eq(Account.CreatedDate, LAST_N_MONTHS(3)))
+                    .add(eq(Account.CreatedDate, N_MONTHS_AGO(3)))
+                    .add(eq(Account.CreatedDate, NEXT_N_QUARTERS(3)))
+                    .add(eq(Account.CreatedDate, LAST_N_QUARTERS(3)))
+                    .add(eq(Account.CreatedDate, N_QUARTERS_AGO(3)))
+                    .add(eq(Account.CreatedDate, NEXT_N_YEARS(3)))
+                    .add(eq(Account.CreatedDate, LAST_N_YEARS(3)))
+                    .add(eq(Account.CreatedDate, N_YEARS_AGO(3)))
+                    .add(eq(Account.CreatedDate, NEXT_N_FISCAL_QUARTERS(3)))
+                    .add(eq(Account.CreatedDate, N_FISCAL_QUARTERS_AGO(3)))
+                    .add(eq(Account.CreatedDate, NEXT_N_FISCAL_YEARS(3)))
+                    .add(eq(Account.CreatedDate, LAST_N_FISCAL_YEARS(3)))
+                    .add(eq(Account.CreatedDate, N_FISCAL_YEARS_AGO(3)))
+            );
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE ' +
+            '(CreatedDate = YESTERDAY OR CreatedDate = TODAY OR CreatedDate = TOMORROW OR ' +
+            'CreatedDate = LAST_WEEK OR CreatedDate = THIS_WEEK OR CreatedDate = NEXT_WEEK OR ' +
+            'CreatedDate = LAST_MONTH OR CreatedDate = THIS_MONTH OR CreatedDate = NEXT_MONTH OR ' +
+            'CreatedDate = LAST_90_DAYS OR CreatedDate = NEXT_90_DAYS OR CreatedDate = THIS_QUARTER OR ' +
+            'CreatedDate = LAST_QUARTER OR CreatedDate = NEXT_QUARTER OR CreatedDate = THIS_YEAR OR ' +
+            'CreatedDate = LAST_YEAR OR CreatedDate = NEXT_YEAR OR CreatedDate = THIS_FISCAL_QUARTER OR ' +
+            'CreatedDate = LAST_FISCAL_QUARTER OR CreatedDate = NEXT_FISCAL_QUARTER OR ' +
+            'CreatedDate = THIS_FISCAL_YEAR OR CreatedDate = LAST_FISCAL_YEAR OR CreatedDate = NEXT_FISCAL_YEAR OR ' +
+            'CreatedDate = LAST_N_DAYS:3 OR CreatedDate = NEXT_N_DAYS:3 OR CreatedDate = N_DAYS_AGO:3 OR ' +
+            'CreatedDate = NEXT_N_WEEKS:3 OR CreatedDate = LAST_N_WEEKS:3 OR CreatedDate = N_WEEKS_AGO:3 OR ' +
+            'CreatedDate = NEXT_N_MONTHS:3 OR CreatedDate = LAST_N_MONTHS:3 OR CreatedDate = N_MONTHS_AGO:3 OR ' +
+            'CreatedDate = NEXT_N_QUARTERS:3 OR CreatedDate = LAST_N_QUARTERS:3 OR CreatedDate = N_QUARTERS_AGO:3 OR ' +
+            'CreatedDate = NEXT_N_YEARS:3 OR CreatedDate = LAST_N_YEARS:3 OR CreatedDate = N_YEARS_AGO:3 OR ' +
+            'CreatedDate = NEXT_N_FISCAL_QUARTERS:3 OR CreatedDate = N_FISCAL_QUARTERS_AGO:3 OR ' +
+            'CreatedDate = NEXT_N_FISCAL_YEARS:3 OR CreatedDate = LAST_N_FISCAL_YEARS:3 OR CreatedDate = N_FISCAL_YEARS_AGO:3)',
+            accountQuery.build()
+        );
+    }
+
+    @isTest
+    static void testLiteral_Currency() {
+        Query accountQuery = Query.of(Account.SObjectType)
+            .filterBy(
+                orx()
+                    .add(eq(Account.AnnualRevenue, AED(100)))
+                    .add(eq(Account.AnnualRevenue, AFN(100)))
+                    .add(eq(Account.AnnualRevenue, ALL(100)))
+                    .add(eq(Account.AnnualRevenue, AMD(100)))
+                    .add(eq(Account.AnnualRevenue, ANG(100)))
+                    .add(eq(Account.AnnualRevenue, AOA(100)))
+                    .add(eq(Account.AnnualRevenue, ARS(100)))
+                    .add(eq(Account.AnnualRevenue, AUD(100)))
+                    .add(eq(Account.AnnualRevenue, AWG(100)))
+                    .add(eq(Account.AnnualRevenue, AZN(100)))
+                    .add(eq(Account.AnnualRevenue, BAM(100)))
+                    .add(eq(Account.AnnualRevenue, BBD(100)))
+                    .add(eq(Account.AnnualRevenue, BDT(100)))
+                    .add(eq(Account.AnnualRevenue, BGN(100)))
+                    .add(eq(Account.AnnualRevenue, BHD(100)))
+                    .add(eq(Account.AnnualRevenue, BIF(100)))
+                    .add(eq(Account.AnnualRevenue, BMD(100)))
+                    .add(eq(Account.AnnualRevenue, BND(100)))
+                    .add(eq(Account.AnnualRevenue, BOB(100)))
+                    .add(eq(Account.AnnualRevenue, BRL(100)))
+                    .add(eq(Account.AnnualRevenue, BSD(100)))
+                    .add(eq(Account.AnnualRevenue, BTN(100)))
+                    .add(eq(Account.AnnualRevenue, BWP(100)))
+                    .add(eq(Account.AnnualRevenue, BYN(100)))
+                    .add(eq(Account.AnnualRevenue, BZD(100)))
+                    .add(eq(Account.AnnualRevenue, CAD(100)))
+                    .add(eq(Account.AnnualRevenue, CDF(100)))
+                    .add(eq(Account.AnnualRevenue, CHF(100)))
+                    .add(eq(Account.AnnualRevenue, CLP(100)))
+                    .add(eq(Account.AnnualRevenue, CNY(100)))
+                    .add(eq(Account.AnnualRevenue, COP(100)))
+                    .add(eq(Account.AnnualRevenue, CRC(100)))
+                    .add(eq(Account.AnnualRevenue, CSD(100)))
+                    .add(eq(Account.AnnualRevenue, CUP(100)))
+                    .add(eq(Account.AnnualRevenue, CVE(100)))
+                    .add(eq(Account.AnnualRevenue, CZK(100)))
+                    .add(eq(Account.AnnualRevenue, DJF(100)))
+                    .add(eq(Account.AnnualRevenue, DKK(100)))
+                    .add(eq(Account.AnnualRevenue, DOP(100)))
+                    .add(eq(Account.AnnualRevenue, DZD(100)))
+                    .add(eq(Account.AnnualRevenue, EGP(100)))
+                    .add(eq(Account.AnnualRevenue, ERN(100)))
+                    .add(eq(Account.AnnualRevenue, ETB(100)))
+                    .add(eq(Account.AnnualRevenue, EUR(100)))
+                    .add(eq(Account.AnnualRevenue, FJD(100)))
+                    .add(eq(Account.AnnualRevenue, FKP(100)))
+                    .add(eq(Account.AnnualRevenue, GBP(100)))
+                    .add(eq(Account.AnnualRevenue, GEL(100)))
+                    .add(eq(Account.AnnualRevenue, GHS(100)))
+                    .add(eq(Account.AnnualRevenue, GIP(100)))
+                    .add(eq(Account.AnnualRevenue, GMD(100)))
+                    .add(eq(Account.AnnualRevenue, GNF(100)))
+                    .add(eq(Account.AnnualRevenue, GTQ(100)))
+                    .add(eq(Account.AnnualRevenue, GYD(100)))
+                    .add(eq(Account.AnnualRevenue, HKD(100)))
+                    .add(eq(Account.AnnualRevenue, HNL(100)))
+                    .add(eq(Account.AnnualRevenue, HRK(100)))
+                    .add(eq(Account.AnnualRevenue, HTG(100)))
+                    .add(eq(Account.AnnualRevenue, HUF(100)))
+                    .add(eq(Account.AnnualRevenue, IDR(100)))
+                    .add(eq(Account.AnnualRevenue, ILS(100)))
+                    .add(eq(Account.AnnualRevenue, INR(100)))
+                    .add(eq(Account.AnnualRevenue, IQD(100)))
+                    .add(eq(Account.AnnualRevenue, IRR(100)))
+                    .add(eq(Account.AnnualRevenue, ISK(100)))
+                    .add(eq(Account.AnnualRevenue, JMD(100)))
+                    .add(eq(Account.AnnualRevenue, JOD(100)))
+                    .add(eq(Account.AnnualRevenue, JPY(100)))
+                    .add(eq(Account.AnnualRevenue, KES(100)))
+                    .add(eq(Account.AnnualRevenue, KGS(100)))
+                    .add(eq(Account.AnnualRevenue, KHR(100)))
+                    .add(eq(Account.AnnualRevenue, KMF(100)))
+                    .add(eq(Account.AnnualRevenue, KPW(100)))
+                    .add(eq(Account.AnnualRevenue, KRW(100)))
+                    .add(eq(Account.AnnualRevenue, KWD(100)))
+                    .add(eq(Account.AnnualRevenue, KYD(100)))
+                    .add(eq(Account.AnnualRevenue, KZT(100)))
+                    .add(eq(Account.AnnualRevenue, LAK(100)))
+                    .add(eq(Account.AnnualRevenue, LBP(100)))
+                    .add(eq(Account.AnnualRevenue, LKR(100)))
+                    .add(eq(Account.AnnualRevenue, LRD(100)))
+                    .add(eq(Account.AnnualRevenue, LYD(100)))
+                    .add(eq(Account.AnnualRevenue, MAD(100)))
+                    .add(eq(Account.AnnualRevenue, MDL(100)))
+                    .add(eq(Account.AnnualRevenue, MGA(100)))
+                    .add(eq(Account.AnnualRevenue, MKD(100)))
+                    .add(eq(Account.AnnualRevenue, MMK(100)))
+                    .add(eq(Account.AnnualRevenue, MOP(100)))
+                    .add(eq(Account.AnnualRevenue, MRU(100)))
+                    .add(eq(Account.AnnualRevenue, MUR(100)))
+                    .add(eq(Account.AnnualRevenue, MWK(100)))
+                    .add(eq(Account.AnnualRevenue, MXN(100)))
+                    .add(eq(Account.AnnualRevenue, MYR(100)))
+                    .add(eq(Account.AnnualRevenue, MZN(100)))
+                    .add(eq(Account.AnnualRevenue, NAD(100)))
+                    .add(eq(Account.AnnualRevenue, NGN(100)))
+                    .add(eq(Account.AnnualRevenue, NIO(100)))
+                    .add(eq(Account.AnnualRevenue, NOK(100)))
+                    .add(eq(Account.AnnualRevenue, NPR(100)))
+                    .add(eq(Account.AnnualRevenue, NZD(100)))
+                    .add(eq(Account.AnnualRevenue, OMR(100)))
+                    .add(eq(Account.AnnualRevenue, PAB(100)))
+                    .add(eq(Account.AnnualRevenue, PEN(100)))
+                    .add(eq(Account.AnnualRevenue, PGK(100)))
+                    .add(eq(Account.AnnualRevenue, PHP(100)))
+                    .add(eq(Account.AnnualRevenue, PKR(100)))
+                    .add(eq(Account.AnnualRevenue, PLN(100)))
+                    .add(eq(Account.AnnualRevenue, PYG(100)))
+                    .add(eq(Account.AnnualRevenue, QAR(100)))
+                    .add(eq(Account.AnnualRevenue, RON(100)))
+                    .add(eq(Account.AnnualRevenue, RSD(100)))
+                    .add(eq(Account.AnnualRevenue, RUB(100)))
+                    .add(eq(Account.AnnualRevenue, RWF(100)))
+                    .add(eq(Account.AnnualRevenue, SAR(100)))
+                    .add(eq(Account.AnnualRevenue, SBD(100)))
+                    .add(eq(Account.AnnualRevenue, SCR(100)))
+                    .add(eq(Account.AnnualRevenue, SDG(100)))
+                    .add(eq(Account.AnnualRevenue, SEK(100)))
+                    .add(eq(Account.AnnualRevenue, SGD(100)))
+                    .add(eq(Account.AnnualRevenue, SHP(100)))
+                    .add(eq(Account.AnnualRevenue, SLE(100)))
+                    .add(eq(Account.AnnualRevenue, SLL(100)))
+                    .add(eq(Account.AnnualRevenue, SOS(100)))
+                    .add(eq(Account.AnnualRevenue, SRD(100)))
+                    .add(eq(Account.AnnualRevenue, STN(100)))
+                    .add(eq(Account.AnnualRevenue, SYP(100)))
+                    .add(eq(Account.AnnualRevenue, SZL(100)))
+                    .add(eq(Account.AnnualRevenue, THB(100)))
+                    .add(eq(Account.AnnualRevenue, TJS(100)))
+                    .add(eq(Account.AnnualRevenue, TND(100)))
+                    .add(eq(Account.AnnualRevenue, TOP(100)))
+                    .add(eq(Account.AnnualRevenue, TTD(100)))
+                    .add(eq(Account.AnnualRevenue, TWD(100)))
+                    .add(eq(Account.AnnualRevenue, TZS(100)))
+                    .add(eq(Account.AnnualRevenue, UAH(100)))
+                    .add(eq(Account.AnnualRevenue, UGX(100)))
+                    .add(eq(Account.AnnualRevenue, USD(100)))
+                    .add(eq(Account.AnnualRevenue, UYU(100)))
+                    .add(eq(Account.AnnualRevenue, UZS(100)))
+                    .add(eq(Account.AnnualRevenue, VES(100)))
+                    .add(eq(Account.AnnualRevenue, VND(100)))
+                    .add(eq(Account.AnnualRevenue, VUV(100)))
+                    .add(eq(Account.AnnualRevenue, WST(100)))
+                    .add(eq(Account.AnnualRevenue, XAF(100)))
+                    .add(eq(Account.AnnualRevenue, XCD(100)))
+                    .add(eq(Account.AnnualRevenue, XOF(100)))
+                    .add(eq(Account.AnnualRevenue, XPF(100)))
+                    .add(eq(Account.AnnualRevenue, YER(100)))
+                    .add(eq(Account.AnnualRevenue, ZAR(100)))
+                    .add(eq(Account.AnnualRevenue, ISO('TRY', 100)))
+            );
+
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE ' +
+            '(AnnualRevenue = AED100 OR AnnualRevenue = AFN100 OR AnnualRevenue = ALL100 OR ' +
+            'AnnualRevenue = AMD100 OR AnnualRevenue = ANG100 OR AnnualRevenue = AOA100 OR ' +
+            'AnnualRevenue = ARS100 OR AnnualRevenue = AUD100 OR AnnualRevenue = AWG100 OR ' +
+            'AnnualRevenue = AZN100 OR AnnualRevenue = BAM100 OR AnnualRevenue = BBD100 OR ' +
+            'AnnualRevenue = BDT100 OR AnnualRevenue = BGN100 OR AnnualRevenue = BHD100 OR ' +
+            'AnnualRevenue = BIF100 OR AnnualRevenue = BMD100 OR AnnualRevenue = BND100 OR ' +
+            'AnnualRevenue = BOB100 OR AnnualRevenue = BRL100 OR AnnualRevenue = BSD100 OR ' +
+            'AnnualRevenue = BTN100 OR AnnualRevenue = BWP100 OR AnnualRevenue = BYN100 OR ' +
+            'AnnualRevenue = BZD100 OR AnnualRevenue = CAD100 OR AnnualRevenue = CDF100 OR ' +
+            'AnnualRevenue = CHF100 OR AnnualRevenue = CLP100 OR AnnualRevenue = CNY100 OR ' +
+            'AnnualRevenue = COP100 OR AnnualRevenue = CRC100 OR AnnualRevenue = CSD100 OR ' +
+            'AnnualRevenue = CUP100 OR AnnualRevenue = CVE100 OR AnnualRevenue = CZK100 OR ' +
+            'AnnualRevenue = DJF100 OR AnnualRevenue = DKK100 OR AnnualRevenue = DOP100 OR ' +
+            'AnnualRevenue = DZD100 OR AnnualRevenue = EGP100 OR AnnualRevenue = ERN100 OR ' +
+            'AnnualRevenue = ETB100 OR AnnualRevenue = EUR100 OR AnnualRevenue = FJD100 OR ' +
+            'AnnualRevenue = FKP100 OR AnnualRevenue = GBP100 OR AnnualRevenue = GEL100 OR ' +
+            'AnnualRevenue = GHS100 OR AnnualRevenue = GIP100 OR AnnualRevenue = GMD100 OR ' +
+            'AnnualRevenue = GNF100 OR AnnualRevenue = GTQ100 OR AnnualRevenue = GYD100 OR ' +
+            'AnnualRevenue = HKD100 OR AnnualRevenue = HNL100 OR AnnualRevenue = HRK100 OR ' +
+            'AnnualRevenue = HTG100 OR AnnualRevenue = HUF100 OR AnnualRevenue = IDR100 OR ' +
+            'AnnualRevenue = ILS100 OR AnnualRevenue = INR100 OR AnnualRevenue = IQD100 OR ' +
+            'AnnualRevenue = IRR100 OR AnnualRevenue = ISK100 OR AnnualRevenue = JMD100 OR ' +
+            'AnnualRevenue = JOD100 OR AnnualRevenue = JPY100 OR AnnualRevenue = KES100 OR ' +
+            'AnnualRevenue = KGS100 OR AnnualRevenue = KHR100 OR AnnualRevenue = KMF100 OR ' +
+            'AnnualRevenue = KPW100 OR AnnualRevenue = KRW100 OR AnnualRevenue = KWD100 OR ' +
+            'AnnualRevenue = KYD100 OR AnnualRevenue = KZT100 OR AnnualRevenue = LAK100 OR ' +
+            'AnnualRevenue = LBP100 OR AnnualRevenue = LKR100 OR AnnualRevenue = LRD100 OR ' +
+            'AnnualRevenue = LYD100 OR AnnualRevenue = MAD100 OR AnnualRevenue = MDL100 OR ' +
+            'AnnualRevenue = MGA100 OR AnnualRevenue = MKD100 OR AnnualRevenue = MMK100 OR ' +
+            'AnnualRevenue = MOP100 OR AnnualRevenue = MRU100 OR AnnualRevenue = MUR100 OR ' +
+            'AnnualRevenue = MWK100 OR AnnualRevenue = MXN100 OR AnnualRevenue = MYR100 OR ' +
+            'AnnualRevenue = MZN100 OR AnnualRevenue = NAD100 OR AnnualRevenue = NGN100 OR ' +
+            'AnnualRevenue = NIO100 OR AnnualRevenue = NOK100 OR AnnualRevenue = NPR100 OR ' +
+            'AnnualRevenue = NZD100 OR AnnualRevenue = OMR100 OR AnnualRevenue = PAB100 OR ' +
+            'AnnualRevenue = PEN100 OR AnnualRevenue = PGK100 OR AnnualRevenue = PHP100 OR ' +
+            'AnnualRevenue = PKR100 OR AnnualRevenue = PLN100 OR AnnualRevenue = PYG100 OR ' +
+            'AnnualRevenue = QAR100 OR AnnualRevenue = RON100 OR AnnualRevenue = RSD100 OR ' +
+            'AnnualRevenue = RUB100 OR AnnualRevenue = RWF100 OR AnnualRevenue = SAR100 OR ' +
+            'AnnualRevenue = SBD100 OR AnnualRevenue = SCR100 OR AnnualRevenue = SDG100 OR ' +
+            'AnnualRevenue = SEK100 OR AnnualRevenue = SGD100 OR AnnualRevenue = SHP100 OR ' +
+            'AnnualRevenue = SLE100 OR AnnualRevenue = SLL100 OR AnnualRevenue = SOS100 OR ' +
+            'AnnualRevenue = SRD100 OR AnnualRevenue = STN100 OR AnnualRevenue = SYP100 OR ' +
+            'AnnualRevenue = SZL100 OR AnnualRevenue = THB100 OR AnnualRevenue = TJS100 OR ' +
+            'AnnualRevenue = TND100 OR AnnualRevenue = TOP100 OR AnnualRevenue = TTD100 OR ' +
+            'AnnualRevenue = TWD100 OR AnnualRevenue = TZS100 OR AnnualRevenue = UAH100 OR ' +
+            'AnnualRevenue = UGX100 OR AnnualRevenue = USD100 OR AnnualRevenue = UYU100 OR ' +
+            'AnnualRevenue = UZS100 OR AnnualRevenue = VES100 OR AnnualRevenue = VND100 OR ' +
+            'AnnualRevenue = VUV100 OR AnnualRevenue = WST100 OR AnnualRevenue = XAF100 OR ' +
+            'AnnualRevenue = XCD100 OR AnnualRevenue = XOF100 OR AnnualRevenue = XPF100 OR ' +
+            'AnnualRevenue = YER100 OR AnnualRevenue = ZAR100 OR AnnualRevenue = TRY100)',
+            accountQuery.build()
+        );
+    }
+    // #endregion
+    // ===============
+
+    // ================
+    // #region Order By
+
+    // #endregion
+    // ================
 
     @isTest
     static void testQuery_Style1() {
@@ -3326,9 +3972,9 @@ public with sharing class QueryTest extends Query {
         List<Account> accountList = (List<Account>) Query.of(Account.SObjectType)
             .selectBy(Account.Name, Account.AnnualRevenue, Account.BillingCountry, Account.BillingState, Account.ShippingAddress)
             .filterBy(
-                lt(DISTANCE_IN_KILOMETER(Account.ShippingAddress, Location.newInstance(37.775000, -122.41800)), 20)
+                lt(DISTANCE_IN_KM(Account.ShippingAddress, Location.newInstance(37.775000, -122.41800)), 20)
             )
-            .orderBy(DISTANCE_IN_MILE(Account.ShippingAddress, Location.newInstance(37.775000, -122.41800))).ascending().nullsLast()
+            .orderBy(DISTANCE_IN_MI(Account.ShippingAddress, Location.newInstance(37.775000, -122.41800))).ascending().nullsLast()
             .run();
         Assert.areEqual(2, accountList.size());
         Assert.areEqual(1500, accountList[0].AnnualRevenue);
@@ -3526,18 +4172,18 @@ public with sharing class QueryTest extends Query {
         );
 
         Assert.areEqual(
-            DISTANCE_IN_MILE(Account.ShippingAddress, Location.newInstance(37.775000, -122.41800)),
-            DISTANCE_IN_MILE(Account.ShippingAddress, Location.newInstance(37.775000, -122.41800))
+            DISTANCE_IN_MI(Account.ShippingAddress, Location.newInstance(37.775000, -122.41800)),
+            DISTANCE_IN_MI(Account.ShippingAddress, Location.newInstance(37.775000, -122.41800))
         );
 
         Assert.areEqual(
-            DISTANCE_IN_KILOMETER(Account.ShippingAddress, Location.newInstance(37.775000, -122.41800)),
-            DISTANCE_IN_KILOMETER(Account.ShippingAddress, Location.newInstance(37.775000, -122.41800))
+            DISTANCE_IN_KM(Account.ShippingAddress, Location.newInstance(37.775000, -122.41800)),
+            DISTANCE_IN_KM(Account.ShippingAddress, Location.newInstance(37.775000, -122.41800))
         );
 
         Assert.areEqual(
-            lt(DISTANCE_IN_KILOMETER(Account.ShippingAddress, Location.newInstance(37.775000, -122.41800)), 20),
-            lt(DISTANCE_IN_KILOMETER(Account.ShippingAddress, Location.newInstance(37.775000, -122.41800)), 20)
+            lt(DISTANCE_IN_KM(Account.ShippingAddress, Location.newInstance(37.775000, -122.41800)), 20),
+            lt(DISTANCE_IN_KM(Account.ShippingAddress, Location.newInstance(37.775000, -122.41800)), 20)
         );
 
         // Date Literal

@@ -18,6 +18,7 @@
 public abstract class Query implements Querable {
     private SObjectType objectType { get; set; }
     private SelectorImpl rootSelector { get; set; }
+    private TypeOfImpl rootTypeOf { get; set; }
     private Filter rootFilter { get; set; }
     private Filter rootHaving { get; set; }
     private OrdererImpl rootOrderer { get; set; }
@@ -29,8 +30,11 @@ public abstract class Query implements Querable {
 
     private Integer offset { get; set; }
     private Integer limitx { get; set; }
+
     private Boolean forView { get; set; }
     private Boolean forReference { get; set; }
+    private Boolean updateTracking { get; set; }
+    private Boolean updateViewstat { get; set; }
     private Boolean forUpdate { get; set; }
 
     {
@@ -51,12 +55,15 @@ public abstract class Query implements Querable {
         Boolean isEqual =
             this.objectType == that.objectType &&
             this.rootSelector == that.rootSelector &&
+            this.rootTypeOf == that.rootTypeOf &&
             this.rootFilter == that.rootFilter &&
             this.rootOrderer == that.rootOrderer &&
             this.limitx == that.limitx &&
             this.offset == that.offset &&
             this.forView == that.forView &&
             this.forReference == that.forReference &&
+            this.updateTracking == that.updateTracking &&
+            this.updateViewstat == that.updateViewstat &&
             this.forUpdate == that.forUpdate;
 
         if (!isEqual) {
@@ -137,6 +144,48 @@ public abstract class Query implements Querable {
                 } else {
                     fragments.add(String.valueOf(selection));
                 }
+            }
+
+            // build typeof statement
+            if (this.rootTypeOf != null && !this.rootTypeOf.sobjectTypes.isEmpty()) {
+                if (isFirst) {
+                    isFirst = false;
+                } else {
+                    fragments.add(', ');
+                }
+
+                fragments.add('TYPEOF ');
+                fragments.add(String.valueOf(this.rootTypeOf.field));
+                for (SObjectType sobjectType : this.rootTypeOf.sobjectTypes) {
+                    fragments.add(' WHEN ');
+                    fragments.add(String.valueOf(sobjectType));
+                    if (!this.rootTypeOf.fieldsByType.get(sobjectType).isEmpty()) {
+                        fragments.add(' THEN ');
+                        Boolean isFirstThen = true;
+                        for (Object field : this.rootTypeOf.fieldsByType.get(sobjectType)) {
+                            if (isFirstThen) {
+                                isFirstThen = false;
+                            } else {
+                                fragments.add(', ');
+                            }
+                            fragments.add(String.valueOf(field));
+                        }
+                    }
+                }
+
+                if (this.rootTypeOf.fieldsByType.get(null).size() > 0) {
+                    fragments.add(' ELSE ');
+                    Boolean isFirstElse = true;
+                    for (Object field : this.rootTypeOf.fieldsByType.get(null)) {
+                        if (isFirstElse) {
+                            isFirstElse = false;
+                        } else {
+                            fragments.add(', ');
+                        }
+                        fragments.add(String.valueOf(field));
+                    }
+                }
+                fragments.add(' END');
             }
 
             if (isFirst) {
@@ -227,11 +276,20 @@ public abstract class Query implements Querable {
                 fragments.add(String.valueOf(this.offset));
             }
 
+            // * SOQL can only has one of the following
             if (this.forView == true) {
                 fragments.add(' FOR VIEW');
-            } else if (this.forReference == true) {
+            }
+            if (this.forReference == true) {
                 fragments.add(' FOR REFERENCE');
-            } else if (this.forUpdate == true) {
+            }
+            if (this.updateTracking == true) {
+                fragments.add(' UPDATE TRACKING');
+            }
+            if (this.updateViewstat == true) {
+                fragments.add(' UPDATE VIEWSTAT');
+            }
+            if (this.forUpdate == true) {
                 fragments.add(' FOR UPDATE');
             }
         }
@@ -271,6 +329,16 @@ public abstract class Query implements Querable {
 
     public Query forReference() {
         this.forReference = true;
+        return this;
+    }
+
+    public Query updateTracking() {
+        this.updateTracking = true;
+        return this;
+    }
+
+    public Query updateViewstat() {
+        this.updateViewstat = true;
         return this;
     }
 
@@ -594,9 +662,265 @@ public abstract class Query implements Querable {
         this.rootSelector.add(relationName, query);
         return this;
     }
-
     // #endregion
     // ==============
+
+    //========================
+    // #region SELECT - TYPEOF
+
+    public interface TypeOf {
+        TypeOf when(SObjectType sobjectType);
+
+        TypeOf then(SObjectField field);
+        TypeOf then(SObjectField field1, SObjectField field2);
+        TypeOf then(SObjectField field1, SObjectField field2, SObjectField field3);
+        TypeOf then(SObjectField field1, SObjectField field2, SObjectField field3, SObjectField field4);
+        TypeOf then(
+            SObjectField field1,
+            SObjectField field2,
+            SObjectField field3,
+            SObjectField field4,
+            SObjectField field5
+        );
+        TypeOf elsex(SObjectField field);
+        TypeOf elsex(SObjectField field1, SObjectField field2);
+        TypeOf elsex(SObjectField field1, SObjectField field2, SObjectField field3);
+        TypeOf elsex(SObjectField field1, SObjectField field2, SObjectField field3, SObjectField field4);
+        TypeOf elsex(
+            SObjectField field1,
+            SObjectField field2,
+            SObjectField field3,
+            SObjectField field4,
+            SObjectField field5
+        );
+
+        TypeOf then(String field);
+        TypeOf then(String field1, String field2);
+        TypeOf then(String field1, String field2, String field3);
+        TypeOf then(String field1, String field2, String field3, String field4);
+        TypeOf then(String field1, String field2, String field3, String field4, String field5);
+        TypeOf elsex(String field);
+        TypeOf elsex(String field1, String field2);
+        TypeOf elsex(String field1, String field2, String field3);
+        TypeOf elsex(String field1, String field2, String field3, String field4);
+        TypeOf elsex(String field1, String field2, String field3, String field4, String field5);
+    }
+
+    private class TypeOfImpl implements TypeOf {
+        private Object field { get; set; }
+        private List<SObjectType> sobjectTypes { get; set; }
+        private Map<SObjectType, List<Object>> fieldsByType { get; set; }
+        private SObjectType currentType { get; set; }
+
+        private TypeOfImpl(Object field) {
+            this.field = field;
+            this.sobjectTypes = new List<SObjectType>();
+            this.fieldsByType = new Map<SObjectType, List<Object>>{ null => new List<Object>() };
+        }
+
+        public Boolean equals(Object obj) {
+            if (this === obj) {
+                return true;
+            }
+
+            TypeOfImpl that = (TypeOfImpl) obj;
+            return this.field == that.field && this.fieldsByType == that.fieldsByType;
+        }
+
+        public TypeOf when(SObjectType sobjectType) {
+            if (sobjectType != null) {
+                this.currentType = sobjectType;
+                if (!this.fieldsByType.containsKey(sobjectType)) {
+                    this.fieldsByType.put(sobjectType, new List<Object>());
+                    this.sobjectTypes.add(sobjectType);
+                }
+            }
+            return this;
+        }
+
+        public TypeOf then(SObjectField field) {
+            if (this.currentType != null) {
+                this.fieldsByType.get(this.currentType).add(field);
+            }
+            return this;
+        }
+        public TypeOf then(SObjectField field1, SObjectField field2) {
+            if (this.currentType != null) {
+                this.fieldsByType.get(this.currentType).add(field1);
+                this.fieldsByType.get(this.currentType).add(field2);
+            }
+            return this;
+        }
+        public TypeOf then(SObjectField field1, SObjectField field2, SObjectField field3) {
+            if (this.currentType != null) {
+                this.fieldsByType.get(this.currentType).add(field1);
+                this.fieldsByType.get(this.currentType).add(field2);
+                this.fieldsByType.get(this.currentType).add(field3);
+            }
+            return this;
+        }
+        public TypeOf then(SObjectField field1, SObjectField field2, SObjectField field3, SObjectField field4) {
+            if (this.currentType != null) {
+                this.fieldsByType.get(this.currentType).add(field1);
+                this.fieldsByType.get(this.currentType).add(field2);
+                this.fieldsByType.get(this.currentType).add(field3);
+                this.fieldsByType.get(this.currentType).add(field4);
+            }
+            return this;
+        }
+        public TypeOf then(
+            SObjectField field1,
+            SObjectField field2,
+            SObjectField field3,
+            SObjectField field4,
+            SObjectField field5
+        ) {
+            if (this.currentType != null) {
+                this.fieldsByType.get(this.currentType).add(field1);
+                this.fieldsByType.get(this.currentType).add(field2);
+                this.fieldsByType.get(this.currentType).add(field3);
+                this.fieldsByType.get(this.currentType).add(field4);
+                this.fieldsByType.get(this.currentType).add(field5);
+            }
+            return this;
+        }
+
+        public TypeOf elsex(SObjectField field) {
+            this.fieldsByType.get(null).add(field);
+
+            return this;
+        }
+        public TypeOf elsex(SObjectField field1, SObjectField field2) {
+            this.fieldsByType.get(null).add(field1);
+            this.fieldsByType.get(null).add(field2);
+
+            return this;
+        }
+        public TypeOf elsex(SObjectField field1, SObjectField field2, SObjectField field3) {
+            this.fieldsByType.get(null).add(field1);
+            this.fieldsByType.get(null).add(field2);
+            this.fieldsByType.get(null).add(field3);
+
+            return this;
+        }
+        public TypeOf elsex(SObjectField field1, SObjectField field2, SObjectField field3, SObjectField field4) {
+            this.fieldsByType.get(null).add(field1);
+            this.fieldsByType.get(null).add(field2);
+            this.fieldsByType.get(null).add(field3);
+            this.fieldsByType.get(null).add(field4);
+
+            return this;
+        }
+        public TypeOf elsex(
+            SObjectField field1,
+            SObjectField field2,
+            SObjectField field3,
+            SObjectField field4,
+            SObjectField field5
+        ) {
+            this.fieldsByType.get(null).add(field1);
+            this.fieldsByType.get(null).add(field2);
+            this.fieldsByType.get(null).add(field3);
+            this.fieldsByType.get(null).add(field4);
+            this.fieldsByType.get(null).add(field5);
+
+            return this;
+        }
+
+        // Strings
+        public TypeOf then(String field) {
+            if (currentType != null) {
+                this.fieldsByType.get(this.currentType).add(field);
+            }
+            return this;
+        }
+        public TypeOf then(String field1, String field2) {
+            if (currentType != null) {
+                this.fieldsByType.get(this.currentType).add(field1);
+                this.fieldsByType.get(this.currentType).add(field2);
+            }
+            return this;
+        }
+        public TypeOf then(String field1, String field2, String field3) {
+            if (currentType != null) {
+                this.fieldsByType.get(this.currentType).add(field1);
+                this.fieldsByType.get(this.currentType).add(field2);
+                this.fieldsByType.get(this.currentType).add(field3);
+            }
+            return this;
+        }
+        public TypeOf then(String field1, String field2, String field3, String field4) {
+            if (currentType != null) {
+                this.fieldsByType.get(this.currentType).add(field1);
+                this.fieldsByType.get(this.currentType).add(field2);
+                this.fieldsByType.get(this.currentType).add(field3);
+                this.fieldsByType.get(this.currentType).add(field4);
+            }
+            return this;
+        }
+        public TypeOf then(String field1, String field2, String field3, String field4, String field5) {
+            if (currentType != null) {
+                this.fieldsByType.get(this.currentType).add(field1);
+                this.fieldsByType.get(this.currentType).add(field2);
+                this.fieldsByType.get(this.currentType).add(field3);
+                this.fieldsByType.get(this.currentType).add(field4);
+                this.fieldsByType.get(this.currentType).add(field5);
+            }
+            return this;
+        }
+
+        public TypeOf elsex(String field) {
+            this.fieldsByType.get(null).add(field);
+
+            return this;
+        }
+        public TypeOf elsex(String field1, String field2) {
+            this.fieldsByType.get(null).add(field1);
+            this.fieldsByType.get(null).add(field2);
+
+            return this;
+        }
+        public TypeOf elsex(String field1, String field2, String field3) {
+            this.fieldsByType.get(null).add(field1);
+            this.fieldsByType.get(null).add(field2);
+            this.fieldsByType.get(null).add(field3);
+
+            return this;
+        }
+        public TypeOf elsex(String field1, String field2, String field3, String field4) {
+            this.fieldsByType.get(null).add(field1);
+            this.fieldsByType.get(null).add(field2);
+            this.fieldsByType.get(null).add(field3);
+            this.fieldsByType.get(null).add(field4);
+
+            return this;
+        }
+        public TypeOf elsex(String field1, String field2, String field3, String field4, String field5) {
+            this.fieldsByType.get(null).add(field1);
+            this.fieldsByType.get(null).add(field2);
+            this.fieldsByType.get(null).add(field3);
+            this.fieldsByType.get(null).add(field4);
+            this.fieldsByType.get(null).add(field5);
+
+            return this;
+        }
+    }
+
+    public static TypeOf typeof(SObjectField field) {
+        return new TypeOfImpl(field);
+    }
+
+    public static TypeOf typeof(String field) {
+        return new TypeOfImpl(field);
+    }
+
+    public Query selectBy(TypeOf typeof) {
+        this.rootTypeOf = (TypeOfImpl) typeof;
+        return this;
+    }
+
+    // #endregion
+    //========================
 
     // ================
     // #region ORDER BY
@@ -629,6 +953,12 @@ public abstract class Query implements Querable {
         Orderer descending();
         Orderer nullsFirst();
         Orderer nullsLast();
+
+        Orderer add(String field);
+        Orderer add(String field1, String field2);
+        Orderer add(String field1, String field2, String field3);
+        Orderer add(String field1, String field2, String field3, String field4);
+        Orderer add(String field1, String field2, String field3, String field4, String field5);
 
         Orderer add(SObjectField field);
         Orderer add(SObjectField field1, SObjectField field2);
@@ -720,6 +1050,33 @@ public abstract class Query implements Querable {
             return this;
         }
 
+        // String
+        public Orderer add(String field) {
+            this.addFieldOrFuncs(new List<Object>{ field });
+            return this;
+        }
+
+        public Orderer add(String field1, String field2) {
+            this.addFieldOrFuncs(new List<Object>{ field1, field2 });
+            return this;
+        }
+
+        public Orderer add(String field1, String field2, String field3) {
+            this.addFieldOrFuncs(new List<Object>{ field1, field2, field3 });
+            return this;
+        }
+
+        public Orderer add(String field1, String field2, String field3, String field4) {
+            this.addFieldOrFuncs(new List<Object>{ field1, field2, field3, field4 });
+            return this;
+        }
+
+        public Orderer add(String field1, String field2, String field3, String field4, String field5) {
+            this.addFieldOrFuncs(new List<Object>{ field1, field2, field3, field4, field5 });
+            return this;
+        }
+
+        // SObjectField
         public Orderer add(SObjectField field) {
             this.addFieldOrFuncs(new List<Object>{ field });
             return this;
@@ -751,6 +1108,7 @@ public abstract class Query implements Querable {
             return this;
         }
 
+        // Functions
         public Orderer add(OrderFunction func) {
             this.addFieldOrFuncs(new List<Object>{ func });
             return this;
@@ -782,6 +1140,7 @@ public abstract class Query implements Querable {
             return this;
         }
 
+        // Others
         public Orderer add(List<Object> fieldOrFuncs) {
             this.addFieldOrFuncs(fieldOrFuncs);
             return this;
@@ -808,6 +1167,29 @@ public abstract class Query implements Querable {
         return this;
     }
 
+    // String
+    public Query orderBy(String field) {
+        this.rootOrderer.addFieldOrFuncs(new List<Object>{ field });
+        return this;
+    }
+    public Query orderBy(String field1, String field2) {
+        this.rootOrderer.addFieldOrFuncs(new List<Object>{ field1, field2 });
+        return this;
+    }
+    public Query orderBy(String field1, String field2, String field3) {
+        this.rootOrderer.addFieldOrFuncs(new List<Object>{ field1, field2, field3 });
+        return this;
+    }
+    public Query orderBy(String field1, String field2, String field3, String field4) {
+        this.rootOrderer.addFieldOrFuncs(new List<Object>{ field1, field2, field3, field4 });
+        return this;
+    }
+    public Query orderBy(String field1, String field2, String field3, String field4, String field5) {
+        this.rootOrderer.addFieldOrFuncs(new List<Object>{ field1, field2, field3, field4, field5 });
+        return this;
+    }
+
+    // SObjectField
     public Query orderBy(SObjectField field) {
         this.rootOrderer.addFieldOrFuncs(new List<Object>{ field });
         return this;
@@ -835,6 +1217,7 @@ public abstract class Query implements Querable {
         return this;
     }
 
+    // Function
     public Query orderBy(OrderFunction func) {
         this.rootOrderer.addFieldOrFuncs(new List<Object>{ func });
         return this;
@@ -2666,16 +3049,70 @@ public abstract class Query implements Querable {
         }
     }
 
+    // SObjectField
+    public static AggregateFunction GROUPING(String field) {
+        return new AggregateFunction(field, 'GROUPING', FUNC_GROUPING_TAG, null);
+    }
+
+    public static AggregateFunction GROUPING(String field, String alias) {
+        return new AggregateFunction(field, 'GROUPING', FUNC_GROUPING_TAG, alias);
+    }
+
+    public static AggregateFunction COUNT(String field) {
+        return new AggregateFunction(field, 'COUNT', FUNC_COUNT_TAG, null);
+    }
+
+    public static AggregateFunction COUNT(String field, String alias) {
+        return new AggregateFunction(field, 'COUNT', FUNC_COUNT_TAG, alias);
+    }
+
+    public static AggregateFunction COUNT_DISTINCT(String field) {
+        return new AggregateFunction(field, 'COUNT_DISTINCT', FUNC_COUNT_DISTINCT_TAG, null);
+    }
+
+    public static AggregateFunction COUNT_DISTINCT(String field, String alias) {
+        return new AggregateFunction(field, 'COUNT_DISTINCT', FUNC_COUNT_DISTINCT_TAG, alias);
+    }
+
+    public static AggregateFunction SUM(String field) {
+        return new AggregateFunction(field, 'SUM', FUNC_SUM_TAG, null);
+    }
+
+    public static AggregateFunction SUM(String field, String alias) {
+        return new AggregateFunction(field, 'SUM', FUNC_SUM_TAG, alias);
+    }
+
+    public static AggregateFunction AVG(String field) {
+        return new AggregateFunction(field, 'AVG', FUNC_AVG_TAG, null);
+    }
+
+    public static AggregateFunction AVG(String field, String alias) {
+        return new AggregateFunction(field, 'AVG', FUNC_AVG_TAG, alias);
+    }
+
+    public static AggregateFunction MAX(String field) {
+        return new AggregateFunction(field, 'MAX', FUNC_MAX_TAG, null);
+    }
+
+    public static AggregateFunction MAX(String field, String alias) {
+        return new AggregateFunction(field, 'MAX', FUNC_MAX_TAG, alias);
+    }
+
+    public static AggregateFunction MIN(String field) {
+        return new AggregateFunction(field, 'MIN', FUNC_MIN_TAG, null);
+    }
+
+    public static AggregateFunction MIN(String field, String alias) {
+        return new AggregateFunction(field, 'MIN', FUNC_MIN_TAG, alias);
+    }
+
+    // SObjectField
     public static AggregateFunction GROUPING(SObjectField field) {
         return new AggregateFunction(field, 'GROUPING', FUNC_GROUPING_TAG, null);
     }
 
     public static AggregateFunction GROUPING(SObjectField field, String alias) {
         return new AggregateFunction(field, 'GROUPING', FUNC_GROUPING_TAG, alias);
-    }
-
-    public static AggregateFunction COUNT() {
-        return new AggregateFunction(null, 'COUNT', FUNC_COUNT_TAG, null);
     }
 
     public static AggregateFunction COUNT(SObjectField field) {
@@ -2725,6 +3162,12 @@ public abstract class Query implements Querable {
     public static AggregateFunction MIN(SObjectField field, String alias) {
         return new AggregateFunction(field, 'MIN', FUNC_MIN_TAG, alias);
     }
+
+    // Others
+    public static SelectFunction COUNT() {
+        return new AggregateFunction(null, 'COUNT', FUNC_COUNT_TAG, null);
+    }
+
     // #endregion
     // ============================
 
@@ -2732,19 +3175,33 @@ public abstract class Query implements Querable {
     // #region Function - ToLabel/Format
 
     public class ToLabelFunction extends GenericFunction implements SelectFunction {
-        private ToLabelFunction(Object fieldOrFunc) {
-            super(fieldOrFunc, 'TOLABEL', FUNC_LABEL_TAG);
+        private ToLabelFunction(Object field) {
+            super(field, 'TOLABEL', FUNC_LABEL_TAG);
         }
-    }
-
-    public static ToLabelFunction TO_LABEL(SObjectField field) {
-        return new ToLabelFunction(field);
     }
 
     public class FormatFunction extends GenericFunction implements SelectFunction {
         private FormatFunction(Object fieldOrFunc) {
             super(fieldOrFunc, 'FORMAT', FUNC_FORMAT_TAG);
         }
+    }
+
+    public class CurrencyFunction extends GenericFunction implements SelectFunction {
+        private CurrencyFunction(Object field) {
+            super(field, 'CONVERTCURRENCY', FUNC_CURRENCY_TAG);
+        }
+    }
+
+    public static ToLabelFunction TO_LABEL(String field) {
+        return new ToLabelFunction(field);
+    }
+
+    public static ToLabelFunction TO_LABEL(SObjectField field) {
+        return new ToLabelFunction(field);
+    }
+
+    public static FormatFunction FORMAT(String field) {
+        return new FormatFunction(field);
     }
 
     public static FormatFunction FORMAT(SObjectField field) {
@@ -2754,6 +3211,14 @@ public abstract class Query implements Querable {
     public static FormatFunction FORMAT(CurrencyFunction func) {
         return new FormatFunction(func);
     }
+
+    public static CurrencyFunction CONVERT_CURRENCY(String field) {
+        return new CurrencyFunction(field);
+    }
+
+    public static CurrencyFunction CONVERT_CURRENCY(SObjectField field) {
+        return new CurrencyFunction(field);
+    }
     // #endregion
     // =================================
 
@@ -2761,11 +3226,11 @@ public abstract class Query implements Querable {
     // #region Function - Distance
 
     public class DistanceFunction implements Function, OrderFunction {
-        private SObjectField field { get; set; }
+        private Object field { get; set; }
         private Location geo { get; set; }
         private String unit { get; set; }
 
-        private DistanceFunction(SObjectField field, Location geo, String unit) {
+        private DistanceFunction(Object field, Location geo, String unit) {
             this.field = field;
             this.geo = geo;
             this.unit = unit;
@@ -2799,30 +3264,214 @@ public abstract class Query implements Querable {
     private static final String DISTANCE_UNIT_KM = 'km';
     private static final String DISTANCE_UNIT_MI = 'mi';
 
-    public static DistanceFunction DISTANCE_IN_KILOMETER(SObjectField field, Location geo) {
+    public static DistanceFunction DISTANCE_IN_KM(String field, Location geo) {
+        return new DistanceFunction(field, geo, DISTANCE_UNIT_KM);
+    }
+    public static DistanceFunction DISTANCE_IN_KM(SObjectField field, Location geo) {
         return new DistanceFunction(field, geo, DISTANCE_UNIT_KM);
     }
 
-    public static DistanceFunction DISTANCE_IN_MILE(SObjectField field, Location geo) {
+    public static DistanceFunction DISTANCE_IN_MI(String field, Location geo) {
+        return new DistanceFunction(field, geo, DISTANCE_UNIT_MI);
+    }
+    public static DistanceFunction DISTANCE_IN_MI(SObjectField field, Location geo) {
         return new DistanceFunction(field, geo, DISTANCE_UNIT_MI);
     }
 
     // #endregion
     // ===========================
 
-    // ===========================
-    // #region Function - Currency
+    // =======================
+    // #region Function - Date
 
-    public class CurrencyFunction extends GenericFunction implements SelectFunction {
-        private CurrencyFunction(SObjectField field) {
-            super(field, 'CONVERTCURRENCY', FUNC_CURRENCY_TAG);
+    public class TimezoneFunction extends GenericFunction {
+        private TimezoneFunction(Object field) {
+            super(field, 'CONVERTTIMEZONE', FUNC_CURRENCY_TAG);
         }
     }
 
-    public static CurrencyFunction CONVERT_CURRENCY(SObjectField field) {
-        return new CurrencyFunction(field);
+    public static TimezoneFunction CONVERT_TIMEZONE(String field) {
+        return new TimezoneFunction(field);
     }
 
+    public static TimezoneFunction CONVERT_TIMEZONE(SObjectField field) {
+        return new TimezoneFunction(field);
+    }
+
+    public class DateFunction extends GenericFunction implements SelectFunction {
+        private DateFunction(Object fieldOrFunc, String name, Integer tag) {
+            super(fieldOrFunc, name, tag);
+        }
+
+        private DateFunction(Object fieldOrFunc, String name, Integer tag, String alias) {
+            super(fieldOrFunc, name, tag, alias);
+        }
+    }
+
+    // DateFunction - String
+    public static DateFunction CALENDAR_MONTH(String field) {
+        return new DateFunction(field, 'CALENDAR_MONTH', CALENDAR_MONTH_TAG);
+    }
+
+    public static DateFunction CALENDAR_QUARTER(String field) {
+        return new DateFunction(field, 'CALENDAR_QUARTER', CALENDAR_QUARTER_TAG);
+    }
+
+    public static DateFunction CALENDAR_YEAR(String field) {
+        return new DateFunction(field, 'CALENDAR_YEAR', CALENDAR_YEAR_TAG);
+    }
+
+    public static DateFunction DAY_IN_MONTH(String field) {
+        return new DateFunction(field, 'DAY_IN_MONTH', DAY_IN_MONTH_TAG);
+    }
+
+    public static DateFunction DAY_IN_WEEK(String field) {
+        return new DateFunction(field, 'DAY_IN_WEEK', DAY_IN_WEEK_TAG);
+    }
+
+    public static DateFunction DAY_IN_YEAR(String field) {
+        return new DateFunction(field, 'DAY_IN_YEAR', DAY_IN_YEAR_TAG);
+    }
+
+    public static DateFunction DAY_ONLY(String field) {
+        return new DateFunction(field, 'DAY_ONLY', DAY_ONLY_TAG);
+    }
+
+    public static DateFunction FISCAL_MONTH(String field) {
+        return new DateFunction(field, 'FISCAL_MONTH', FISCAL_MONTH_TAG);
+    }
+
+    public static DateFunction FISCAL_QUARTER(String field) {
+        return new DateFunction(field, 'FISCAL_QUARTER', FISCAL_QUARTER_TAG);
+    }
+
+    public static DateFunction FISCAL_YEAR(String field) {
+        return new DateFunction(field, 'FISCAL_YEAR', FISCAL_YEAR_TAG);
+    }
+
+    public static DateFunction HOUR_IN_DAY(String field) {
+        return new DateFunction(field, 'HOUR_IN_DAY', HOUR_IN_DAY_TAG);
+    }
+
+    public static DateFunction WEEK_IN_MONTH(String field) {
+        return new DateFunction(field, 'WEEK_IN_MONTH', WEEK_IN_MONTH_TAG);
+    }
+
+    public static DateFunction WEEK_IN_YEAR(String field) {
+        return new DateFunction(field, 'WEEK_IN_YEAR', WEEK_IN_YEAR_TAG);
+    }
+
+    // DateFunction - SObjectField
+    public static DateFunction CALENDAR_MONTH(SObjectField field) {
+        return new DateFunction(field, 'CALENDAR_MONTH', CALENDAR_MONTH_TAG);
+    }
+
+    public static DateFunction CALENDAR_QUARTER(SObjectField field) {
+        return new DateFunction(field, 'CALENDAR_QUARTER', CALENDAR_QUARTER_TAG);
+    }
+
+    public static DateFunction CALENDAR_YEAR(SObjectField field) {
+        return new DateFunction(field, 'CALENDAR_YEAR', CALENDAR_YEAR_TAG);
+    }
+
+    public static DateFunction DAY_IN_MONTH(SObjectField field) {
+        return new DateFunction(field, 'DAY_IN_MONTH', DAY_IN_MONTH_TAG);
+    }
+
+    public static DateFunction DAY_IN_WEEK(SObjectField field) {
+        return new DateFunction(field, 'DAY_IN_WEEK', DAY_IN_WEEK_TAG);
+    }
+
+    public static DateFunction DAY_IN_YEAR(SObjectField field) {
+        return new DateFunction(field, 'DAY_IN_YEAR', DAY_IN_YEAR_TAG);
+    }
+
+    public static DateFunction DAY_ONLY(SObjectField field) {
+        return new DateFunction(field, 'DAY_ONLY', DAY_ONLY_TAG);
+    }
+
+    public static DateFunction FISCAL_MONTH(SObjectField field) {
+        return new DateFunction(field, 'FISCAL_MONTH', FISCAL_MONTH_TAG);
+    }
+
+    public static DateFunction FISCAL_QUARTER(SObjectField field) {
+        return new DateFunction(field, 'FISCAL_QUARTER', FISCAL_QUARTER_TAG);
+    }
+
+    public static DateFunction FISCAL_YEAR(SObjectField field) {
+        return new DateFunction(field, 'FISCAL_YEAR', FISCAL_YEAR_TAG);
+    }
+
+    public static DateFunction HOUR_IN_DAY(SObjectField field) {
+        return new DateFunction(field, 'HOUR_IN_DAY', HOUR_IN_DAY_TAG);
+    }
+
+    public static DateFunction WEEK_IN_MONTH(SObjectField field) {
+        return new DateFunction(field, 'WEEK_IN_MONTH', WEEK_IN_MONTH_TAG);
+    }
+
+    public static DateFunction WEEK_IN_YEAR(SObjectField field) {
+        return new DateFunction(field, 'WEEK_IN_YEAR', WEEK_IN_YEAR_TAG);
+    }
+
+    // DateFunction - TimezoneFunction
+    public static DateFunction CALENDAR_MONTH(TimezoneFunction func) {
+        return new DateFunction(func, 'CALENDAR_MONTH', CALENDAR_MONTH_TAG);
+    }
+
+    public static DateFunction CALENDAR_QUARTER(TimezoneFunction func) {
+        return new DateFunction(func, 'CALENDAR_QUARTER', CALENDAR_QUARTER_TAG);
+    }
+
+    public static DateFunction CALENDAR_YEAR(TimezoneFunction func) {
+        return new DateFunction(func, 'CALENDAR_YEAR', CALENDAR_YEAR_TAG);
+    }
+
+    public static DateFunction DAY_IN_MONTH(TimezoneFunction func) {
+        return new DateFunction(func, 'DAY_IN_MONTH', DAY_IN_MONTH_TAG);
+    }
+
+    public static DateFunction DAY_IN_WEEK(TimezoneFunction func) {
+        return new DateFunction(func, 'DAY_IN_WEEK', DAY_IN_WEEK_TAG);
+    }
+
+    public static DateFunction DAY_IN_YEAR(TimezoneFunction func) {
+        return new DateFunction(func, 'DAY_IN_YEAR', DAY_IN_YEAR_TAG);
+    }
+
+    public static DateFunction DAY_ONLY(TimezoneFunction func) {
+        return new DateFunction(func, 'DAY_ONLY', DAY_ONLY_TAG);
+    }
+
+    public static DateFunction FISCAL_MONTH(TimezoneFunction func) {
+        return new DateFunction(func, 'FISCAL_MONTH', FISCAL_MONTH_TAG);
+    }
+
+    public static DateFunction FISCAL_QUARTER(TimezoneFunction func) {
+        return new DateFunction(func, 'FISCAL_QUARTER', FISCAL_QUARTER_TAG);
+    }
+
+    public static DateFunction FISCAL_YEAR(TimezoneFunction func) {
+        return new DateFunction(func, 'FISCAL_YEAR', FISCAL_YEAR_TAG);
+    }
+
+    public static DateFunction HOUR_IN_DAY(TimezoneFunction func) {
+        return new DateFunction(func, 'HOUR_IN_DAY', HOUR_IN_DAY_TAG);
+    }
+
+    public static DateFunction WEEK_IN_MONTH(TimezoneFunction func) {
+        return new DateFunction(func, 'WEEK_IN_MONTH', WEEK_IN_MONTH_TAG);
+    }
+
+    public static DateFunction WEEK_IN_YEAR(TimezoneFunction func) {
+        return new DateFunction(func, 'WEEK_IN_YEAR', WEEK_IN_YEAR_TAG);
+    }
+
+    // #endregion
+    // =======================
+
+    // ==========================
+    // #region Literal - Currency
     public class CurrencyLiteral {
         // ISO Code Reference: https://help.salesforce.com/s/articleView?id=sf.admin_supported_currencies.htm
         private String code { get; set; }
@@ -3453,135 +4102,10 @@ public abstract class Query implements Querable {
     }
 
     // #endregion
-    // ===========================
+    // ==========================
 
-    // =======================
-    // #region Function - Date
-
-    public class DateFunction extends GenericFunction implements SelectFunction {
-        private DateFunction(Object fieldOrFunc, String name, Integer tag) {
-            super(fieldOrFunc, name, tag);
-        }
-
-        private DateFunction(Object fieldOrFunc, String name, Integer tag, String alias) {
-            super(fieldOrFunc, name, tag, alias);
-        }
-    }
-
-    public static DateFunction CALENDAR_MONTH(SObjectField field) {
-        return new DateFunction(field, 'CALENDAR_MONTH', CALENDAR_MONTH_TAG);
-    }
-
-    public static DateFunction CALENDAR_QUARTER(SObjectField field) {
-        return new DateFunction(field, 'CALENDAR_QUARTER', CALENDAR_QUARTER_TAG);
-    }
-
-    public static DateFunction CALENDAR_YEAR(SObjectField field) {
-        return new DateFunction(field, 'CALENDAR_YEAR', CALENDAR_YEAR_TAG);
-    }
-
-    public static DateFunction DAY_IN_MONTH(SObjectField field) {
-        return new DateFunction(field, 'DAY_IN_MONTH', DAY_IN_MONTH_TAG);
-    }
-
-    public static DateFunction DAY_IN_WEEK(SObjectField field) {
-        return new DateFunction(field, 'DAY_IN_WEEK', DAY_IN_WEEK_TAG);
-    }
-
-    public static DateFunction DAY_IN_YEAR(SObjectField field) {
-        return new DateFunction(field, 'DAY_IN_YEAR', DAY_IN_YEAR_TAG);
-    }
-
-    public static DateFunction DAY_ONLY(SObjectField field) {
-        return new DateFunction(field, 'DAY_ONLY', DAY_ONLY_TAG);
-    }
-
-    public static DateFunction FISCAL_MONTH(SObjectField field) {
-        return new DateFunction(field, 'FISCAL_MONTH', FISCAL_MONTH_TAG);
-    }
-
-    public static DateFunction FISCAL_QUARTER(SObjectField field) {
-        return new DateFunction(field, 'FISCAL_QUARTER', FISCAL_QUARTER_TAG);
-    }
-
-    public static DateFunction FISCAL_YEAR(SObjectField field) {
-        return new DateFunction(field, 'FISCAL_YEAR', FISCAL_YEAR_TAG);
-    }
-
-    public static DateFunction HOUR_IN_DAY(SObjectField field) {
-        return new DateFunction(field, 'HOUR_IN_DAY', HOUR_IN_DAY_TAG);
-    }
-
-    public static DateFunction WEEK_IN_MONTH(SObjectField field) {
-        return new DateFunction(field, 'WEEK_IN_MONTH', WEEK_IN_MONTH_TAG);
-    }
-
-    public static DateFunction WEEK_IN_YEAR(SObjectField field) {
-        return new DateFunction(field, 'WEEK_IN_YEAR', WEEK_IN_YEAR_TAG);
-    }
-
-    public static DateFunction CALENDAR_MONTH(TimezoneFunction func) {
-        return new DateFunction(func, 'CALENDAR_MONTH', CALENDAR_MONTH_TAG);
-    }
-
-    public static DateFunction CALENDAR_QUARTER(TimezoneFunction func) {
-        return new DateFunction(func, 'CALENDAR_QUARTER', CALENDAR_QUARTER_TAG);
-    }
-
-    public static DateFunction CALENDAR_YEAR(TimezoneFunction func) {
-        return new DateFunction(func, 'CALENDAR_YEAR', CALENDAR_YEAR_TAG);
-    }
-
-    public static DateFunction DAY_IN_MONTH(TimezoneFunction func) {
-        return new DateFunction(func, 'DAY_IN_MONTH', DAY_IN_MONTH_TAG);
-    }
-
-    public static DateFunction DAY_IN_WEEK(TimezoneFunction func) {
-        return new DateFunction(func, 'DAY_IN_WEEK', DAY_IN_WEEK_TAG);
-    }
-
-    public static DateFunction DAY_IN_YEAR(TimezoneFunction func) {
-        return new DateFunction(func, 'DAY_IN_YEAR', DAY_IN_YEAR_TAG);
-    }
-
-    public static DateFunction DAY_ONLY(TimezoneFunction func) {
-        return new DateFunction(func, 'DAY_ONLY', DAY_ONLY_TAG);
-    }
-
-    public static DateFunction FISCAL_MONTH(TimezoneFunction func) {
-        return new DateFunction(func, 'FISCAL_MONTH', FISCAL_MONTH_TAG);
-    }
-
-    public static DateFunction FISCAL_QUARTER(TimezoneFunction func) {
-        return new DateFunction(func, 'FISCAL_QUARTER', FISCAL_QUARTER_TAG);
-    }
-
-    public static DateFunction FISCAL_YEAR(TimezoneFunction func) {
-        return new DateFunction(func, 'FISCAL_YEAR', FISCAL_YEAR_TAG);
-    }
-
-    public static DateFunction HOUR_IN_DAY(TimezoneFunction func) {
-        return new DateFunction(func, 'HOUR_IN_DAY', HOUR_IN_DAY_TAG);
-    }
-
-    public static DateFunction WEEK_IN_MONTH(TimezoneFunction func) {
-        return new DateFunction(func, 'WEEK_IN_MONTH', WEEK_IN_MONTH_TAG);
-    }
-
-    public static DateFunction WEEK_IN_YEAR(TimezoneFunction func) {
-        return new DateFunction(func, 'WEEK_IN_YEAR', WEEK_IN_YEAR_TAG);
-    }
-
-    public class TimezoneFunction extends GenericFunction {
-        private TimezoneFunction(SObjectField field) {
-            super(field, 'CONVERTTIMEZONE', FUNC_CURRENCY_TAG);
-        }
-    }
-
-    public static TimezoneFunction CONVERT_TIMEZONE(SObjectField field) {
-        return new TimezoneFunction(field);
-    }
-
+    // ======================
+    // #region Literal - Date
     public class DateLiteral {
         public String name { get; set; }
         public Integer value { get; set; }
@@ -3824,7 +4348,7 @@ public abstract class Query implements Querable {
     }
 
     // #endregion
-    // =======================
+    // ======================
 
     // Filter Tags
     private static final Integer FILTER_EQ_TAG = 1;
@@ -3875,21 +4399,21 @@ public abstract class Query implements Querable {
     public interface Querable {
         // SELECT
         // TODO: Support select all? And automatically skips fields don't have read permission?
-        // TODO: Support NOT Logic
 
+        // TODO: support additional syntaxes
         // SELECT fieldList [subquery][...]
-        //![TYPEOF typeOfField whenExpression[...] elseExpression END][...]
+        // [TYPEOF typeOfField whenExpression[...] elseExpression END][...]
         // FROM objectType[,...]
-        //!    [USING SCOPE filterScope]
+        //*    [USING SCOPE filterScope]
         // [WHERE conditionExpression]
-        //![WITH [DATA CATEGORY] filteringExpression]
+        //*[WITH [DATA CATEGORY] filteringExpression]
         // [GROUP BY {fieldGroupByList|ROLLUP (fieldSubtotalGroupByList)|CUBE (fieldSubtotalGroupByList)}
         //     [HAVING havingConditionExpression] ]
         // [ORDER BY fieldOrderByList {ASC|DESC} [NULLS {FIRST|LAST}] ]
         // [LIMIT numberOfRowsToReturn]
         // [OFFSET numberOfRowsToSkip]
         // [{FOR VIEW  | FOR REFERENCE} ]
-        //![UPDATE {TRACKING|VIEWSTAT} ]
+        // [UPDATE {TRACKING|VIEWSTAT} ]
         // [FOR UPDATE]
 
         Query selectBy(String field);
@@ -3913,11 +4437,18 @@ public abstract class Query implements Querable {
         Query selectBy(String relationName, Query query);
         Query selectBy(List<Object> fieldOrFuncs);
         Query selectBy(Selector selector);
+        Query selectBy(TypeOf typeof);
 
         // WHERE
         Query filterBy(Filter filter);
 
         // ORDER BY
+        Query orderBy(String field);
+        Query orderBy(String field1, String field2);
+        Query orderBy(String field1, String field2, String field3);
+        Query orderBy(String field1, String field2, String field3, String field4);
+        Query orderBy(String field1, String field2, String field3, String field4, String field5);
+
         Query orderBy(SObjectField field);
         Query orderBy(SObjectField field1, SObjectField field2);
         Query orderBy(SObjectField field1, SObjectField field2, SObjectField field3);
@@ -3964,8 +4495,11 @@ public abstract class Query implements Querable {
         // Misc
         Query offset(Integer n);
         Query limitx(Integer n);
+
         Query forView();
         Query forReference();
+        Query updateTracking();
+        Query updateViewstat();
         Query forUpdate();
 
         Object run();

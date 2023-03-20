@@ -34,3 +34,11 @@ Query.Filter filter = orx(
         eq(Account.BillingCountry, 'China'),
         eq(Account.BillingState, 'Shanghai')
     ));
+
+
+Query.of(Task.SObjecType)
+    .selectBy(typeOf(Task.What)
+        .when(Account.SObjectType).then(Account.Phone, Account.NumberOfEmployees)
+        .when(Opportunity.SObjectType).then(Opportunity.Amount, Opportunity.CloseDate)
+        .elsex(Task.Name))
+
