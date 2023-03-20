@@ -44,12 +44,20 @@ An Apex SOQL query builder to dynamically build SOQL supporting almost all synta
        Query.of(Account.SObjectType).selectBy(Account.Id, Account.Name))
    );
    ```
+4. **Strong Types**: Strong types are enforced when possible, so developers can make less mistakes when construct queries.
+
+   ````java
+   // Example 1: date function can only be compared with an Integer.
+   qt(CALENDAR_MONTH(Contact.Birthdate), 1);   // pass
+   qt(CALENDAR_MONTH(Contact.Birthdate), 'A'); // fail
+   ````
 
 ## 2. Naming Conventions
 
 <p align="center">
-    <img src="./docs/images/query-sample-1.png#2023-03-19" width=700>
+    <img src="./docs/images/query-sample-1.png#2023-03-19" width=650>
 </p>
+
 
 ### 2.1 Naming Readability
 
@@ -119,25 +127,28 @@ Query query = Query.of(Account.SOBjectType);
 
 #### Inline Select
 
-There are four types of `selectBy()` statements, each accepts different input types:
+There are five types of `selectBy()` statements, each accepts different input types:
 
 1. Accept only `SObjectField` as parameters, such as: `Account.Name`. The number of params can be 1 to 5.
 2. Accept only functions as parameters, such as: `FORMAT(Account.AnnualRevenue)`. The number of params can be 1 to 5.
 3. Accept only `String` as parameters. The number of params can be 1 to 5. Use this only for parent field references. Although it supports functions as well, I would recommend to directly use the above function with a string field instead.
 4. Accept a child relationship subquery as parameter.
+4. Accept a `List<Object>` with mixing of `SObjectField`, functions or `String`, but cannot be queries.
 
 **Note**: These `selectBy()` methods can chain from one to another, so developers can select as many fields as they want.
 
 ```java
 Query query = Query.of(Account.SObjectType)
-    // #1. all params are fields
+    // #1. all params are sobject fields
     .selectBy(Account.Name, Account.BillingCountry, Account.BillingState)
     // #2. all params are functions
     .selectBy(FORMAT(CONVERT_CURRENCY(Account.AnnualRevenue)), TO_LABEL('Owner.LocaleSidKey'))
     // #3. all params are strings
     .selectBy('Owner.Profile.Id', 'TOLABEL(Owner.EmailEncodingKey)')
     // #4. one subquery for child relationship "Contacts"
-    .selectBy('Contacts', Query.of(Contact.SObjectType).selectBy(Contact.Name));
+    .selectBy('Contacts', Query.of(Contact.SObjectType).selectBy(Contact.Name))
+    // #5. a list of object mixing with sobject fields, funcitons and strings
+    .selectBy(new List<Object> { Account.Name, FORMAT(Account.AnnualRevenue), 'Owner.Profile.Id' });
 ```
 
 #### Outline Select

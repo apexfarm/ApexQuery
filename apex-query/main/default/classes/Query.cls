@@ -214,12 +214,16 @@ public abstract class Query implements Querable {
                     fragments.add(String.valueOf(clause.fieldOrFunc));
                 }
 
-                if (!clause.ascending) {
+                if (clause.ascending == false) {
                     fragments.add(' DESC');
+                } else if (clause.ascending == true) {
+                    fragments.add(' ASC');
                 }
 
-                if (!clause.nullFirst) {
+                if (clause.nullFirst == false) {
                     fragments.add(' NULLS LAST');
+                } else if (clause.nullFirst == true) {
+                    fragments.add(' NULLS FIRST');
                 }
             }
         }
@@ -932,8 +936,6 @@ public abstract class Query implements Querable {
 
         private OrderByClause(Object fieldOrFunc) {
             this.fieldOrFunc = fieldOrFunc;
-            this.ascending = true;
-            this.nullFirst = true;
         }
 
         public Boolean equals(Object obj) {
@@ -1274,6 +1276,12 @@ public abstract class Query implements Querable {
     // ================
     // #region GROUP BY
     public interface Grouper {
+        Grouper add(String field);
+        Grouper add(String field1, String field2);
+        Grouper add(String field1, String field2, String field3);
+        Grouper add(String field1, String field2, String field3, String field4);
+        Grouper add(String field1, String field2, String field3, String field4, String field5);
+
         Grouper add(SObjectField field);
         Grouper add(SObjectField field1, SObjectField field2);
         Grouper add(SObjectField field1, SObjectField field2, SObjectField field3);
@@ -1312,6 +1320,43 @@ public abstract class Query implements Querable {
             return this.fieldOrFuncs == that.fieldOrFuncs;
         }
 
+        // String
+        public Grouper add(String field) {
+            this.fieldOrFuncs.add(field);
+            return this;
+        }
+
+        public Grouper add(String field1, String field2) {
+            this.fieldOrFuncs.add(field1);
+            this.fieldOrFuncs.add(field2);
+            return this;
+        }
+
+        public Grouper add(String field1, String field2, String field3) {
+            this.fieldOrFuncs.add(field1);
+            this.fieldOrFuncs.add(field2);
+            this.fieldOrFuncs.add(field3);
+            return this;
+        }
+
+        public Grouper add(String field1, String field2, String field3, String field4) {
+            this.fieldOrFuncs.add(field1);
+            this.fieldOrFuncs.add(field2);
+            this.fieldOrFuncs.add(field3);
+            this.fieldOrFuncs.add(field4);
+            return this;
+        }
+
+        public Grouper add(String field1, String field2, String field3, String field4, String field5) {
+            this.fieldOrFuncs.add(field1);
+            this.fieldOrFuncs.add(field2);
+            this.fieldOrFuncs.add(field3);
+            this.fieldOrFuncs.add(field4);
+            this.fieldOrFuncs.add(field5);
+            return this;
+        }
+
+        // SObjectField
         public Grouper add(SObjectField field) {
             this.fieldOrFuncs.add(field);
             return this;
@@ -1353,6 +1398,7 @@ public abstract class Query implements Querable {
             return this;
         }
 
+        // Function
         public Grouper add(DateFunction func) {
             this.fieldOrFuncs.add(func);
             return this;
@@ -1419,6 +1465,43 @@ public abstract class Query implements Querable {
         return this;
     }
 
+    // String
+    public Query groupBy(String field) {
+        this.grouper.fieldOrFuncs.add(field);
+        return this;
+    }
+
+    public Query groupBy(String field1, String field2) {
+        this.grouper.fieldOrFuncs.add(field1);
+        this.grouper.fieldOrFuncs.add(field2);
+        return this;
+    }
+
+    public Query groupBy(String field1, String field2, String field3) {
+        this.grouper.fieldOrFuncs.add(field1);
+        this.grouper.fieldOrFuncs.add(field2);
+        this.grouper.fieldOrFuncs.add(field3);
+        return this;
+    }
+
+    public Query groupBy(String field1, String field2, String field3, String field4) {
+        this.grouper.fieldOrFuncs.add(field1);
+        this.grouper.fieldOrFuncs.add(field2);
+        this.grouper.fieldOrFuncs.add(field3);
+        this.grouper.fieldOrFuncs.add(field4);
+        return this;
+    }
+
+    public Query groupBy(String field1, String field2, String field3, String field4, String field5) {
+        this.grouper.fieldOrFuncs.add(field1);
+        this.grouper.fieldOrFuncs.add(field2);
+        this.grouper.fieldOrFuncs.add(field3);
+        this.grouper.fieldOrFuncs.add(field4);
+        this.grouper.fieldOrFuncs.add(field5);
+        return this;
+    }
+
+    // SObjectField
     public Query groupBy(SObjectField field) {
         this.grouper.fieldOrFuncs.add(field);
         return this;
@@ -1460,6 +1543,7 @@ public abstract class Query implements Querable {
         return this;
     }
 
+    // Function
     public Query groupBy(DateFunction func) {
         this.grouper.fieldOrFuncs.add(func);
         return this;
@@ -4470,6 +4554,12 @@ public abstract class Query implements Querable {
         Query nullsLast();
 
         // GROUP BY
+
+        Query groupBy(String field);
+        Query groupBy(String field1, String field2);
+        Query groupBy(String field1, String field2, String field3);
+        Query groupBy(String field1, String field2, String field3, String field4);
+        Query groupBy(String field1, String field2, String field3, String field4, String field5);
 
         Query groupBy(SObjectField field);
         Query groupBy(SObjectField field1, SObjectField field2);

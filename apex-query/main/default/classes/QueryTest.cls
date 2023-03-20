@@ -3553,6 +3553,415 @@ public with sharing class QueryTest extends Query {
     // ================
     // #region Order By
 
+    @isTest
+    static void testKeywork_OrderBy() {
+        Query accountQuery;
+
+        // Mixing
+        accountQuery = Query.of(Account.SObjectType)
+            .orderBy(new List<Object>{ Account.Name, 'Name', MAX(Account.Name) });
+        Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name, MAX(Name)', accountQuery.build());
+
+        // SObjectField
+        accountQuery = Query.of(Account.SObjectType).orderBy(Account.Name);
+        Assert.areEqual('SELECT Id FROM Account ORDER BY Name', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).orderBy(Account.Name, Account.Name);
+        Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).orderBy(Account.Name, Account.Name, Account.Name);
+        Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name, Name', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).orderBy(Account.Name, Account.Name, Account.Name, Account.Name);
+        Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name, Name, Name', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType)
+            .orderBy(Account.Name, Account.Name, Account.Name, Account.Name, Account.Name);
+        Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name, Name, Name, Name', accountQuery.build());
+
+        // String
+        accountQuery = Query.of(Account.SObjectType).orderBy('Name');
+        Assert.areEqual('SELECT Id FROM Account ORDER BY Name', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).orderBy('Name', 'Name');
+        Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).orderBy('Name', 'Name', 'Name');
+        Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name, Name', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).orderBy('Name', 'Name', 'Name', 'Name');
+        Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name, Name, Name', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).orderBy('Name', 'Name', 'Name', 'Name', 'Name');
+        Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name, Name, Name, Name', accountQuery.build());
+
+        // Function
+        accountQuery = Query.of(Account.SObjectType).orderBy(MAX(Account.Name));
+        Assert.areEqual('SELECT Id FROM Account ORDER BY MAX(Name)', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).orderBy(MAX(Account.Name), MAX(Account.Name));
+        Assert.areEqual('SELECT Id FROM Account ORDER BY MAX(Name), MAX(Name)', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).orderBy(MAX(Account.Name), MAX(Account.Name), MAX(Account.Name));
+        Assert.areEqual('SELECT Id FROM Account ORDER BY MAX(Name), MAX(Name), MAX(Name)', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType)
+            .orderBy(MAX(Account.Name), MAX(Account.Name), MAX(Account.Name), MAX(Account.Name));
+        Assert.areEqual(
+            'SELECT Id FROM Account ORDER BY MAX(Name), MAX(Name), MAX(Name), MAX(Name)',
+            accountQuery.build()
+        );
+        accountQuery = Query.of(Account.SObjectType)
+            .orderBy(MAX(Account.Name), MAX(Account.Name), MAX(Account.Name), MAX(Account.Name), MAX(Account.Name));
+        Assert.areEqual(
+            'SELECT Id FROM Account ORDER BY MAX(Name), MAX(Name), MAX(Name), MAX(Name), MAX(Name)',
+            accountQuery.build()
+        );
+    }
+
+    @isTest
+    static void testKeywork_OrderBy_Orderer() {
+        Query accountQuery;
+        Query.Orderer orderer;
+
+        // Mixing
+        orderer = orderer().add(new List<Object>{ Account.Name, 'Name', MAX(Account.Name) });
+        accountQuery = Query.of(Account.SObjectType).orderBy(orderer);
+        Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name, MAX(Name)', accountQuery.build());
+
+        // SObjectField
+        orderer = orderer().add(Account.Name);
+        accountQuery = Query.of(Account.SObjectType).orderBy(orderer);
+        Assert.areEqual('SELECT Id FROM Account ORDER BY Name', accountQuery.build());
+
+        orderer = orderer().add(Account.Name, Account.Name);
+        accountQuery = Query.of(Account.SObjectType).orderBy(orderer);
+        Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name', accountQuery.build());
+
+        orderer = orderer().add(Account.Name, Account.Name, Account.Name);
+        accountQuery = Query.of(Account.SObjectType).orderBy(orderer);
+        Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name, Name', accountQuery.build());
+
+        orderer = orderer().add(Account.Name, Account.Name, Account.Name, Account.Name);
+        accountQuery = Query.of(Account.SObjectType).orderBy(orderer);
+        Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name, Name, Name', accountQuery.build());
+
+        orderer = orderer().add(Account.Name, Account.Name, Account.Name, Account.Name, Account.Name);
+        accountQuery = Query.of(Account.SObjectType).orderBy(orderer);
+        Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name, Name, Name, Name', accountQuery.build());
+
+        // String
+        orderer = orderer().add('Name');
+        accountQuery = Query.of(Account.SObjectType).orderBy(orderer);
+        Assert.areEqual('SELECT Id FROM Account ORDER BY Name', accountQuery.build());
+
+        orderer = orderer().add('Name', 'Name');
+        accountQuery = Query.of(Account.SObjectType).orderBy(orderer);
+        Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name', accountQuery.build());
+
+        orderer = orderer().add('Name', 'Name', 'Name');
+        accountQuery = Query.of(Account.SObjectType).orderBy(orderer);
+        Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name, Name', accountQuery.build());
+
+        orderer = orderer().add('Name', 'Name', 'Name', 'Name');
+        accountQuery = Query.of(Account.SObjectType).orderBy(orderer);
+        Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name, Name, Name', accountQuery.build());
+
+        orderer = orderer().add('Name', 'Name', 'Name', 'Name', 'Name');
+        accountQuery = Query.of(Account.SObjectType).orderBy(orderer);
+        Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name, Name, Name, Name', accountQuery.build());
+
+        // Function
+        orderer = orderer().add(MAX(Account.Name));
+        accountQuery = Query.of(Account.SObjectType).orderBy(orderer);
+        Assert.areEqual('SELECT Id FROM Account ORDER BY MAX(Name)', accountQuery.build());
+
+        orderer = orderer().add(MAX(Account.Name), MAX(Account.Name));
+        accountQuery = Query.of(Account.SObjectType).orderBy(orderer);
+        Assert.areEqual('SELECT Id FROM Account ORDER BY MAX(Name), MAX(Name)', accountQuery.build());
+
+        orderer = orderer().add(MAX(Account.Name), MAX(Account.Name), MAX(Account.Name));
+        accountQuery = Query.of(Account.SObjectType).orderBy(orderer);
+        Assert.areEqual('SELECT Id FROM Account ORDER BY MAX(Name), MAX(Name), MAX(Name)', accountQuery.build());
+
+        orderer = orderer().add(MAX(Account.Name), MAX(Account.Name), MAX(Account.Name), MAX(Account.Name));
+        accountQuery = Query.of(Account.SObjectType).orderBy(orderer);
+        Assert.areEqual(
+            'SELECT Id FROM Account ORDER BY MAX(Name), MAX(Name), MAX(Name), MAX(Name)',
+            accountQuery.build()
+        );
+
+        orderer = orderer()
+            .add(MAX(Account.Name), MAX(Account.Name), MAX(Account.Name), MAX(Account.Name), MAX(Account.Name));
+        accountQuery = Query.of(Account.SObjectType).orderBy(orderer);
+        Assert.areEqual(
+            'SELECT Id FROM Account ORDER BY MAX(Name), MAX(Name), MAX(Name), MAX(Name), MAX(Name)',
+            accountQuery.build()
+        );
+    }
+
+    @isTest
+    static void testKeywork_OrderBy_Others() {
+        Query accountQuery;
+        Query.Orderer orderer;
+
+        orderer = orderer().add(Account.Name, Account.Name).ascending().nullsFirst();
+        accountQuery = Query.of(Account.SObjectType).orderBy(orderer);
+        Assert.areEqual(
+            'SELECT Id FROM Account ORDER BY Name ASC NULLS FIRST, Name ASC NULLS FIRST',
+            accountQuery.build()
+        );
+
+        orderer = orderer().add(Account.Name, Account.Name).descending().nullsLast();
+        accountQuery = Query.of(Account.SObjectType).orderBy(orderer);
+        Assert.areEqual(
+            'SELECT Id FROM Account ORDER BY Name DESC NULLS LAST, Name DESC NULLS LAST',
+            accountQuery.build()
+        );
+
+        orderer = orderer()
+            .add(Account.Name, Account.Name)
+            .ascending()
+            .nullsFirst()
+            .add(Account.Name, Account.Name)
+            .descending()
+            .nullsLast();
+        accountQuery = Query.of(Account.SObjectType).orderBy(orderer);
+        Assert.areEqual(
+            'SELECT Id FROM Account ORDER BY Name ASC NULLS FIRST, Name ASC NULLS FIRST, Name DESC NULLS LAST, Name DESC NULLS LAST',
+            accountQuery.build()
+        );
+
+        accountQuery = Query.of(Account.SObjectType).orderBy(Account.Name, Account.Name).ascending().nullsFirst();
+        Assert.areEqual(
+            'SELECT Id FROM Account ORDER BY Name ASC NULLS FIRST, Name ASC NULLS FIRST',
+            accountQuery.build()
+        );
+
+        accountQuery = Query.of(Account.SObjectType).orderBy(Account.Name, Account.Name).descending().nullsLast();
+        Assert.areEqual(
+            'SELECT Id FROM Account ORDER BY Name DESC NULLS LAST, Name DESC NULLS LAST',
+            accountQuery.build()
+        );
+
+        accountQuery = Query.of(Account.SObjectType)
+            .orderBy(Account.Name, Account.Name)
+            .ascending()
+            .nullsFirst()
+            .orderBy(Account.Name, Account.Name)
+            .descending()
+            .nullsLast();
+        Assert.areEqual(
+            'SELECT Id FROM Account ORDER BY Name ASC NULLS FIRST, Name ASC NULLS FIRST, Name DESC NULLS LAST, Name DESC NULLS LAST',
+            accountQuery.build()
+        );
+    }
+
+    // #endregion
+    // ================
+
+    // ================
+    // #region Group By
+
+    @isTest
+    static void testKeywork_GroupBy() {
+        Query accountQuery;
+
+        // Mixing
+        accountQuery = Query.of(Account.SObjectType)
+            .groupBy(new List<Object>{ Account.Name, 'Name', CALENDAR_MONTH(Account.CreatedDate) });
+        Assert.areEqual(
+            'SELECT Id FROM Account GROUP BY Name, Name, CALENDAR_MONTH(CreatedDate)',
+            accountQuery.build()
+        );
+
+        // SObjectField
+        accountQuery = Query.of(Account.SObjectType).groupBy(Account.Name);
+        Assert.areEqual('SELECT Id FROM Account GROUP BY Name', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).groupBy(Account.Name, Account.Name);
+        Assert.areEqual('SELECT Id FROM Account GROUP BY Name, Name', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).groupBy(Account.Name, Account.Name, Account.Name);
+        Assert.areEqual('SELECT Id FROM Account GROUP BY Name, Name, Name', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).groupBy(Account.Name, Account.Name, Account.Name, Account.Name);
+        Assert.areEqual('SELECT Id FROM Account GROUP BY Name, Name, Name, Name', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType)
+            .groupBy(Account.Name, Account.Name, Account.Name, Account.Name, Account.Name);
+        Assert.areEqual('SELECT Id FROM Account GROUP BY Name, Name, Name, Name, Name', accountQuery.build());
+
+        // String
+        accountQuery = Query.of(Account.SObjectType).groupBy('Name');
+        Assert.areEqual('SELECT Id FROM Account GROUP BY Name', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).groupBy('Name', 'Name');
+        Assert.areEqual('SELECT Id FROM Account GROUP BY Name, Name', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).groupBy('Name', 'Name', 'Name');
+        Assert.areEqual('SELECT Id FROM Account GROUP BY Name, Name, Name', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).groupBy('Name', 'Name', 'Name', 'Name');
+        Assert.areEqual('SELECT Id FROM Account GROUP BY Name, Name, Name, Name', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).groupBy('Name', 'Name', 'Name', 'Name', 'Name');
+        Assert.areEqual('SELECT Id FROM Account GROUP BY Name, Name, Name, Name, Name', accountQuery.build());
+
+        // Function
+        accountQuery = Query.of(Account.SObjectType).groupBy(CALENDAR_MONTH(Account.CreatedDate));
+        Assert.areEqual('SELECT Id FROM Account GROUP BY CALENDAR_MONTH(CreatedDate)', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType)
+            .groupBy(CALENDAR_MONTH(Account.CreatedDate), CALENDAR_MONTH(Account.CreatedDate));
+        Assert.areEqual(
+            'SELECT Id FROM Account GROUP BY CALENDAR_MONTH(CreatedDate), CALENDAR_MONTH(CreatedDate)',
+            accountQuery.build()
+        );
+
+        accountQuery = Query.of(Account.SObjectType)
+            .groupBy(
+                CALENDAR_MONTH(Account.CreatedDate),
+                CALENDAR_MONTH(Account.CreatedDate),
+                CALENDAR_MONTH(Account.CreatedDate)
+            );
+        Assert.areEqual(
+            'SELECT Id FROM Account GROUP BY CALENDAR_MONTH(CreatedDate), CALENDAR_MONTH(CreatedDate), CALENDAR_MONTH(CreatedDate)',
+            accountQuery.build()
+        );
+
+        accountQuery = Query.of(Account.SObjectType)
+            .groupBy(
+                CALENDAR_MONTH(Account.CreatedDate),
+                CALENDAR_MONTH(Account.CreatedDate),
+                CALENDAR_MONTH(Account.CreatedDate),
+                CALENDAR_MONTH(Account.CreatedDate)
+            );
+        Assert.areEqual(
+            'SELECT Id FROM Account GROUP BY CALENDAR_MONTH(CreatedDate), CALENDAR_MONTH(CreatedDate), CALENDAR_MONTH(CreatedDate), CALENDAR_MONTH(CreatedDate)',
+            accountQuery.build()
+        );
+        accountQuery = Query.of(Account.SObjectType)
+            .groupBy(
+                CALENDAR_MONTH(Account.CreatedDate),
+                CALENDAR_MONTH(Account.CreatedDate),
+                CALENDAR_MONTH(Account.CreatedDate),
+                CALENDAR_MONTH(Account.CreatedDate),
+                CALENDAR_MONTH(Account.CreatedDate)
+            );
+        Assert.areEqual(
+            'SELECT Id FROM Account GROUP BY CALENDAR_MONTH(CreatedDate), CALENDAR_MONTH(CreatedDate), CALENDAR_MONTH(CreatedDate), CALENDAR_MONTH(CreatedDate), CALENDAR_MONTH(CreatedDate)',
+            accountQuery.build()
+        );
+    }
+
+    @isTest
+    static void testKeywork_GroupBy_Grouper() {
+        Query accountQuery;
+        Query.Grouper grouper;
+
+        // Mixing
+        grouper = grouper().add(new List<Object>{ Account.Name, 'Name', CALENDAR_MONTH(Account.CreatedDate) });
+        accountQuery = Query.of(Account.SObjectType).groupBy(grouper);
+        Assert.areEqual(
+            'SELECT Id FROM Account GROUP BY Name, Name, CALENDAR_MONTH(CreatedDate)',
+            accountQuery.build()
+        );
+
+        // SObjectField
+        grouper = grouper().add(Account.Name);
+        accountQuery = Query.of(Account.SObjectType).groupBy(grouper);
+        Assert.areEqual('SELECT Id FROM Account GROUP BY Name', accountQuery.build());
+
+        grouper = grouper().add(Account.Name, Account.Name);
+        accountQuery = Query.of(Account.SObjectType).groupBy(grouper);
+        Assert.areEqual('SELECT Id FROM Account GROUP BY Name, Name', accountQuery.build());
+
+        grouper = grouper().add(Account.Name, Account.Name, Account.Name);
+        accountQuery = Query.of(Account.SObjectType).groupBy(grouper);
+        Assert.areEqual('SELECT Id FROM Account GROUP BY Name, Name, Name', accountQuery.build());
+
+        grouper = grouper().add(Account.Name, Account.Name, Account.Name, Account.Name);
+        accountQuery = Query.of(Account.SObjectType).groupBy(grouper);
+        Assert.areEqual('SELECT Id FROM Account GROUP BY Name, Name, Name, Name', accountQuery.build());
+
+        grouper = grouper().add(Account.Name, Account.Name, Account.Name, Account.Name, Account.Name);
+        accountQuery = Query.of(Account.SObjectType).groupBy(grouper);
+        Assert.areEqual('SELECT Id FROM Account GROUP BY Name, Name, Name, Name, Name', accountQuery.build());
+
+        // String
+        grouper = grouper().add('Name');
+        accountQuery = Query.of(Account.SObjectType).groupBy(grouper);
+        Assert.areEqual('SELECT Id FROM Account GROUP BY Name', accountQuery.build());
+
+        grouper = grouper().add('Name', 'Name');
+        accountQuery = Query.of(Account.SObjectType).groupBy(grouper);
+        Assert.areEqual('SELECT Id FROM Account GROUP BY Name, Name', accountQuery.build());
+
+        grouper = grouper().add('Name', 'Name', 'Name');
+        accountQuery = Query.of(Account.SObjectType).groupBy(grouper);
+        Assert.areEqual('SELECT Id FROM Account GROUP BY Name, Name, Name', accountQuery.build());
+
+        grouper = grouper().add('Name', 'Name', 'Name', 'Name');
+        accountQuery = Query.of(Account.SObjectType).groupBy(grouper);
+        Assert.areEqual('SELECT Id FROM Account GROUP BY Name, Name, Name, Name', accountQuery.build());
+
+        grouper = grouper().add('Name', 'Name', 'Name', 'Name', 'Name');
+        accountQuery = Query.of(Account.SObjectType).groupBy(grouper);
+        Assert.areEqual('SELECT Id FROM Account GROUP BY Name, Name, Name, Name, Name', accountQuery.build());
+
+        // Function
+        grouper = grouper().add(CALENDAR_MONTH(Account.CreatedDate));
+        accountQuery = Query.of(Account.SObjectType).groupBy(grouper);
+        Assert.areEqual('SELECT Id FROM Account GROUP BY CALENDAR_MONTH(CreatedDate)', accountQuery.build());
+
+        grouper = grouper().add(CALENDAR_MONTH(Account.CreatedDate), CALENDAR_MONTH(Account.CreatedDate));
+        accountQuery = Query.of(Account.SObjectType).groupBy(grouper);
+        Assert.areEqual(
+            'SELECT Id FROM Account GROUP BY CALENDAR_MONTH(CreatedDate), CALENDAR_MONTH(CreatedDate)',
+            accountQuery.build()
+        );
+
+        grouper = grouper()
+            .add(
+                CALENDAR_MONTH(Account.CreatedDate),
+                CALENDAR_MONTH(Account.CreatedDate),
+                CALENDAR_MONTH(Account.CreatedDate)
+            );
+        accountQuery = Query.of(Account.SObjectType).groupBy(grouper);
+        Assert.areEqual(
+            'SELECT Id FROM Account GROUP BY CALENDAR_MONTH(CreatedDate), CALENDAR_MONTH(CreatedDate), CALENDAR_MONTH(CreatedDate)',
+            accountQuery.build()
+        );
+
+        grouper = grouper()
+            .add(
+                CALENDAR_MONTH(Account.CreatedDate),
+                CALENDAR_MONTH(Account.CreatedDate),
+                CALENDAR_MONTH(Account.CreatedDate),
+                CALENDAR_MONTH(Account.CreatedDate)
+            );
+        accountQuery = Query.of(Account.SObjectType).groupBy(grouper);
+        Assert.areEqual(
+            'SELECT Id FROM Account GROUP BY CALENDAR_MONTH(CreatedDate), CALENDAR_MONTH(CreatedDate), CALENDAR_MONTH(CreatedDate), CALENDAR_MONTH(CreatedDate)',
+            accountQuery.build()
+        );
+
+        grouper = grouper()
+            .add(
+                CALENDAR_MONTH(Account.CreatedDate),
+                CALENDAR_MONTH(Account.CreatedDate),
+                CALENDAR_MONTH(Account.CreatedDate),
+                CALENDAR_MONTH(Account.CreatedDate),
+                CALENDAR_MONTH(Account.CreatedDate)
+            );
+        accountQuery = Query.of(Account.SObjectType).groupBy(grouper);
+        Assert.areEqual(
+            'SELECT Id FROM Account GROUP BY CALENDAR_MONTH(CreatedDate), CALENDAR_MONTH(CreatedDate), CALENDAR_MONTH(CreatedDate), CALENDAR_MONTH(CreatedDate), CALENDAR_MONTH(CreatedDate)',
+            accountQuery.build()
+        );
+    }
+
     // #endregion
     // ================
 
