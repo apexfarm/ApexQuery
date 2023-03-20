@@ -1639,7 +1639,7 @@ public abstract class Query implements Querable {
         }
 
         public virtual void build(List<String> fragments, Map<String, Object> tmpVars) {
-            if (this.filters.size() == 0) {
+            if (this.filters.isEmpty()) {
                 return;
             }
 

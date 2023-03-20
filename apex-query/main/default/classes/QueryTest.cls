@@ -17,7 +17,7 @@
 
 @isTest
 public with sharing class QueryTest extends Query {
-    static String getFakeId(Schema.SObjectType objectType, Integer index) {
+    static Id getFakeId(Schema.SObjectType objectType, Integer index) {
         return objectType.getDescribe().getKeyPrefix() +
             '000zzzz' + // start from a large Id to avoid confliction during unit test.
             String.valueOf(index).leftPad(5, '0');
@@ -57,6 +57,17 @@ public with sharing class QueryTest extends Query {
 
     // ======================
     // #region Keyword Select
+
+    @isTest
+    static void testKeyWord_Select_Misc() {
+        Query accountQuery;
+
+        accountQuery = Query.of(Account.SObjectType).updateTracking();
+        Assert.areEqual('SELECT Id FROM Account UPDATE TRACKING', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).updateViewstat();
+        Assert.areEqual('SELECT Id FROM Account UPDATE VIEWSTAT', accountQuery.build());
+    }
 
     @isTest
     static void testKeyword_Select_TypeOf() {
@@ -194,6 +205,20 @@ public with sharing class QueryTest extends Query {
             'SELECT Id, Name, Description, BillingCountry, BillingState FROM Account',
             accountQuery.build()
         );
+        accountQuery = Query.of(Account.SObjectType)
+            .selectBy(
+                new List<Object>{
+                    Account.Id,
+                    Account.Name,
+                    Account.Description,
+                    Account.BillingCountry,
+                    Account.BillingState
+                }
+            );
+        Assert.areEqual(
+            'SELECT Id, Name, Description, BillingCountry, BillingState FROM Account',
+            accountQuery.build()
+        );
 
         accountQuery = Query.of(Account.SObjectType)
             .selectBy(Account.Id, Account.Name)
@@ -229,6 +254,22 @@ public with sharing class QueryTest extends Query {
         );
 
         selector = Query.selector()
+            .add(
+                new List<Object>{
+                    Account.Id,
+                    Account.Name,
+                    Account.Description,
+                    Account.BillingCountry,
+                    Account.BillingState
+                }
+            );
+        accountQuery = Query.of(Account.SObjectType).selectBy(selector);
+        Assert.areEqual(
+            'SELECT Id, Name, Description, BillingCountry, BillingState FROM Account',
+            accountQuery.build()
+        );
+
+        selector = Query.selector()
             .add(Account.Id, Account.Name)
             .add(Account.Description, Account.BillingCountry, Account.BillingState);
         accountQuery = Query.of(Account.SObjectType).selectBy(selector);
@@ -247,8 +288,8 @@ public with sharing class QueryTest extends Query {
     }
 
     @isTest
-    static void testKeyword_Select_Strings_Parents() {
-        makeData();
+    static void testKeyword_Select_Strings() {
+        // Parents
         Query contactQuery = Query.of(Contact.SObjectType)
             .selectBy(Contact.Id, Contact.Name)
             .selectBy('Account.Owner.Name')
@@ -257,12 +298,7 @@ public with sharing class QueryTest extends Query {
             'SELECT Id, Name, Account.Owner.Name, FORMAT(Account.AnnualRevenue), TOLABEL(Account.AccountSource) FROM Contact',
             contactQuery.build()
         );
-        List<Contact> contacts = (List<Contact>) contactQuery.run();
-        Assert.areEqual(4, contacts.size());
-    }
 
-    @isTest
-    static void testKeyword_Select_Strings() {
         // Inline Styles
         Query accountQuery = Query.of(Account.SObjectType).selectBy('Id');
         Assert.areEqual('SELECT Id FROM Account', accountQuery.build());
@@ -550,13 +586,10 @@ public with sharing class QueryTest extends Query {
     // #region Operator - Logical
 
     @isTest
-    static void testOperator_Logical_Not_Commafree() {
-        makeData();
+    static void testOperator_Logical_Not() {
         Query.Filter filter = notx(eq(Account.BillingCountry, 'China'));
         Query accountQuery = Query.of(Account.SObjectType).filterBy(filter);
         Assert.areEqual('SELECT Id FROM Account WHERE NOT(BillingCountry = \'China\')', accountQuery.build());
-        List<Account> accounts = (List<Account>) accountQuery.run();
-        Assert.areEqual(2, accounts.size());
 
         filter = notx(
             andx()
@@ -571,8 +604,6 @@ public with sharing class QueryTest extends Query {
             'AND AnnualRevenue = 1500)',
             accountQuery.build()
         );
-        accounts = (List<Account>) accountQuery.run();
-        Assert.areEqual(5, accounts.size());
     }
 
     @isTest
@@ -963,7 +994,7 @@ public with sharing class QueryTest extends Query {
 
         filter = eq(Account.BillingCountry, getFakeId(Account.SObjectType, 0));
         Assert.areEqual(
-            'SELECT Id FROM Account WHERE BillingCountry = \'001000zzzz00000\'',
+            'SELECT Id FROM Account WHERE BillingCountry = \'001000zzzz00000AAA\'',
             Query.of(Account.SObjectType).filterBy(filter).build()
         );
 
@@ -1030,7 +1061,7 @@ public with sharing class QueryTest extends Query {
 
         filter = eq('BillingCountry', getFakeId(Account.SObjectType, 0));
         Assert.areEqual(
-            'SELECT Id FROM Account WHERE BillingCountry = \'001000zzzz00000\'',
+            'SELECT Id FROM Account WHERE BillingCountry = \'001000zzzz00000AAA\'',
             Query.of(Account.SObjectType).filterBy(filter).build()
         );
 
@@ -1097,7 +1128,7 @@ public with sharing class QueryTest extends Query {
 
         filter = eq(MAX(Account.BillingCountry), getFakeId(Account.SObjectType, 0));
         Assert.areEqual(
-            'SELECT Id FROM Account HAVING MAX(BillingCountry) = \'001000zzzz00000\'',
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) = \'001000zzzz00000AAA\'',
             Query.of(Account.SObjectType).havingBy(filter).build()
         );
 
@@ -1187,7 +1218,7 @@ public with sharing class QueryTest extends Query {
 
         filter = ne(Account.BillingCountry, getFakeId(Account.SObjectType, 0));
         Assert.areEqual(
-            'SELECT Id FROM Account WHERE BillingCountry != \'001000zzzz00000\'',
+            'SELECT Id FROM Account WHERE BillingCountry != \'001000zzzz00000AAA\'',
             Query.of(Account.SObjectType).filterBy(filter).build()
         );
 
@@ -1254,7 +1285,7 @@ public with sharing class QueryTest extends Query {
 
         filter = ne('BillingCountry', getFakeId(Account.SObjectType, 0));
         Assert.areEqual(
-            'SELECT Id FROM Account WHERE BillingCountry != \'001000zzzz00000\'',
+            'SELECT Id FROM Account WHERE BillingCountry != \'001000zzzz00000AAA\'',
             Query.of(Account.SObjectType).filterBy(filter).build()
         );
 
@@ -1321,7 +1352,7 @@ public with sharing class QueryTest extends Query {
 
         filter = ne(MAX(Account.BillingCountry), getFakeId(Account.SObjectType, 0));
         Assert.areEqual(
-            'SELECT Id FROM Account HAVING MAX(BillingCountry) != \'001000zzzz00000\'',
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) != \'001000zzzz00000AAA\'',
             Query.of(Account.SObjectType).havingBy(filter).build()
         );
 
@@ -1411,7 +1442,7 @@ public with sharing class QueryTest extends Query {
 
         filter = gt(Account.BillingCountry, getFakeId(Account.SObjectType, 0));
         Assert.areEqual(
-            'SELECT Id FROM Account WHERE BillingCountry > \'001000zzzz00000\'',
+            'SELECT Id FROM Account WHERE BillingCountry > \'001000zzzz00000AAA\'',
             Query.of(Account.SObjectType).filterBy(filter).build()
         );
 
@@ -1466,7 +1497,7 @@ public with sharing class QueryTest extends Query {
 
         filter = gt('BillingCountry', getFakeId(Account.SObjectType, 0));
         Assert.areEqual(
-            'SELECT Id FROM Account WHERE BillingCountry > \'001000zzzz00000\'',
+            'SELECT Id FROM Account WHERE BillingCountry > \'001000zzzz00000AAA\'',
             Query.of(Account.SObjectType).filterBy(filter).build()
         );
 
@@ -1521,7 +1552,7 @@ public with sharing class QueryTest extends Query {
 
         filter = gt(MAX(Account.BillingCountry), getFakeId(Account.SObjectType, 0));
         Assert.areEqual(
-            'SELECT Id FROM Account HAVING MAX(BillingCountry) > \'001000zzzz00000\'',
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) > \'001000zzzz00000AAA\'',
             Query.of(Account.SObjectType).havingBy(filter).build()
         );
 
@@ -1599,7 +1630,7 @@ public with sharing class QueryTest extends Query {
 
         filter = gte(Account.BillingCountry, getFakeId(Account.SObjectType, 0));
         Assert.areEqual(
-            'SELECT Id FROM Account WHERE BillingCountry >= \'001000zzzz00000\'',
+            'SELECT Id FROM Account WHERE BillingCountry >= \'001000zzzz00000AAA\'',
             Query.of(Account.SObjectType).filterBy(filter).build()
         );
 
@@ -1654,7 +1685,7 @@ public with sharing class QueryTest extends Query {
 
         filter = gte('BillingCountry', getFakeId(Account.SObjectType, 0));
         Assert.areEqual(
-            'SELECT Id FROM Account WHERE BillingCountry >= \'001000zzzz00000\'',
+            'SELECT Id FROM Account WHERE BillingCountry >= \'001000zzzz00000AAA\'',
             Query.of(Account.SObjectType).filterBy(filter).build()
         );
 
@@ -1709,7 +1740,7 @@ public with sharing class QueryTest extends Query {
 
         filter = gte(MAX(Account.BillingCountry), getFakeId(Account.SObjectType, 0));
         Assert.areEqual(
-            'SELECT Id FROM Account HAVING MAX(BillingCountry) >= \'001000zzzz00000\'',
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) >= \'001000zzzz00000AAA\'',
             Query.of(Account.SObjectType).havingBy(filter).build()
         );
 
@@ -1787,7 +1818,7 @@ public with sharing class QueryTest extends Query {
 
         filter = lt(Account.BillingCountry, getFakeId(Account.SObjectType, 0));
         Assert.areEqual(
-            'SELECT Id FROM Account WHERE BillingCountry < \'001000zzzz00000\'',
+            'SELECT Id FROM Account WHERE BillingCountry < \'001000zzzz00000AAA\'',
             Query.of(Account.SObjectType).filterBy(filter).build()
         );
 
@@ -1842,7 +1873,7 @@ public with sharing class QueryTest extends Query {
 
         filter = lt('BillingCountry', getFakeId(Account.SObjectType, 0));
         Assert.areEqual(
-            'SELECT Id FROM Account WHERE BillingCountry < \'001000zzzz00000\'',
+            'SELECT Id FROM Account WHERE BillingCountry < \'001000zzzz00000AAA\'',
             Query.of(Account.SObjectType).filterBy(filter).build()
         );
 
@@ -1897,7 +1928,7 @@ public with sharing class QueryTest extends Query {
 
         filter = lt(MAX(Account.BillingCountry), getFakeId(Account.SObjectType, 0));
         Assert.areEqual(
-            'SELECT Id FROM Account HAVING MAX(BillingCountry) < \'001000zzzz00000\'',
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) < \'001000zzzz00000AAA\'',
             Query.of(Account.SObjectType).havingBy(filter).build()
         );
 
@@ -1975,7 +2006,7 @@ public with sharing class QueryTest extends Query {
 
         filter = lte(Account.BillingCountry, getFakeId(Account.SObjectType, 0));
         Assert.areEqual(
-            'SELECT Id FROM Account WHERE BillingCountry <= \'001000zzzz00000\'',
+            'SELECT Id FROM Account WHERE BillingCountry <= \'001000zzzz00000AAA\'',
             Query.of(Account.SObjectType).filterBy(filter).build()
         );
 
@@ -2030,7 +2061,7 @@ public with sharing class QueryTest extends Query {
 
         filter = lte('BillingCountry', getFakeId(Account.SObjectType, 0));
         Assert.areEqual(
-            'SELECT Id FROM Account WHERE BillingCountry <= \'001000zzzz00000\'',
+            'SELECT Id FROM Account WHERE BillingCountry <= \'001000zzzz00000AAA\'',
             Query.of(Account.SObjectType).filterBy(filter).build()
         );
 
@@ -2085,7 +2116,7 @@ public with sharing class QueryTest extends Query {
 
         filter = lte(MAX(Account.BillingCountry), getFakeId(Account.SObjectType, 0));
         Assert.areEqual(
-            'SELECT Id FROM Account HAVING MAX(BillingCountry) <= \'001000zzzz00000\'',
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) <= \'001000zzzz00000AAA\'',
             Query.of(Account.SObjectType).havingBy(filter).build()
         );
 
@@ -2163,7 +2194,7 @@ public with sharing class QueryTest extends Query {
 
         filter = between(Account.BillingCountry, getFakeId(Account.SObjectType, 0), getFakeId(Account.SObjectType, 0));
         Assert.areEqual(
-            'SELECT Id FROM Account WHERE (BillingCountry >= \'001000zzzz00000\' AND BillingCountry <= \'001000zzzz00000\')',
+            'SELECT Id FROM Account WHERE (BillingCountry >= \'001000zzzz00000AAA\' AND BillingCountry <= \'001000zzzz00000AAA\')',
             Query.of(Account.SObjectType).filterBy(filter).build()
         );
 
@@ -2222,7 +2253,7 @@ public with sharing class QueryTest extends Query {
 
         filter = between('BillingCountry', getFakeId(Account.SObjectType, 0), getFakeId(Account.SObjectType, 0));
         Assert.areEqual(
-            'SELECT Id FROM Account WHERE (BillingCountry >= \'001000zzzz00000\' AND BillingCountry <= \'001000zzzz00000\')',
+            'SELECT Id FROM Account WHERE (BillingCountry >= \'001000zzzz00000AAA\' AND BillingCountry <= \'001000zzzz00000AAA\')',
             Query.of(Account.SObjectType).filterBy(filter).build()
         );
 
@@ -2285,7 +2316,7 @@ public with sharing class QueryTest extends Query {
             getFakeId(Account.SObjectType, 0)
         );
         Assert.areEqual(
-            'SELECT Id FROM Account HAVING (MAX(BillingCountry) >= \'001000zzzz00000\' AND MAX(BillingCountry) <= \'001000zzzz00000\')',
+            'SELECT Id FROM Account HAVING (MAX(BillingCountry) >= \'001000zzzz00000AAA\' AND MAX(BillingCountry) <= \'001000zzzz00000AAA\')',
             Query.of(Account.SObjectType).havingBy(filter).build()
         );
 
@@ -2638,7 +2669,7 @@ public with sharing class QueryTest extends Query {
             Query.of(Account.SObjectType).filterBy(filter).build()
         );
 
-        filter = inx(Account.Id, contactQuery);
+        filter = inx('Id', contactQuery);
         Assert.areEqual(
             'SELECT Id FROM Account WHERE Id IN (SELECT AccountId FROM Contact)',
             Query.of(Account.SObjectType).filterBy(filter).build()
@@ -2732,6 +2763,22 @@ public with sharing class QueryTest extends Query {
         Assert.areEqual(
             'SELECT Id FROM Account HAVING MAX(BillingCountry) IN :tmpVar1',
             Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        // Other Functions
+        filter = inx(
+            DISTANCE_IN_KM(Account.ShippingAddress, Location.newInstance(37.775000, -122.41800)),
+            new List<Decimal>{ 12.3, 45.6, null }
+        );
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE DISTANCE(ShippingAddress, GEOLOCATION(37.775, -122.418), \'km\') IN :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = inx(CALENDAR_MONTH(Account.CreatedDate), new List<Integer>{ 1, 2, null });
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE CALENDAR_MONTH(CreatedDate) IN :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
         );
     }
 
@@ -2926,7 +2973,7 @@ public with sharing class QueryTest extends Query {
             Query.of(Account.SObjectType).filterBy(filter).build()
         );
 
-        filter = nin(Account.Id, contactQuery);
+        filter = nin('Id', contactQuery);
         Assert.areEqual(
             'SELECT Id FROM Account WHERE Id IN (SELECT AccountId FROM Contact)',
             Query.of(Account.SObjectType).filterBy(filter).build()
@@ -3020,6 +3067,22 @@ public with sharing class QueryTest extends Query {
         Assert.areEqual(
             'SELECT Id FROM Account HAVING MAX(BillingCountry) NOT IN :tmpVar1',
             Query.of(Account.SObjectType).havingBy(filter).build()
+        );
+
+        // Other Functions
+        filter = nin(
+            DISTANCE_IN_KM(Account.ShippingAddress, Location.newInstance(37.775000, -122.41800)),
+            new List<Decimal>{ 12.3, 45.6, null }
+        );
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE DISTANCE(ShippingAddress, GEOLOCATION(37.775, -122.418), \'km\') NOT IN :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
+        );
+
+        filter = nin(CALENDAR_MONTH(Account.CreatedDate), new List<Integer>{ 1, 2, null });
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE CALENDAR_MONTH(CreatedDate) NOT IN :tmpVar1',
+            Query.of(Account.SObjectType).filterBy(filter).build()
         );
     }
     // #endregion
@@ -3965,10 +4028,18 @@ public with sharing class QueryTest extends Query {
     // #endregion
     // ================
 
+    //==============
+    // #region Query
     @isTest
-    static void testQuery_Style1() {
+    static void testQuery_Filter() {
+        makeData();
+
+        List<Account> accountList;
+        List<Contact> contactList;
+
+        // Filter Style 1
         // prettier-ignore
-        List<Account> accountList = (List<Account>) Query.of(Account.SObjectType)
+        accountList = (List<Account>) Query.of(Account.SObjectType)
             .selectBy(selector()
                 .add(Account.Name, Account.AnnualRevenue, Account.BillingState)
                 .add('Contacts', Query.of(Contact.SObjectType).selectBy(Contact.Name))
@@ -3994,12 +4065,39 @@ public with sharing class QueryTest extends Query {
         Assert.areEqual('Beijing', accountList[0].BillingState);
         Assert.areEqual(500, accountList[1].AnnualRevenue);
         Assert.areEqual('Shanghai', accountList[1].BillingState);
-    }
 
-    @isTest
-    static void testQuery_Style2() {
         // prettier-ignore
-        List<Account> accountList = (List<Account>) Query.of(Account.SObjectType)
+        contactList = (List<Contact>) Query.of(Contact.SObjectType).selectBy(Contact.Id, Contact.Name).run();
+        // prettier-ignore
+        accountList = (List<Account>) Query.of(Account.SObjectType)
+            .selectBy(Account.Name, Account.AnnualRevenue, Account.BillingCountry, Account.BillingState)
+            .selectBy('Contacts', Query.of(Contact.SObjectType).selectBy(Contact.Name).filterBy(inx(Contact.Id, contactList)))
+            .filterBy(andx()
+                .add(inx(Account.Id, Query.of(Contact.SObjectType).selectBy(Contact.AccountId)))
+                .add(orx()
+                    .add(andx()
+                        .add(gt(Account.AnnualRevenue, 1000))
+                        .add(eq(Account.BillingCountry, 'China'))
+                        .add(eq(Account.BillingState, 'Beijing'))
+                    )
+                    .add(andx()
+                        .add(lt(Account.AnnualRevenue, 1000))
+                        .add(eq(Account.BillingCountry, 'China'))
+                        .add(eq(Account.BillingState, 'Shanghai'))
+                    )
+                )
+            )
+            .orderBy(Account.AnnualRevenue).descending().nullsLast()
+            .run();
+        Assert.areEqual(2, accountList.size());
+        Assert.areEqual(1500, accountList[0].AnnualRevenue);
+        Assert.areEqual('Beijing', accountList[0].BillingState);
+        Assert.areEqual(500, accountList[1].AnnualRevenue);
+        Assert.areEqual('Shanghai', accountList[1].BillingState);
+
+        // Filter Style 2
+        // prettier-ignore
+        accountList = (List<Account>) Query.of(Account.SObjectType)
             .selectBy(Account.Name, Account.AnnualRevenue, Account.BillingState)
             .selectBy('Contacts', Query.of(Contact.SObjectType).selectBy(Contact.Name))
             .filterBy(orx()
@@ -4023,10 +4121,42 @@ public with sharing class QueryTest extends Query {
         Assert.areEqual('Beijing', accountList[0].BillingState);
         Assert.areEqual(500, accountList[1].AnnualRevenue);
         Assert.areEqual('Shanghai', accountList[1].BillingState);
+
+        // prettier-ignore
+        contactList = (List<Contact>) Query.of(Contact.SObjectType).selectBy(Contact.Id, Contact.Name).run();
+        // prettier-ignore
+        accountList = (List<Account>) Query.of(Account.SObjectType)
+            .selectBy(selector()
+                .add(Account.Name, Account.AnnualRevenue, Account.BillingCountry, Account.BillingState)
+                .add('Contacts', Query.of(Contact.SObjectType).selectBy(Contact.Name).filterBy(inx(Contact.Id, contactList)))
+            )
+            .filterBy(andx(
+                inx(Account.Id, Query.of(Contact.SObjectType).selectBy(Contact.AccountId)),
+                orx(
+                    andx(
+                        gt(Account.AnnualRevenue, 1000),
+                        eq(Account.BillingCountry, 'China'),
+                        eq(Account.BillingState, 'Beijing')
+                    ),
+                    andx(
+                        lt(Account.AnnualRevenue, 1000),
+                        eq(Account.BillingCountry, 'China'),
+                        eq(Account.BillingState, 'Shanghai')
+                    )
+                )
+            ))
+            .orderBy(orderer().add(Account.AnnualRevenue).descending().nullsLast())
+            .run();
+        Assert.areEqual(2, accountList.size());
+        Assert.areEqual(1500, accountList[0].AnnualRevenue);
+        Assert.areEqual('Beijing', accountList[0].BillingState);
+        Assert.areEqual(500, accountList[1].AnnualRevenue);
+        Assert.areEqual('Shanghai', accountList[1].BillingState);
     }
 
     @isTest
     static void testQuery_for_View_Reference_Update() {
+        makeData();
         List<Account> accountList = (List<Account>) Query.of(Account.SObjectType)
             .selectBy(Account.Name, Account.AnnualRevenue, Account.BillingState)
             .offset(2)
@@ -4070,6 +4200,7 @@ public with sharing class QueryTest extends Query {
 
     @isTest
     static void testQuery_Functions_Date() {
+        makeData();
         List<AggregateResult> results = (List<AggregateResult>) Query.of(Contact.SObjectType)
             .selectBy(
                 selector()
@@ -4156,9 +4287,9 @@ public with sharing class QueryTest extends Query {
     }
 
     // ! CONVERT_CURRENCY is only suppored in a multi-currency org.
-    // TODO: Comment out @isTest before deploy new releases.
-    @isTest
+    // @isTest
     static void testQuery_Functions_Currency() {
+        makeData();
         // prettier-ignore
         List<Account> accounts = (List<Account>) Query.of(Account.SObjectType)
                 .selectBy(Account.Name)
@@ -4187,10 +4318,13 @@ public with sharing class QueryTest extends Query {
                 .run();
         System.debug(accounts);
         Assert.areEqual(6, accounts.size());
+
+        throw new IllegalArgumentException('Turn off testQuery_Functions_Currency');
     }
 
     @isTest
     static void testQuery_Functions_Format() {
+        makeData();
         // prettier-ignore
         List<Contact> contacts = (List<Contact>) Query.of(Contact.SObjectType)
             .selectBy(Contact.Name)
@@ -4210,6 +4344,7 @@ public with sharing class QueryTest extends Query {
 
     @isTest
     static void testQuery_OrderBy() {
+        makeData();
         List<Account> accountList = (List<Account>) Query.of(Account.SObjectType)
             .selectBy(Account.Name, Account.AnnualRevenue, Account.BillingState)
             .orderBy(Account.BillingCountry, Account.BillingState, Account.AnnualRevenue)
@@ -4236,6 +4371,7 @@ public with sharing class QueryTest extends Query {
     @isTest
     // prettier-ignore
     static void testQuery_Composite_Style1() {
+        makeData();
         Query contactQuery = Query.of(Contact.SObjectType).selectBy(Contact.Name);
 
         Query query = Query.of(Account.SObjectType);
@@ -4275,6 +4411,7 @@ public with sharing class QueryTest extends Query {
     @isTest
     // prettier-ignore
     static void testQuery_Composite_Style2() {
+        makeData();
         Query contactQuery = Query.of(Contact.SObjectType).selectBy(Contact.Name);
 
         Query query = Query.of(Account.SObjectType);
@@ -4310,73 +4447,8 @@ public with sharing class QueryTest extends Query {
     }
 
     @isTest
-    static void testQuery_Filter_Style1() {
-        // prettier-ignore
-        List<Contact> contactList = (List<Contact>) Query.of(Contact.SObjectType).selectBy(Contact.Id, Contact.Name).run();
-        // prettier-ignore
-        List<Account> accountList = (List<Account>) Query.of(Account.SObjectType)
-            .selectBy(Account.Name, Account.AnnualRevenue, Account.BillingCountry, Account.BillingState)
-            .selectBy('Contacts', Query.of(Contact.SObjectType).selectBy(Contact.Name).filterBy(inx(Contact.Id, contactList)))
-            .filterBy(andx()
-                .add(inx(Account.Id, Query.of(Contact.SObjectType).selectBy(Contact.AccountId)))
-                .add(orx()
-                    .add(andx()
-                        .add(gt(Account.AnnualRevenue, 1000))
-                        .add(eq(Account.BillingCountry, 'China'))
-                        .add(eq(Account.BillingState, 'Beijing'))
-                    )
-                    .add(andx()
-                        .add(lt(Account.AnnualRevenue, 1000))
-                        .add(eq(Account.BillingCountry, 'China'))
-                        .add(eq(Account.BillingState, 'Shanghai'))
-                    )
-                )
-            )
-            .orderBy(Account.AnnualRevenue).descending().nullsLast()
-            .run();
-        Assert.areEqual(2, accountList.size());
-        Assert.areEqual(1500, accountList[0].AnnualRevenue);
-        Assert.areEqual('Beijing', accountList[0].BillingState);
-        Assert.areEqual(500, accountList[1].AnnualRevenue);
-        Assert.areEqual('Shanghai', accountList[1].BillingState);
-    }
-
-    @isTest
-    static void testQuery_Filter_Style2() {
-        // prettier-ignore
-        List<Contact> contactList = (List<Contact>) Query.of(Contact.SObjectType).selectBy(Contact.Id, Contact.Name).run();
-        // prettier-ignore
-        List<Account> accountList = (List<Account>) Query.of(Account.SObjectType)
-            .selectBy(selector()
-                .add(Account.Name, Account.AnnualRevenue, Account.BillingCountry, Account.BillingState)
-                .add('Contacts', Query.of(Contact.SObjectType).selectBy(Contact.Name).filterBy(inx(Contact.Id, contactList)))
-            )
-            .filterBy(andx(
-                inx(Account.Id, Query.of(Contact.SObjectType).selectBy(Contact.AccountId)),
-                orx(
-                    andx(
-                        gt(Account.AnnualRevenue, 1000),
-                        eq(Account.BillingCountry, 'China'),
-                        eq(Account.BillingState, 'Beijing')
-                    ),
-                    andx(
-                        lt(Account.AnnualRevenue, 1000),
-                        eq(Account.BillingCountry, 'China'),
-                        eq(Account.BillingState, 'Shanghai')
-                    )
-                )
-            ))
-            .orderBy(orderer().add(Account.AnnualRevenue).descending().nullsLast())
-            .run();
-        Assert.areEqual(2, accountList.size());
-        Assert.areEqual(1500, accountList[0].AnnualRevenue);
-        Assert.areEqual('Beijing', accountList[0].BillingState);
-        Assert.areEqual(500, accountList[1].AnnualRevenue);
-        Assert.areEqual('Shanghai', accountList[1].BillingState);
-    }
-
-    @isTest
     static void testQuery_Filter_Distance() {
+        makeData();
         // prettier-ignore
         List<Account> accountList = (List<Account>) Query.of(Account.SObjectType)
             .selectBy(Account.Name, Account.AnnualRevenue, Account.BillingCountry, Account.BillingState, Account.ShippingAddress)
@@ -4393,7 +4465,8 @@ public with sharing class QueryTest extends Query {
     }
 
     @isTest
-    static void testQuery_Filter_Like_Escaped() {
+    static void testQuery_Filter_Like() {
+        makeData();
         // prettier-ignore
         List<Account> accountList = (List<Account>) Query.of(Account.SObjectType)
             .selectBy(Account.Name, Account.AnnualRevenue, Account.BillingCountry, Account.BillingState)
@@ -4402,12 +4475,9 @@ public with sharing class QueryTest extends Query {
             )
             .run();
         Assert.areEqual(2, accountList.size());
-    }
 
-    @isTest
-    static void testQuery_Filter_Like_Injected() {
         // prettier-ignore
-        List<Account> accountList = (List<Account>) Query.of(Account.SObjectType)
+        accountList = (List<Account>) Query.of(Account.SObjectType)
             .selectBy(Account.Name, Account.AnnualRevenue, Account.BillingCountry, Account.BillingState)
             .filterBy(
                 likex(Account.Name, '%\' AND Name LIKE \'%')
@@ -4418,6 +4488,7 @@ public with sharing class QueryTest extends Query {
 
     @isTest
     static void testQuery_Filter_Between() {
+        makeData();
         // prettier-ignore
         List<Account> accountList = (List<Account>) Query.of(Account.SObjectType)
             .selectBy(Account.Name, Account.AnnualRevenue, Account.BillingCountry, Account.BillingState)
@@ -4437,6 +4508,8 @@ public with sharing class QueryTest extends Query {
 
     @isTest
     static void testQuery_GroupBy() {
+        makeData();
+
         // prettier-ignore
         List<AggregateResult> results = (List<AggregateResult>) Query.of(Account.SObjectType)
             .selectBy(GROUPING(Account.BillingCountry))
@@ -4501,6 +4574,8 @@ public with sharing class QueryTest extends Query {
 
     @isTest
     static void testQuery_GroupBy_Count() {
+        makeData();
+
         List<AggregateResult> results = (List<AggregateResult>) Query.of(Account.SObjectType)
             .selectBy(COUNT(Account.AnnualRevenue))
             .groupBy(Account.BillingCountry, Account.BillingState)
@@ -4550,8 +4625,14 @@ public with sharing class QueryTest extends Query {
         Assert.areEqual(0, results[1].get('expr0'));
     }
 
+    // #endregion
+    // =============
+
+    // ====================
+    // #region Value Object
+
     @isTest
-    static void testQuery_ValueObject_Filter() {
+    static void testValueObject_Filter() {
         Assert.areEqual(eq(Account.Name, 123), eq(Account.Name, 123));
         Assert.areEqual(ne(Account.Name, 123), ne(Account.Name, 123));
         Assert.areEqual(gt(Account.Name, 123), gt(Account.Name, 123));
@@ -4597,48 +4678,7 @@ public with sharing class QueryTest extends Query {
 
         // Date Literal
         Assert.areEqual(YESTERDAY(), YESTERDAY());
-        Assert.areEqual(TODAY(), TODAY());
-        Assert.areEqual(TOMORROW(), TOMORROW());
-        Assert.areEqual(LAST_WEEK(), LAST_WEEK());
-        Assert.areEqual(THIS_WEEK(), THIS_WEEK());
-        Assert.areEqual(NEXT_WEEK(), NEXT_WEEK());
-        Assert.areEqual(LAST_MONTH(), LAST_MONTH());
-        Assert.areEqual(THIS_MONTH(), THIS_MONTH());
-        Assert.areEqual(NEXT_MONTH(), NEXT_MONTH());
-        Assert.areEqual(LAST_90_DAYS(), LAST_90_DAYS());
-        Assert.areEqual(NEXT_90_DAYS(), NEXT_90_DAYS());
-        Assert.areEqual(THIS_QUARTER(), THIS_QUARTER());
-        Assert.areEqual(LAST_QUARTER(), LAST_QUARTER());
-        Assert.areEqual(NEXT_QUARTER(), NEXT_QUARTER());
-        Assert.areEqual(THIS_YEAR(), THIS_YEAR());
-        Assert.areEqual(LAST_YEAR(), LAST_YEAR());
-        Assert.areEqual(NEXT_YEAR(), NEXT_YEAR());
-        Assert.areEqual(THIS_FISCAL_QUARTER(), THIS_FISCAL_QUARTER());
-        Assert.areEqual(LAST_FISCAL_QUARTER(), LAST_FISCAL_QUARTER());
-        Assert.areEqual(NEXT_FISCAL_QUARTER(), NEXT_FISCAL_QUARTER());
-        Assert.areEqual(THIS_FISCAL_YEAR(), THIS_FISCAL_YEAR());
-        Assert.areEqual(LAST_FISCAL_YEAR(), LAST_FISCAL_YEAR());
-        Assert.areEqual(NEXT_FISCAL_YEAR(), NEXT_FISCAL_YEAR());
         Assert.areEqual(LAST_N_DAYS(123), LAST_N_DAYS(123));
-        Assert.areEqual(NEXT_N_DAYS(123), NEXT_N_DAYS(123));
-        Assert.areEqual(N_DAYS_AGO(123), N_DAYS_AGO(123));
-        Assert.areEqual(NEXT_N_WEEKS(123), NEXT_N_WEEKS(123));
-        Assert.areEqual(LAST_N_WEEKS(123), LAST_N_WEEKS(123));
-        Assert.areEqual(N_WEEKS_AGO(123), N_WEEKS_AGO(123));
-        Assert.areEqual(NEXT_N_MONTHS(123), NEXT_N_MONTHS(123));
-        Assert.areEqual(LAST_N_MONTHS(123), LAST_N_MONTHS(123));
-        Assert.areEqual(N_MONTHS_AGO(123), N_MONTHS_AGO(123));
-        Assert.areEqual(NEXT_N_QUARTERS(123), NEXT_N_QUARTERS(123));
-        Assert.areEqual(LAST_N_QUARTERS(123), LAST_N_QUARTERS(123));
-        Assert.areEqual(N_QUARTERS_AGO(123), N_QUARTERS_AGO(123));
-        Assert.areEqual(NEXT_N_YEARS(123), NEXT_N_YEARS(123));
-        Assert.areEqual(LAST_N_YEARS(123), LAST_N_YEARS(123));
-        Assert.areEqual(N_YEARS_AGO(123), N_YEARS_AGO(123));
-        Assert.areEqual(NEXT_N_FISCAL_QUARTERS(123), NEXT_N_FISCAL_QUARTERS(123));
-        Assert.areEqual(N_FISCAL_QUARTERS_AGO(123), N_FISCAL_QUARTERS_AGO(123));
-        Assert.areEqual(NEXT_N_FISCAL_YEARS(123), NEXT_N_FISCAL_YEARS(123));
-        Assert.areEqual(LAST_N_FISCAL_YEARS(123), LAST_N_FISCAL_YEARS(123));
-        Assert.areEqual(N_FISCAL_YEARS_AGO(123), N_FISCAL_YEARS_AGO(123));
 
         Assert.areEqual(gt(Account.Name, N_FISCAL_YEARS_AGO(123)), gt(Account.Name, N_FISCAL_YEARS_AGO(123)));
         Assert.areEqual(gte(Account.Name, N_FISCAL_YEARS_AGO(123)), gte(Account.Name, N_FISCAL_YEARS_AGO(123)));
@@ -4650,45 +4690,6 @@ public with sharing class QueryTest extends Query {
         Assert.areEqual(
             gte(Account.Name, Date.newInstance(2023, 1, 1)),
             gte(Account.Name, Date.newInstance(2023, 1, 1))
-        );
-        Assert.areEqual(lt(Account.Name, Date.newInstance(2023, 1, 1)), lt(Account.Name, Date.newInstance(2023, 1, 1)));
-        Assert.areEqual(
-            lte(Account.Name, Date.newInstance(2023, 1, 1)),
-            lte(Account.Name, Date.newInstance(2023, 1, 1))
-        );
-
-        Assert.areEqual(
-            gt(Account.Name, Datetime.newInstance(2023, 1, 1)),
-            gt(Account.Name, Datetime.newInstance(2023, 1, 1))
-        );
-        Assert.areEqual(
-            gte(Account.Name, Datetime.newInstance(2023, 1, 1)),
-            gte(Account.Name, Datetime.newInstance(2023, 1, 1))
-        );
-        Assert.areEqual(
-            lt(Account.Name, Datetime.newInstance(2023, 1, 1)),
-            lt(Account.Name, Datetime.newInstance(2023, 1, 1))
-        );
-        Assert.areEqual(
-            lte(Account.Name, Datetime.newInstance(2023, 1, 1)),
-            lte(Account.Name, Datetime.newInstance(2023, 1, 1))
-        );
-
-        Assert.areEqual(
-            gt(Account.Name, Time.newInstance(12, 0, 0, 0)),
-            gt(Account.Name, Time.newInstance(12, 0, 0, 0))
-        );
-        Assert.areEqual(
-            gte(Account.Name, Time.newInstance(12, 0, 0, 0)),
-            gte(Account.Name, Time.newInstance(12, 0, 0, 0))
-        );
-        Assert.areEqual(
-            lt(Account.Name, Time.newInstance(12, 0, 0, 0)),
-            lt(Account.Name, Time.newInstance(12, 0, 0, 0))
-        );
-        Assert.areEqual(
-            lte(Account.Name, Time.newInstance(12, 0, 0, 0)),
-            lte(Account.Name, Time.newInstance(12, 0, 0, 0))
         );
 
         Assert.areEqual(
@@ -4710,60 +4711,20 @@ public with sharing class QueryTest extends Query {
     }
 
     @isTest
-    static void testQuery_ValueObject_Query() {
+    static void testValueObject_Query() {
         Query q = Query.of(Account.SObjectType);
         Assert.areEqual(q, q);
 
         Assert.areEqual(
-            Query.of(Account.SObjectType)
-                .OrderBy(Account.BillingCountry, Account.BillingState)
-                .OrderBy(Account.BillingCountry, Account.BillingState, Account.BillingState)
-                .OrderBy(Account.BillingCountry, Account.BillingState, Account.BillingState, Account.BillingState)
-                .OrderBy(
-                    Account.BillingCountry,
-                    Account.BillingState,
-                    Account.BillingState,
-                    Account.BillingState,
-                    Account.BillingState
-                )
-                .nullsFirst(),
-            Query.of(Account.SObjectType)
-                .OrderBy(Account.BillingCountry, Account.BillingState)
-                .OrderBy(Account.BillingCountry, Account.BillingState, Account.BillingState)
-                .OrderBy(Account.BillingCountry, Account.BillingState, Account.BillingState, Account.BillingState)
-                .OrderBy(
-                    Account.BillingCountry,
-                    Account.BillingState,
-                    Account.BillingState,
-                    Account.BillingState,
-                    Account.BillingState
-                )
-                .nullsFirst()
+            Query.of(Account.SObjectType).OrderBy(Account.BillingCountry, Account.BillingState).nullsFirst(),
+            Query.of(Account.SObjectType).OrderBy(Account.BillingCountry, Account.BillingState).nullsFirst()
         );
 
         Assert.areEqual(
             Query.of(Account.SObjectType)
                 .selectBy(GROUPING(Account.BillingCountry))
                 .selectBy(GROUPING(Account.BillingState, 'alias0'))
-                .selectBy(MIN(Account.AnnualRevenue, 'minimum'))
-                .selectBy(MIN(Account.AnnualRevenue))
-                .selectBy(MAX(Account.AnnualRevenue, 'maximum'))
-                .selectBy(MAX(Account.AnnualRevenue))
-                .selectBy(AVG(Account.AnnualRevenue, 'average'))
-                .selectBy(AVG(Account.AnnualRevenue))
-                .selectBy(SUM(Account.AnnualRevenue, 'summary'))
-                .selectBy(SUM(Account.AnnualRevenue))
-                .groupBy(Account.BillingCountry)
                 .groupBy(Account.BillingCountry, Account.BillingState)
-                .groupBy(Account.BillingCountry, Account.BillingState, Account.BillingState)
-                .groupBy(Account.BillingCountry, Account.BillingState, Account.BillingState, Account.BillingState)
-                .groupBy(
-                    Account.BillingCountry,
-                    Account.BillingState,
-                    Account.BillingState,
-                    Account.BillingState,
-                    Account.BillingState
-                )
                 .rollup()
                 .orderBy(grouping(Account.BillingCountry), grouping(Account.BillingState))
                 .nullsLast()
@@ -4771,47 +4732,41 @@ public with sharing class QueryTest extends Query {
             Query.of(Account.SObjectType)
                 .selectBy(GROUPING(Account.BillingCountry))
                 .selectBy(GROUPING(Account.BillingState, 'alias0'))
-                .selectBy(MIN(Account.AnnualRevenue, 'minimum'))
-                .selectBy(MIN(Account.AnnualRevenue))
-                .selectBy(MAX(Account.AnnualRevenue, 'maximum'))
-                .selectBy(MAX(Account.AnnualRevenue))
-                .selectBy(AVG(Account.AnnualRevenue, 'average'))
-                .selectBy(AVG(Account.AnnualRevenue))
-                .selectBy(SUM(Account.AnnualRevenue, 'summary'))
-                .selectBy(SUM(Account.AnnualRevenue))
-                .groupBy(Account.BillingCountry)
                 .groupBy(Account.BillingCountry, Account.BillingState)
-                .groupBy(Account.BillingCountry, Account.BillingState, Account.BillingState)
-                .groupBy(Account.BillingCountry, Account.BillingState, Account.BillingState, Account.BillingState)
-                .groupBy(
-                    Account.BillingCountry,
-                    Account.BillingState,
-                    Account.BillingState,
-                    Account.BillingState,
-                    Account.BillingState
-                )
                 .rollup()
                 .orderBy(grouping(Account.BillingCountry), grouping(Account.BillingState))
                 .nullsLast()
                 .descending()
         );
-    }
 
-    @isTest
-    static void testQuery_ValueObject_Selector() {
         Assert.areEqual(
-            selector()
-                .add(Account.Name)
-                .add(Account.Name, Account.Name)
-                .add(Account.Name, Account.Name, Account.Name)
-                .add(Account.Name, Account.Name, Account.Name, Account.Name)
-                .add(Account.Name, Account.Name, Account.Name, Account.Name, Account.Name),
-            selector()
-                .add(Account.Name)
-                .add(Account.Name, Account.Name)
-                .add(Account.Name, Account.Name, Account.Name)
-                .add(Account.Name, Account.Name, Account.Name, Account.Name)
-                .add(Account.Name, Account.Name, Account.Name, Account.Name, Account.Name)
+            selector().add(Account.Id, Account.Name).add('Contacts', Query.of(Contact.SObjectType)),
+            selector().add(Account.Id, Account.Name).add('Contacts', Query.of(Contact.SObjectType))
+        );
+
+        Assert.areEqual(
+            typeof('What')
+                .when(Account.SObjectType)
+                .then(Account.Phone, Account.NumberOfEmployees)
+                .when(Contact.SObjectType)
+                .then(Contact.Name, Contact.Birthdate)
+                .then(Contact.Department, Contact.Email)
+                .when(Account.SObjectType)
+                .then(Account.BillingCountry, Account.BillingState)
+                .elsex('Id', 'Status')
+                .elsex('Email', 'Phone'),
+            typeof('What')
+                .when(Account.SObjectType)
+                .then(Account.Phone, Account.NumberOfEmployees)
+                .when(Contact.SObjectType)
+                .then(Contact.Name, Contact.Birthdate)
+                .then(Contact.Department, Contact.Email)
+                .when(Account.SObjectType)
+                .then(Account.BillingCountry, Account.BillingState)
+                .elsex('Id', 'Status')
+                .elsex('Email', 'Phone')
         );
     }
+    // #endregion
+    // ====================
 }

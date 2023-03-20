@@ -1,6 +1,6 @@
 # Apex Query
 
-![](https://img.shields.io/badge/version-1.0-brightgreen.svg) ![](https://img.shields.io/badge/build-passing-brightgreen.svg) ![](https://img.shields.io/badge/coverage-%3E95%25-brightgreen.svg)
+![](https://img.shields.io/badge/version-1.0-brightgreen.svg) ![](https://img.shields.io/badge/build-passing-brightgreen.svg) ![](https://img.shields.io/badge/coverage-98%25-brightgreen.svg)
 
 An Apex SOQL query builder to dynamically build SOQL supporting almost all syntaxes. When doing dynamic SOQL, a query builder has the following advantages:
 
@@ -9,10 +9,35 @@ An Apex SOQL query builder to dynamically build SOQL supporting almost all synta
 
 | Environment           | Installation Link                                                                                                                                         | Version |
 | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
-| Production, Developer | <a target="_blank" href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t2v000007CfgQAAS"><img src="docs/images/deploy-button.png"></a> | ver 1.0 |
-| Sandbox               | <a target="_blank" href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t2v000007CfgQAAS"><img src="docs/images/deploy-button.png"></a>  | ver 1.0 |
+| Production, Developer | <a target="_blank" href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t2v000007CfiRAAS"><img src="docs/images/deploy-button.png"></a> | ver 1.0 |
+| Sandbox               | <a target="_blank" href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t2v000007CfiRAAS"><img src="docs/images/deploy-button.png"></a>  | ver 1.0 |
 
 ## Table of Contents
+
+- [1. Design Principles](#1-design-principles)
+- [2. Naming Conventions](#2-naming-conventions)
+  - [2.1 Naming Readability](#21-naming-readability)
+  - [2.2 Naming Confliction](#22-naming-confliction)
+- [3. Overview](#3-overview)
+  - [3.1 Query Class](#31-query-class)
+  - [3.2 Query Execution](#32-query-execution)
+- [4. Keywords](#4-keywords)
+  - [4.1 From Statement](#41-from-statement)
+  - [4.2 Select Statement](#42-select-statement)
+  - [4.3 Where Statement](#43-where-statement)
+  - [4.4 Order By Statement](#44-order-by-statement)
+  - [4.5 Group By Statement](#45-group-by-statement)
+- [5. Operator References](#5-operator-references)
+  - [5.1 Logical Operators](#51-logical-operators)
+  - [5.2 Comparison Operators](#52-comparison-operators)
+- [6. Function References](#6-function-references)
+  - [6.1 Aggregate Functions](#61-aggregate-functions)
+  - [6.2 Date/Time Functions](#62-date-time-functions)
+  - [6.3 Other Functions](#63-other-functions)
+- [7. Literal References](#7-literal-references)
+  - [7.1 Date Literals](#71-date-literals)
+  - [7.2 Currency Literals](#72-currency-literals)
+- [8. License](#8-license)
 
 ## 1. Design Principles
 
@@ -22,19 +47,19 @@ An Apex SOQL query builder to dynamically build SOQL supporting almost all synta
    - `WITH [DATA CATEGORY]` statement.
 
 2. **Highly Composable**: Clauses can be created standalone for select, where, order by and group by statements. They can be passed around, modified, and composed into queries in a later stage. This is the sole reason we choose a query builder.
-   
+
    ```java
    Query.Selector selector = selector().add(Account.Id, Account.Name);
    Query.Filter filter = andx(
-       gt(Account.AnnualRevenue, 2000), 
+       gt(Account.AnnualRevenue, 2000),
        lt(Account.AnnualRevenue, 2000));
    Query.Orderer orderer = orderer().add(Account.CreatedDate).descending().nullsLast();
-   
+
    List<Account> accounts = (List<Account>) Query.of(Account.SObjecType)
        .selectBy(selector).filterBy(filter).orderBy(orderer)
        .run();
    ```
-   
+
 3. **Value Objects**: Queries and all clauses are value objects, which means different query instances are considered equal when built with same parameters in the same order.
 
    ```java
@@ -44,13 +69,14 @@ An Apex SOQL query builder to dynamically build SOQL supporting almost all synta
        Query.of(Account.SObjectType).selectBy(Account.Id, Account.Name))
    );
    ```
+
 4. **Strong Types**: Strong types are enforced when possible, so developers can make less mistakes when construct queries.
 
-   ````java
+   ```java
    // Example 1: date function can only be compared with an Integer.
    qt(CALENDAR_MONTH(Contact.Birthdate), 1);   // pass
    qt(CALENDAR_MONTH(Contact.Birthdate), 'A'); // fail
-   ````
+   ```
 
 ## 2. Naming Conventions
 
@@ -58,17 +84,16 @@ An Apex SOQL query builder to dynamically build SOQL supporting almost all synta
     <img src="./docs/images/query-sample-1.png#2023-03-19" width=650>
 </p>
 
-
 ### 2.1 Naming Readability
 
 Here are the naming conventions to increase query readability:
 
-|               | Description                                                  | Naming Convention | Reasoning                                                    | Examples                                                     |
-| ------------- | ------------------------------------------------------------ | ----------------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
-| **Keywords**  | These are backbone structures of a SOQL.                     | camelCase         | Keywords should easily remind users to their SOQL counterparts. | `selectBy`, `filterBy`, `groupBy`, `havingBy`, `orderBy`     |
-| **Operators** | These are mainly logical and comparison operators.           | camelCase         | Operators should be small and short to be operator-like, abbreviation is used when appropriate. | `eq`, `ne`, `gt`, `gte`, `lt`, `lte`, `inx`, `nin`           |
+|               | Description                                                                | Naming Convention | Reasoning                                                                                                                                          | Examples                                                              |
+| ------------- | -------------------------------------------------------------------------- | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| **Keywords**  | These are backbone structures of a SOQL.                                   | camelCase         | Keywords should easily remind users to their SOQL counterparts.                                                                                    | `selectBy`, `filterBy`, `groupBy`, `havingBy`, `orderBy`              |
+| **Operators** | These are mainly logical and comparison operators.                         | camelCase         | Operators should be small and short to be operator-like, abbreviation is used when appropriate.                                                    | `eq`, `ne`, `gt`, `gte`, `lt`, `lte`, `inx`, `nin`                    |
 | **Functions** | These are used to perform aggregation, formatting, and date accessing etc. | UPPER_CASE        | This gives best readability, because it can be easily noticed when appear among many lower case characters of field names, keywords and operators. | `COUNT`, `MAX`, `TO_LABEL`, `FORMAT`, `CALENDAR_MONTH`, `FISCAL_YEAR` |
-| **Literals**  | There are only date and currency literals.                   | UPPER_CASE        | Those are constant-like values, so static constant variable naming convention is preferred. | `LAST_90_DAYS()`, `LAST_N_DAYS(30)`, `USD(100)`, `CYN(888)`  |
+| **Literals**  | There are only date and currency literals.                                 | UPPER_CASE        | Those are constant-like values, so static constant variable naming convention is preferred.                                                        | `LAST_90_DAYS()`, `LAST_N_DAYS(30)`, `USD(100)`, `CYN(888)`           |
 
 ### 2.2 Naming Confliction
 
@@ -105,22 +130,37 @@ List<Account> accountList = (List<Account>) Query.of(Account.SObjectType)
     .run();
 ```
 
-### 3.2 Chaining Order
+### 3.2 Query Execution
 
-The chaining order of an query doesn't have to be in the order as they defined in the SOQL, when executed each clause will be under its correct order. This gives advantages when query is built in multi-places.
+There are three ways to invoke a `Query`:
 
-### 3.3 Query Execution
+1. `run()` - Execute the query to get records from Salesforce database.
+2. `getLocator()` - Get a `Database.QueryLocator`, can be returned in a batch class `start()` method.
+3. `count()` - Return an integer of the number of records, `count()` must be used in select.
 
-An Id field will be added if no fields are selected.
+By default, they are running in system mode, `AccessLevel` can be supplied as parameter to change their running mode, i.e. `run(AccessLevel.USER_MODE)`.
+
+```java
+List<Account> accounts = (List<Account>) Query.of(Account.SObjectType)
+    .run();        // #1
+
+Database.QueryLocator locator = Query.of(Account.SObjectType)
+    .selectBy(Account.Name, Account.AnnualRevenue)
+    .getLocator(); // #2
+
+Integer count = Query.of(Account.SObjectType).selectBy(COUNT())
+    .getCount();   // #3
+```
 
 ## 4. Keywords
 
 ### 4.1 From Statement
 
-All queries are created with the a simple call to `Query.of(sobjectType)` API, which can be considered as the SOQL `from ` keyword counterpart.
+All queries are created with the a simple call to `Query.of(sobjectType)` API, which can be considered as the SOQL `from ` keyword. A default `Id` field is selected if no other fields are selected.
 
 ```java
-Query query = Query.of(Account.SOBjectType);
+// SELECT Id FROM Account
+Query accountQuery = Query.of(Account.SOBjectType);
 ```
 
 ### 4.2 Select Statement
@@ -133,7 +173,7 @@ There are five types of `selectBy()` statements, each accepts different input ty
 2. Accept only functions as parameters, such as: `FORMAT(Account.AnnualRevenue)`. The number of params can be 1 to 5.
 3. Accept only `String` as parameters. The number of params can be 1 to 5. Use this only for parent field references. Although it supports functions as well, I would recommend to directly use the above function with a string field instead.
 4. Accept a child relationship subquery as parameter.
-4. Accept a `List<Object>` with mixing of `SObjectField`, functions or `String`, but cannot be queries.
+5. Accept a `List<Object>` with mixing of `SObjectField`, functions or `String`, but cannot be queries.
 
 **Note**: These `selectBy()` methods can chain from one to another, so developers can select as many fields as they want.
 
@@ -273,7 +313,7 @@ I saw in some projects, developers using equality operator to compare an Id fiel
 
 ```java
 // some accounts queried elsewhere
-List<Account> accounts = ... ; 
+List<Account> accounts = ... ;
 
 // Wrong: = is used
 List<Contact> contacts = [SELECT Id, Name FROM Contact WHERE AccountId = :accounts];
@@ -487,22 +527,22 @@ Query query = Query.of(Opportunity.SObjectType)
     .groupBy(CALENDAR_YEAR(Opportunity.CreatedDate));
 ```
 
-| Static Methods            | Description                                                  |
-| ------------------------- | ------------------------------------------------------------ |
+| Static Methods            | Description                                                                                                          |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------- |
 | `CONVERT_TIMEZONE(field)` | Convert datetime fields to the user’s time zone. **Note**: You can only use `CONVERT_TIMEZONE()` in a date function. |
-| `CALENDAR_MONTH(field)`   | Returns a number representing the calendar month of a date field. |
-| `CALENDAR_QUARTER(field)` | Returns a number representing the calendar quarter of a date field. |
-| `CALENDAR_YEAR(field)`    | Returns a number representing the calendar year of a date field. |
-| `DAY_IN_MONTH(field)`     | Returns a number representing the day in the month of a date field. |
-| `DAY_IN_WEEK(field)`      | Returns a number representing the day of the week for a date field. |
-| `DAY_IN_YEAR(field)`      | Returns a number representing the day in the year for a date field. |
-| `DAY_ONLY(field)`         | Returns a date representing the day portion of a datetime field. |
-| `FISCAL_MONTH(field)`     | Returns a number representing the fiscal month of a date field. |
-| `FISCAL_QUARTER(field)`   | Returns a number representing the fiscal quarter of a date field. |
-| `FISCAL_YEAR(field)`      | Returns a number representing the fiscal year of a date field. |
-| `HOUR_IN_DAY(field)`      | Returns a number representing the hour in the day for a datetime field. |
-| `WEEK_IN_MONTH(field)`    | Returns a number representing the week in the month for a date field. |
-| `WEEK_IN_YEAR(field)`     | Returns a number representing the week in the year for a date field. |
+| `CALENDAR_MONTH(field)`   | Returns a number representing the calendar month of a date field.                                                    |
+| `CALENDAR_QUARTER(field)` | Returns a number representing the calendar quarter of a date field.                                                  |
+| `CALENDAR_YEAR(field)`    | Returns a number representing the calendar year of a date field.                                                     |
+| `DAY_IN_MONTH(field)`     | Returns a number representing the day in the month of a date field.                                                  |
+| `DAY_IN_WEEK(field)`      | Returns a number representing the day of the week for a date field.                                                  |
+| `DAY_IN_YEAR(field)`      | Returns a number representing the day in the year for a date field.                                                  |
+| `DAY_ONLY(field)`         | Returns a date representing the day portion of a datetime field.                                                     |
+| `FISCAL_MONTH(field)`     | Returns a number representing the fiscal month of a date field.                                                      |
+| `FISCAL_QUARTER(field)`   | Returns a number representing the fiscal quarter of a date field.                                                    |
+| `FISCAL_YEAR(field)`      | Returns a number representing the fiscal year of a date field.                                                       |
+| `HOUR_IN_DAY(field)`      | Returns a number representing the hour in the day for a datetime field.                                              |
+| `WEEK_IN_MONTH(field)`    | Returns a number representing the week in the month for a date field.                                                |
+| `WEEK_IN_YEAR(field)`     | Returns a number representing the week in the year for a date field.                                                 |
 
 ### 6.3 Other Functions
 
@@ -512,11 +552,11 @@ Here is an example how to generate a location-based comparison expression.
 Query.Filter filter = lt(DISTANCE_IN_KM(Account.ShippingAddreess, Location.newInstance(37.775000, -122.41800)), 20);
 ```
 
-| Static Methods                        | Generated Format                                             |
-| ------------------------------------- | ------------------------------------------------------------ |
-| `TO_LABEL(field) `                    | `TOLABEL(field)`                                             |
-| `FORMAT(field)`                       | `FORMAT(field)`                                              |
-| `CONVERT_CURRENCY(field)`             | `CONVERTCURRENCY(field)`                                     |
+| Static Methods                        | Generated Format                                                |
+| ------------------------------------- | --------------------------------------------------------------- |
+| `TO_LABEL(field) `                    | `TOLABEL(field)`                                                |
+| `FORMAT(field)`                       | `FORMAT(field)`                                                 |
+| `CONVERT_CURRENCY(field)`             | `CONVERTCURRENCY(field)`                                        |
 | `DISTANCE_IN_KM(field, Location geo)` | `DISTANCE(ShippingAddress, GEOLOCATION(37.775,-122.418), 'km')` |
 | `DISTANCE_IN_MI(field, Location geo)` | `DISTANCE(ShippingAddress, GEOLOCATION(37.775,-122.418), 'mi')` |
 
@@ -533,7 +573,7 @@ Query.Filter filter = orx()
 );
 ```
 
->  `YESTERDAY()`, `TODAY()`, `TOMORROW()`, `LAST_WEEK()`, `THIS_WEEK()`, `NEXT_WEEK()`, `LAST_MONTH()`, `THIS_MONTH()`, `NEXT_MONTH()`, `LAST_90_DAYS()`, `NEXT_90_DAYS()`, `THIS_QUARTER()`, `LAST_QUARTER()`, `NEXT_QUARTER()`, `THIS_YEAR()`, `LAST_YEAR()`, `NEXT_YEAR()`, `THIS_FISCAL_QUARTER()`, `LAST_FISCAL_QUARTER()`, `NEXT_FISCAL_QUARTER()`, `THIS_FISCAL_YEAR()`, `LAST_FISCAL_YEAR()`, `NEXT_FISCAL_YEAR()`
+> `YESTERDAY()`, `TODAY()`, `TOMORROW()`, `LAST_WEEK()`, `THIS_WEEK()`, `NEXT_WEEK()`, `LAST_MONTH()`, `THIS_MONTH()`, `NEXT_MONTH()`, `LAST_90_DAYS()`, `NEXT_90_DAYS()`, `THIS_QUARTER()`, `LAST_QUARTER()`, `NEXT_QUARTER()`, `THIS_YEAR()`, `LAST_YEAR()`, `NEXT_YEAR()`, `THIS_FISCAL_QUARTER()`, `LAST_FISCAL_QUARTER()`, `NEXT_FISCAL_QUARTER()`, `THIS_FISCAL_YEAR()`, `LAST_FISCAL_YEAR()`, `NEXT_FISCAL_YEAR()`
 >
 > `LAST_N_DAYS(Integer n)`, `NEXT_N_DAYS(Integer n)`, `N_DAYS_AGO(Integer n)`, `NEXT_N_WEEKS(Integer n)`, `LAST_N_WEEKS(Integer n)`, `N_WEEKS_AGO(Integer n)`, `NEXT_N_MONTHS(Integer n)`, `LAST_N_MONTHS(Integer n)`, `N_MONTHS_AGO(Integer n)`, `NEXT_N_QUARTERS(Integer n)`, `LAST_N_QUARTERS(Integer n)`, `N_QUARTERS_AGO(Integer n)`, `NEXT_N_YEARS(Integer n)`, `LAST_N_YEARS(Integer n)`, `N_YEARS_AGO(Integer n)`, `NEXT_N_FISCAL_QUARTERS(Integer n)`, `N_FISCAL_QUARTERS_AGO(Integer n)`, `NEXT_N_FISCAL_YEARS(Integer n)`, `LAST_N_FISCAL_YEARS(Integer n)`, `N_FISCAL_YEARS_AGO(Integer n)`
 
