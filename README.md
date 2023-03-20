@@ -2,7 +2,7 @@
 
 ![](https://img.shields.io/badge/version-1.0-brightgreen.svg) ![](https://img.shields.io/badge/build-passing-brightgreen.svg) ![](https://img.shields.io/badge/coverage-98%25-brightgreen.svg)
 
-An Apex SOQL query builder to dynamically build SOQL supporting almost all syntaxes. When doing dynamic SOQL, a query builder has the following advantages:
+A better Apex SOQL query builder. As a developer, use a query builder to build dynamic SOQLs has many advantages:
 
 1. **More efficient**: No need to deal with string concatenation, and handsfree from handling binding variable names.
 2. **Less error-prone**: APIs are carefully designed with strong types, cannot pass wrong values.
@@ -46,7 +46,7 @@ An Apex SOQL query builder to dynamically build SOQL supporting almost all synta
    - `USING SCOPE` statement.
    - `WITH [DATA CATEGORY]` statement.
 
-2. **Highly Composable**: Clauses can be created standalone for select, where, order by and group by statements. They can be passed around, modified, and composed into queries in a later stage. This is the sole reason we choose a query builder.
+2. **Highly Composable**: Clauses can be created standalone for select, where, order by and group by statements. They can be passed around, modified, and composed into queries in a later stage.
 
    ```java
    Query.Selector selector = selector().add(Account.Id, Account.Name);
@@ -106,28 +106,31 @@ Here are the naming conventions to avoid conflictions with existing keywords or 
 
 ### 3.1 Query Class
 
-When possible, your classes can extend the `Query` class before using it to build queries. Because it gives advantages to not need add `Query` dot before all the static operators, functions and literals in order to reference them.
+All operators and functions are built as static methods of the Query class, to reference them with a `Query` dot every time is tedious. When possible, please extend the `Query` class, where all static methods can be referenced directly in it. All examples in this README are written in such context.
 
 ```java
-public with sharing class AccountSelector extends Query {
-
+public with sharing class AccountQuery extends Query {
+    public List<Account> listAccount() {
+        return (List<Account>) Query.of(Account.SObjectType)
+            .selectBy(Account.Name, Account.BillingCountry, Account.BillingState)
+            .selectBy(FORMAT(CONVERT_CURRENCY(Account.AnnualRevenue)))
+            .selectBy('Contacts', Query.of(Contact.SObjectType).selectBy(Contact.Name))
+            .filterBy(orx()
+                .add(andx()
+                    .add(gt(Account.AnnualRevenue, 1000))
+                    .add(eq(Account.BillingCountry, 'China'))
+                    .add(eq(Account.BillingState, 'Beijing'))
+                )
+                .add(andx()
+                    .add(lt(Account.AnnualRevenue, 1000))
+                    .add(eq(Account.BillingCountry, 'China'))
+                    .add(eq(Account.BillingState, 'Shanghai'))
+                )
+            )
+            .orderBy(Account.AnnualRevenue).descending().nullsLast()
+            .run();
+    }
 }
-```
-
-Otherwise you have to add `Query` dot before them as the example below, which doesn't look bad anyway. All examples are default written in a class extending the `Query` class, except noticed.
-
-```java
-List<Account> accountList = (List<Account>) Query.of(Account.SObjectType)
-    .selectBy(Account.Name, Account.BillingCountry, Account.BillingState)
-    .selectBy(Query.FORMAT(Query.CONVERT_CURRENCY(Account.AnnualRevenue)))
-    .selectBy('Contacts', Query.of(Contact.SObjectType).selectBy(Contact.Name))
-    .filterBy(Query.andx()
-        .add(Query.gt(Account.AnnualRevenue, 1000))
-        .add(Query.eq(Account.BillingCountry, 'China'))
-        .add(Query.eq(Account.BillingState, 'Beijing'))
-    )
-    .orderBy(Account.AnnualRevenue).descending().nullsLast()
-    .run();
 ```
 
 ### 3.2 Query Execution
@@ -138,7 +141,7 @@ There are three ways to invoke a `Query`:
 2. `getLocator()` - Get a `Database.QueryLocator`, can be returned in a batch class `start()` method.
 3. `count()` - Return an integer of the number of records, `count()` must be used in select.
 
-By default, they are running in system mode, `AccessLevel` can be supplied as parameter to change their running mode, i.e. `run(AccessLevel.USER_MODE)`.
+By default, they are running in system mode, `AccessLevel` can be supplied to change their running mode, i.e. `run(AccessLevel.USER_MODE)`.
 
 ```java
 List<Account> accounts = (List<Account>) Query.of(Account.SObjectType)
@@ -156,7 +159,7 @@ Integer count = Query.of(Account.SObjectType).selectBy(COUNT())
 
 ### 4.1 From Statement
 
-All queries are created with the a simple call to `Query.of(sobjectType)` API, which can be considered as the SOQL `from ` keyword. A default `Id` field is selected if no other fields are selected.
+All queries are created with a simple call to `Query.of(sobjectType)` API. A default `Id` field is used if no other fields are selected.
 
 ```java
 // SELECT Id FROM Account
