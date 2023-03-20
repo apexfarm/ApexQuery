@@ -309,7 +309,7 @@ Query.Filter filter = andx()
 
 #### Compare with List
 
-I saw in some projects, developers using equality operator to compare an Id field against a list of `SObject`, this is working but not a recommended. We shall use `IN` operator to do such comparison instead.
+In SOQL, equality operator `=` can be used to compare Id field against `ListM<SObject>`, this is working but not recommended. Suggest to use `IN` operator instead.
 
 ```java
 // some accounts queried elsewhere
@@ -322,7 +322,7 @@ List<Contact> contacts = [SELECT Id, Name FROM Contact WHERE AccountId = :accoun
 List<Contact> contacts = [SELECT Id, Name FROM Contact WHERE AccountId IN :accounts];
 ```
 
-And in Apex Query, `List<SObject>` only works with `inx`, `nin` operators, but not `eq` and `ne`.
+And in Apex Query, only `inx`, `nin` operators can be used to compare Id field against `List<SObject>`, but not `eq` and `ne`.
 
 ```java
 List<Account> accounts = ... ; // some accounts queried elsewhere
