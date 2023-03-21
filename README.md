@@ -169,17 +169,15 @@ Query accountQuery = Query.of(Account.SOBjectType);
 
 #### Inline Select
 
-Inline select will build the Query in one goal. There are five types of `selectBy()` statements, each accept different input types:
+There are five types of `selectBy()` statements, each accept different input types. They can chain from one after another, so developers can select as many fields as they want.
 
-|       | API                                                        | Description                                                  |
-| ----- | ---------------------------------------------------------- | ------------------------------------------------------------ |
-| **1** | `Query selectBy(SObjectField ... )`                        | Select `SObjectField`, up to 5 params are supported          |
-| **2** | `Query selectBy(Function ... )`                            | Select functions, up to 5 params are supported.              |
-| **3** | `Query selectBy(String ... )`                              | Select strings, up to 5 params are supported. Mainly used for parent field references. |
-| **4** | `Query selectBy(String childRelationName, Query subQuery)` | Select subquery, a subquery is built in the same way as a standard query. |
-| **5** | `Query selectBy(List<Object>)`                             | Select a `List<Object>` mixing of `SObjectField`, functions or `String`, but not queries. |
-
-**Note**: These `selectBy()` methods can chain from one after another, so developers can select as many fields as they want.
+|       | API                                                  | Description                                                  |
+| ----- | ---------------------------------------------------- | ------------------------------------------------------------ |
+| **1** | `selectBy(SObjectField ... )`                        | Select `SObjectField`, up to 5 params are supported          |
+| **2** | `selectBy(Function ... )`                            | Select functions, up to 5 params are supported.              |
+| **3** | `selectBy(String ... )`                              | Select strings, up to 5 params are supported. Mainly used for parent field references. |
+| **4** | `selectBy(String childRelationName, Query subQuery)` | Select subquery, a subquery is built in the same way as a standard query. |
+| **5** | `selectBy(List<Object>)`                             | Select a `List<Object>` mixing of fields, functions or strings, but not queries. |
 
 ```java
 Query accountQuery = Query.of(Account.SObjectType)
@@ -219,8 +217,8 @@ Query query = Query.of(Account.SObjectType)
 Use `typeof()` to construct a SOQL TYPEOF statement.
 
 1. Multiple `then()` methods can be chained to add more fields.
-2. Previously used `SObjectType` can be used by `when()` again, new fields will be added against the same `SObjectType`.
-3. multiple `elsex()` methods can be chained to add more fields.
+2. Multiple `when()` methods can be used for the same `SObjectType`.
+3. Multiple `elsex()` methods can be chained to add more fields.
 4. The `typeof()` can be create standalone outside fo a query.
 
 ```java
@@ -230,7 +228,7 @@ Query accountQuery = Query.of(Task.SObjecType)
               .then(Account.Phone, Account.NumberOfEmployees)
         .when(Opportunity.SObjectType) // #1 multiple then methods can be chained
               .then(Opportunity.Amount, Opportunity.CloseDate)
-              .then(Opportunity.ExpectedRevenue, Opportunity.Description)
+              .then('ExpectedRevenue', 'Description')
         .when(Account.SObjectType)     // #2 previously used SObjectType can be used again
               .then(Account.BillingCountry, Account.BillingState)
         .elsex(Task.Id, Task.Status)
@@ -247,8 +245,6 @@ Query.TypeOf typeOfWhat = typeof(Task.SObjecType)
 | `when(SObjectType)`        |                      |                               |
 | `then(SObjectField ... )`  | `then(String ... )`  | Up to 5 params are supported. |
 | `elsex(SObjectField ... )` | `elsex(String ... )` | Up to 5 params are supported. |
-
-
 
 ### 4.3 Where Statement
 
@@ -455,6 +451,18 @@ Query accountQuery = Query.of(Account.SObjectType)
     .groupBy(anotherGrouper); // grouper can be comsumed by a query
 ```
 
+### 4.6 Other Statement
+
+| API                 | Generated Format  |
+| ------------------- | ----------------- |
+| `limitx(Integer n)` | `LIMIT n`         |
+| `offset(Integer n)` | `OFFSET n`        |
+| `forView()`         | `FOR VIEW`        |
+| `forReference()`    | `FOR REFERENCE`   |
+| `forUpdate()`       | `FOR UPDATE`      |
+| `updateTracking()`  | `UPDATE TRACKING` |
+| `updateViewstat()`  | `UPDATE VIEWSTAT` |
+
 ## 5. Operator References
 
 ### 5.1 Logical Operators
@@ -469,24 +477,23 @@ andx().add(filter1, filter2, filter3, filter4);
 andx().add(filter1, filter2).add(filter3, filter4);
 ```
 
-| AND                                                               | Generated Format                         |
-| ----------------------------------------------------------------- | ---------------------------------------- |
-| `andx(Filter filter1, Filter filter2)`                            | `(filter1 AND filter2)`                  |
-| `andx(Filter filter1, Filter filter2, ... Filter filter10)`       | `(filter1 AND filter2 ... AND filter10)` |
-| `andx(List<Filter> filters)`                                      | `(filter1 AND filter2 ...)`              |
-| `andx().add(Filter filter1, Filter filter2)`                      | `(filter1 AND filter2)`                  |
-| `andx().add(Filter filter1, Filter filter2, ... Filter filter10)` | `(filter1 AND filter2 ... AND filter10)` |
-| **OR**                                                            |                                          |
-| `orx(Filter filter1, Filter filter2)`                             | `(filter1 OR filter2)`                   |
-| `andx(Filter filter1, Filter filter2, ... Filter filter10)`       | `(filter1 OR filter2 ... OR filter10)`   |
-| `orx().add(Filter filter1, Filter filter2)`                       | `(filter1 OR filter2)`                   |
-| `orx().add(Filter filter1, Filter filter2, ... Filter filter10)`  | `(filter1 OR filter2 ... OR filter10)`   |
-| **NOT**                                                           |                                          |
-| `notx(Filter filter)`                                             | `NOT(filter)`                            |
+| AND                                                         | Generated Format                         |
+| ----------------------------------------------------------- | ---------------------------------------- |
+| `andx(Filter filter1, Filter filter2)`                      | `(filter1 AND filter2)`                  |
+| `andx(Filter filter1, Filter filter2, ... Filter filter10)` | `(filter1 AND filter2 ... AND filter10)` |
+| `andx(List<Filter> filters)`                                | `(filter1 AND filter2 ...)`              |
+| `andx().add(Filter filter1).add(Filter filter2) ...`        | `(filter1 AND filter2 ...)`              |
+| **OR**                                                      |                                          |
+| `orx(Filter filter1, Filter filter2)`                       | `(filter1 OR filter2)`                   |
+| `orx(Filter filter1, Filter filter2, ... Filter filter10)`  | `(filter1 OR filter2 ... OR filter10)`   |
+| `orx(List<Filter> filters)`                                 | `(filter1 OR filter2 ...)`               |
+| `orx().add(Filter filter1).add(Filter filter2) ...`         | `(filter1 OR filter2 ...)`               |
+| **NOT**                                                     |                                          |
+| `notx(Filter filter)`                                       | `NOT(filter)`                            |
 
 ### 5.2 Comparison Operators
 
-Some of following params are not labeled with types, this is because they support multiple types. As a rule of thumb, there are three different types can be used for `param`:
+As a rule of thumb, there are three different types can be used for `param`:
 
 1. An `SObjectField` such as `Account.AnnualRevenue`.
 2. An function for picklist label, date, distance and aggregation, i.e. `TO_LABEL(Account.AccountSource)`, `CALENDAR_MONTH(CreatedDate)`.
