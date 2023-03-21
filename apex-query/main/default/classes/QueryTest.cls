@@ -3552,7 +3552,7 @@ public with sharing class QueryTest extends Query {
                     .add(eq(Account.AnnualRevenue, XPF(100)))
                     .add(eq(Account.AnnualRevenue, YER(100)))
                     .add(eq(Account.AnnualRevenue, ZAR(100)))
-                    .add(eq(Account.AnnualRevenue, ISO('TRY', 100)))
+                    .add(eq(Account.AnnualRevenue, CURRENCY('TRY', 100)))
             );
 
         Assert.areEqual(

@@ -1,16 +1,16 @@
 # Apex Query
 
-![](https://img.shields.io/badge/version-1.0-brightgreen.svg) ![](https://img.shields.io/badge/build-passing-brightgreen.svg) ![](https://img.shields.io/badge/coverage-98%25-brightgreen.svg)
+![](https://img.shields.io/badge/version-1.0.1-brightgreen.svg) ![](https://img.shields.io/badge/build-passing-brightgreen.svg) ![](https://img.shields.io/badge/coverage-98%25-brightgreen.svg)
 
 Using a query builder to build dynamic SOQL gives many advantages:
 
 1. **More efficient**: No need to deal with string concatenation, and handsfree from handling binding variable names.
 2. **Less error-prone**: APIs are carefully designed with strong types, cannot pass wrong values.
 
-| Environment           | Installation Link                                                                                                                                         | Version |
-| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
-| Production, Developer | <a target="_blank" href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t2v000007CfiRAAS"><img src="docs/images/deploy-button.png"></a> | ver 1.0 |
-| Sandbox               | <a target="_blank" href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t2v000007CfiRAAS"><img src="docs/images/deploy-button.png"></a>  | ver 1.0 |
+| Environment           | Installation Link                                            | Version   |
+| --------------------- | ------------------------------------------------------------ | --------- |
+| Production, Developer | <a target="_blank" href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t2v000007CfibAAC"><img src="docs/images/deploy-button.png"></a> | ver 1.0.1 |
+| Sandbox               | <a target="_blank" href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t2v000007CfibAAC"><img src="docs/images/deploy-button.png"></a> | ver 1.0.1 |
 
 ## Table of Contents
 
@@ -46,7 +46,7 @@ Using a query builder to build dynamic SOQL gives many advantages:
    - `USING SCOPE` statement.
    - `WITH [DATA CATEGORY]` statement.
 
-2. **Highly Composable**: Clauses can be created standalone for select, where, order by and group by statements. They can be passed around, modified, and composed into queries in a later stage.
+2. **Highly Composable**: Clauses can be created standalone, then passed around, modified and composed into queries in a later stage.
 
    ```java
    Query.Selector selector = selector().add(Account.Id, Account.Name);
@@ -63,7 +63,6 @@ Using a query builder to build dynamic SOQL gives many advantages:
 3. **Value Objects**: Queries and all clauses are value objects, which means different query instances are considered equal when built with same parameters in the same order.
 
    ```java
-   // Queries for the same sObject and with same fields selected in the same order
    Assert.areEqual(
        Query.of(Account.SObjectType).selectBy(Account.Id, Account.Name)),
        Query.of(Account.SObjectType).selectBy(Account.Id, Account.Name))
@@ -88,12 +87,12 @@ Using a query builder to build dynamic SOQL gives many advantages:
 
 Here are the naming conventions to increase query readability:
 
-|               | Description                                                                | Naming Convention | Reasoning                                                                                                                                          | Examples                                                              |
-| ------------- | -------------------------------------------------------------------------- | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| **Keywords**  | These are backbone structures of a SOQL.                                   | camelCase         | Keywords should easily remind users to their SOQL counterparts.                                                                                    | `selectBy`, `filterBy`, `groupBy`, `havingBy`, `orderBy`              |
-| **Operators** | These are mainly logical and comparison operators.                         | camelCase         | Operators should be small and short to be operator-like, abbreviation is used when appropriate.                                                    | `eq`, `ne`, `gt`, `gte`, `lt`, `lte`, `inx`, `nin`                    |
+|               | Description                                                  | Naming Convention | Reasoning                                                    | Example                                                      |
+| ------------- | ------------------------------------------------------------ | ----------------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| **Keywords**  | These are backbone structures of a SOQL.                     | camelCase         | Keywords should easily remind users to their SOQL counterparts. | `selectBy`, `filterBy`, `groupBy`, `havingBy`, `orderBy`     |
+| **Operators** | These are mainly logical and comparison operators.           | camelCase         | Operators should be small and short to be operator-like, abbreviation is used when appropriate. | `eq`, `ne`, `gt`, `gte`, `lt`, `lte`, `inx`, `nin`           |
 | **Functions** | These are used to perform aggregation, formatting, and date accessing etc. | UPPER_CASE        | This gives best readability, because it can be easily noticed when appear among many lower case characters of field names, keywords and operators. | `COUNT`, `MAX`, `TO_LABEL`, `FORMAT`, `CALENDAR_MONTH`, `FISCAL_YEAR` |
-| **Literals**  | There are only date and currency literals.                                 | UPPER_CASE        | Those are constant-like values, so static constant variable naming convention is preferred.                                                        | `LAST_90_DAYS()`, `LAST_N_DAYS(30)`, `USD(100)`, `CYN(888)`           |
+| **Literals**  | There are only date and currency literals.                   | UPPER_CASE        | Those are constant-like values, so static constant variable naming convention is preferred. | `LAST_90_DAYS()`, `LAST_N_DAYS(30)`, `USD(100)`, `CYN(888)`  |
 
 ### 2.2 Naming Confliction
 
@@ -106,7 +105,7 @@ Here are the naming conventions to avoid conflictions with existing keywords or 
 
 ### 3.1 Query Class
 
-All operators and functions are built as static methods of the Query class, to reference them with a `Query` dot every time is tedious. When possible, please extend the `Query` class, where all static methods can be referenced directly in it. All examples in this README are written in such context.
+All operators and functions are built as static methods of the Query class, to reference them with a `Query` dot every time is tedious. When possible, please extend the `Query` class, where all static methods can be referenced directly. All examples in this README are written in such context.
 
 ```java
 public with sharing class AccountQuery extends Query {
@@ -135,13 +134,13 @@ public with sharing class AccountQuery extends Query {
 
 ### 3.2 Query Execution
 
-There are three ways to invoke a `Query`:
+There are three ways to invoke a `Query`. And by default they are running in system mode, `AccessLevel` can be supplied to change their running mode, i.e. `run(AccessLevel.USER_MODE)`.
 
-1. `run()` - Execute the query to get records from Salesforce database.
-2. `getLocator()` - Get a `Database.QueryLocator`, can be returned in a batch class `start()` method.
-3. `count()` - Return an integer of the number of records, `count()` must be used in select.
-
-By default, they are running in system mode, `AccessLevel` can be supplied to change their running mode, i.e. `run(AccessLevel.USER_MODE)`.
+|       | API            | API with Access Level      | Description                                                  |
+| ----- | -------------- | -------------------------- | ------------------------------------------------------------ |
+| **1** | ` run()`       | `run(AccessLevel)`         | Return a `List<SObject>` from Salesforce database.           |
+| **2** | `getLocator()` | ` getLocator(AccessLevel)` | Return a `Database.QueryLocator` to be used by a batch class start method. |
+| **3** | `getCount()`   | `getCount(AccessLevel)`    | Return an integer of the number of records, must be used together with `COUNT()`. |
 
 ```java
 List<Account> accounts = (List<Account>) Query.of(Account.SObjectType)
@@ -170,18 +169,20 @@ Query accountQuery = Query.of(Account.SOBjectType);
 
 #### Inline Select
 
-There are five types of `selectBy()` statements, each accepts different input types:
+Inline select will build the Query in one goal. There are five types of `selectBy()` statements, each accept different input types:
 
-1. Accept only `SObjectField` as parameters, such as: `Account.Name`. The number of params can be 1 to 5.
-2. Accept only functions as parameters, such as: `FORMAT(Account.AnnualRevenue)`. The number of params can be 1 to 5.
-3. Accept only `String` as parameters. The number of params can be 1 to 5. Use this only for parent field references. Although it supports functions as well, I would recommend to directly use the above function with a string field instead.
-4. Accept a child relationship subquery as parameter.
-5. Accept a `List<Object>` with mixing of `SObjectField`, functions or `String`, but cannot be queries.
+|       | API                                                        | Description                                                  |
+| ----- | ---------------------------------------------------------- | ------------------------------------------------------------ |
+| **1** | `Query selectBy(SObjectField ... )`                        | Select `SObjectField`, up to 5 params are supported          |
+| **2** | `Query selectBy(Function ... )`                            | Select functions, up to 5 params are supported.              |
+| **3** | `Query selectBy(String ... )`                              | Select strings, up to 5 params are supported. Mainly used for parent field references. |
+| **4** | `Query selectBy(String childRelationName, Query subQuery)` | Select subquery, a subquery is built in the same way as a standard query. |
+| **5** | `Query selectBy(List<Object>)`                             | Select a `List<Object>` mixing of `SObjectField`, functions or `String`, but not queries. |
 
-**Note**: These `selectBy()` methods can chain from one to another, so developers can select as many fields as they want.
+**Note**: These `selectBy()` methods can chain from one after another, so developers can select as many fields as they want.
 
 ```java
-Query query = Query.of(Account.SObjectType)
+Query accountQuery = Query.of(Account.SObjectType)
     // #1. all params are sobject fields
     .selectBy(Account.Name, Account.BillingCountry, Account.BillingState)
     // #2. all params are functions
@@ -191,8 +192,9 @@ Query query = Query.of(Account.SObjectType)
     // #4. one subquery for child relationship "Contacts"
     .selectBy('Contacts', Query.of(Contact.SObjectType).selectBy(Contact.Name))
     // #5. a list of object mixing with sobject fields, funcitons and strings
-    .selectBy(new List<Object> { Account.Name, FORMAT(Account.AnnualRevenue), 'Owner.Profile.Id' });
+    .selectBy(new List<Object> { Account.Description, FORMAT(Account.CreatedDate), 'Owner.Name' });
 ```
+
 
 #### Outline Select
 
@@ -216,14 +218,14 @@ Query query = Query.of(Account.SObjectType)
 
 Use `typeof()` to construct a SOQL TYPEOF statement.
 
-1. The `then()` method only support maximum 5 number of parameters, but multiple then methods can be chained to add more fields.
-2. Previously used `SObjectType` can be used in `when()` again, new fields will be added against the same `SObjectType`.
+1. Multiple `then()` methods can be chained to add more fields.
+2. Previously used `SObjectType` can be used by `when()` again, new fields will be added against the same `SObjectType`.
 3. multiple `elsex()` methods can be chained to add more fields.
-4. The `typeof()` can be create standalone outside a query.
+4. The `typeof()` can be create standalone outside fo a query.
 
 ```java
-Query query = Query.of(Task.SObjecType)
-    .selectBy(typeof(Task.What)
+Query accountQuery = Query.of(Task.SObjecType)
+    .selectBy(typeof('What')
         .when(Account.SObjectType)
               .then(Account.Phone, Account.NumberOfEmployees)
         .when(Opportunity.SObjectType) // #1 multiple then methods can be chained
@@ -231,24 +233,33 @@ Query query = Query.of(Task.SObjecType)
               .then(Opportunity.ExpectedRevenue, Opportunity.Description)
         .when(Account.SObjectType)     // #2 previously used SObjectType can be used again
               .then(Account.BillingCountry, Account.BillingState)
-        .elsex(Task.Name, Task.IsRecurrence)
-        .elsex(Task.Email, Task.Phone) // #3 multiple elsex methods can be chained
+        .elsex(Task.Id, Task.Status)
+        .elsex('Email', 'Phone')       // #3 multiple elsex methods can be chained
     );
 
 Query.TypeOf typeOfWhat = typeof(Task.SObjecType)
     .when().then().elsex() ... ;      // #4 TypeOf can be created standalone
 ```
 
+| API                        | API with String      | Description                   |
+| -------------------------- | -------------------- | ----------------------------- |
+| `typeof(SObjectField)`     | `typeof(String)`     |                               |
+| `when(SObjectType)`        |                      |                               |
+| `then(SObjectField ... )`  | `then(String ... )`  | Up to 5 params are supported. |
+| `elsex(SObjectField ... )` | `elsex(String ... )` | Up to 5 params are supported. |
+
+
+
 ### 4.3 Where Statement
 
 The where statement method is called `filterBy()` but not ~~whereBy~~. Both comparison expression and logical statement are `Query.Filter` types, which can be supplied to the `filterBy(Filter filter)` API.
 
 ```java
-Query query = Query.of(Account.SObjectType)
+Query accountQuery = Query.of(Account.SObjectType)
 	.selectBy(Account.Name)
 	.filterBy(gt(Account.AnnualRevenue, 2000)); // #1. a single comparison expression
 
-Query query = Query.of(Account.SObjectType)
+Query accountQuery = Query.of(Account.SObjectType)
 	.selectBy(Account.Name)
 	.filterBy(andx()                            // #2. a single logical statement
         .add(gt(Account.AnnualRevenue, 2000))
@@ -347,7 +358,7 @@ There are two types of `orderBy()` statements, each accepts different input type
 **Note**: These `orderBy()` methods can chain from one to another, so developers can order by as many fields as they want.
 
 ```java
-Query query = Query.of(Account.SObjectType)
+Query accountQuery = Query.of(Account.SObjectType)
     .selectBy(Account.Name)
     // #1. all params are fields
     .orderBy(Account.BillingCountry, Account.BillingState)
@@ -358,12 +369,12 @@ Query query = Query.of(Account.SObjectType)
 Every `orderBy()` supports an optional trailing call to `descending()` and `nullsLast()`. Ordering fields are default to `ascending()` and `nullsFirst()` behaviors, you can but not necessarily to declare them explicitly. The ascending and nulls logic will be applied to all the fields or functions used by the previous `orderBy()` next to them. If different sorting logics need to be applied to each field, just separate them into different `orderBy()` methods.
 
 ```java
-Query query = Query.of(Account.SObjectType)
+Query accountQuery = Query.of(Account.SObjectType)
     .selectBy(Account.Name)
     // fields are in the same ordering behavior
     .orderBy(Account.BillingCountry, Account.BillingState).descending().nullsLast();
 
-Query query = Query.of(Account.SObjectType)
+Query accountQuery = Query.of(Account.SObjectType)
     .selectBy(Account.Name)
     // fields are in different ordering behaviors
     .orderBy(Account.BillingCountry).descending().nullsLast()
@@ -382,7 +393,7 @@ Query.Orderer anotherOrderer = Query.orderer()
     .add(Account.BillingCountry, Account.BillingState).descending().nullsLast()
     .add(orderer);            // orderer can be consumed by another orderer
 
-Query query = Query.of(Account.SObjectType)
+Query accountQuery = Query.of(Account.SObjectType)
     .selectBy(Account.Name)
     .orderBy(anotherOrderer); // orderer can be comsumed by a query
 ```
@@ -399,7 +410,7 @@ There are two types of `groupBy()` statements, each accepts different input type
 **Note**: These `groupBy()` methods can chain from one to another, so developers can group by as many fields as they want.
 
 ```java
-Query query = Query.of(Account.SObjectType)
+Query accountQuery = Query.of(Account.SObjectType)
     .selectBy(AVG(Account.AnnualRevenue))
     .selectBy(SUM(Account.AnnualRevenue, 'summary'))       // optional alias
     .groupBy(Account.BillingCountry, Account.BillingState) // group by fields
@@ -409,7 +420,7 @@ Query query = Query.of(Account.SObjectType)
 The aggregate results can be filtered and ordered. The `havingBy(Filter filter)` keyword can be used in the same way as `filterBy()`, just supply a comparison expression or logical statement inside it.
 
 ```java
-Query query = Query.of(Account.SObjectType)
+Query accountQuery = Query.of(Account.SObjectType)
     .selectBy(AVG(Account.AnnualRevenue), SUM(Account.AnnualRevenue))
     .groupBy(Account.BillingCountry, Account.BillingState).rollup()
     // aggerate result can be filtered
@@ -421,7 +432,7 @@ Query query = Query.of(Account.SObjectType)
 Optional `rollup()` or `cube()` methods can be invoked on the query to generate sub total and grand total results.
 
 ```java
-Query query = Query.of(Account.SObjectType)
+Query accountQuery = Query.of(Account.SObjectType)
     .selectBy(AVG(Account.AnnualRevenue), SUM(Account.AnnualRevenue))
     .groupBy(Account.BillingCountry, Account.BillingState)
     .rollup();
@@ -439,7 +450,7 @@ Query.Grouper anotherGrouper = Query.grouper()
 	.add(Account.BillingCountry, Account.BillingState)
     .add(grouper);            // grouper can be consumed by another grouper
 
-Query query = Query.of(Account.SObjectType)
+Query accountQuery = Query.of(Account.SObjectType)
     .selectBy(AVG(Account.AnnualRevenue), SUM(Account.AnnualRevenue))
     .groupBy(anotherGrouper); // grouper can be comsumed by a query
 ```
@@ -525,7 +536,7 @@ Some of following params are not labeled with types, this is because they suppor
 The following functions operating on Date, Time and Datetime fields. **Note**: Date functions can only be used in where conditions, and group by statements. When used in group by, of course it can appear in select and having as well. Date functions cannot be used inside any other functions, as well as the above aggregate functions.
 
 ```java
-Query query = Query.of(Opportunity.SObjectType)
+Query accountQuery = Query.of(Opportunity.SObjectType)
     .selectBy(CALENDAR_YEAR(Opportunity.CreatedDate), SUM(Opportunity.Amount))
     .groupBy(CALENDAR_YEAR(Opportunity.CreatedDate));
 ```
@@ -588,11 +599,11 @@ Here are all the available currency ISO codes referenced from Salesforce ([link]
 Query.Filter filter = orx()
     .add(eq(Account.AnnualRevenual, USD(2000)))
     .add(eq(Account.AnnualRevenual, CNY(2000)))
-    .add(eq(Account.AnnualRevenual, ISO('TRY', 2000)))
+    .add(eq(Account.AnnualRevenual, CURRENCY('TRY', 2000)))
 );
 ```
 
-**NOTE**: TRY is an Apex keyword, so it can not have a corresponding method, instead TRY currency can be generated with a general `ISO` method. In case Salesforce introduced new currencies, which are not ported into Apex Query library, the `ISO` method can be used temporarily.
+**NOTE**: TRY is an Apex keyword, so it can not have a corresponding method, instead TRY currency can be generated with a general `CURRENCY` method. In case Salesforce is introducing new currencies, which are not ported into the library, `ISO` method can be used temporarily as well.
 
 > AED, AFN, ALL, AMD, ANG, AOA, ARS, AUD, AWG, AZN, BAM, BBD, BDT, BGN, BHD, BIF, BMD, BND, BOB, BRL, BSD, BTN, BWP, BYN, BZD, CAD, CDF, CHF, CLP, CNY, COP, CRC, CSD, CUP, CVE, CZK, DJF, DKK, DOP, DZD, EGP, ERN, ETB, EUR, FJD, FKP, GBP, GEL, GHS, GIP, GMD, GNF, GTQ, GYD, HKD, HNL, HRK, HTG, HUF, IDR, ILS, INR, IQD, IRR, ISK, JMD, JOD, JPY, KES, KGS, KHR, KMF, KPW, KRW, KWD, KYD, KZT, LAK, LBP, LKR, LRD, LYD, MAD, MDL, MGA, MKD, MMK, MOP, MRU, MUR, MWK, MXN, MYR, MZN, NAD, NGN, NIO, NOK, NPR, NZD, OMR, PAB, PEN, PGK, PHP, PKR, PLN, PYG, QAR, RON, RSD, RUB, RWF, SAR, SBD, SCR, SDG, SEK, SGD, SHP, SLE, SLL, SOS, SRD, STN, SYP, SZL, THB, TJS, TND, TOP, ~~TRY~~, TTD, TWD, TZS, UAH, UGX, USD, UYU, UZS, VES, VND, VUV, WST, XAF, XCD, XOF, XPF, YER, ZAR
 

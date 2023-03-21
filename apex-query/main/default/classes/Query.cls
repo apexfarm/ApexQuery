@@ -100,11 +100,11 @@ public abstract class Query implements Querable {
         return Database.countQueryWithBinds(this.build(tmpVars), tmpVars, accessLevel);
     }
 
-    public Object run() {
+    public List<SObject> run() {
         return this.run(AccessLevel.SYSTEM_MODE);
     }
 
-    public Object run(AccessLevel accessLevel) {
+    public List<SObject> run(AccessLevel accessLevel) {
         Map<String, Object> tmpVars = new Map<String, Object>();
         return Database.queryWithBinds(this.build(tmpVars), tmpVars, accessLevel);
     }
@@ -3580,7 +3580,7 @@ public abstract class Query implements Querable {
         }
     }
 
-    public static CurrencyLiteral ISO(String code, Decimal value) {
+    public static CurrencyLiteral CURRENCY(String code, Decimal value) {
         return new CurrencyLiteral(code, value);
     }
 
@@ -4592,8 +4592,8 @@ public abstract class Query implements Querable {
         Query updateViewstat();
         Query forUpdate();
 
-        Object run();
-        Object run(AccessLevel accessLevel);
+        List<SObject> run();
+        List<SObject> run(AccessLevel accessLevel);
         Integer getCount();
         Integer getCount(AccessLevel accessLevel);
         Database.QueryLocator getLocator();
