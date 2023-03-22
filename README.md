@@ -12,6 +12,10 @@ Using a query builder to build dynamic SOQL gives many advantages:
 | Production, Developer | <a target="_blank" href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t2v000007CfibAAC"><img src="docs/images/deploy-button.png"></a> | ver 1.0.1 |
 | Sandbox               | <a target="_blank" href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t2v000007CfibAAC"><img src="docs/images/deploy-button.png"></a> | ver 1.0.1 |
 
+### Online Articles
+
+- [Advantages of Using SOQL Builder in Salesforce](https://medium.com/@jeff.jianfeng.jin/advantages-of-using-soql-builder-in-salesforce-9e82925a74b0) (medium link)
+
 ## Table of Contents
 
 - [1. Design Principles](#1-design-principles)
