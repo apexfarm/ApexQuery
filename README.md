@@ -142,8 +142,8 @@ There are three ways to invoke a `Query`. And by default they are running in sys
 
 |       | API            | API with Access Level      | Description                                                  |
 | ----- | -------------- | -------------------------- | ------------------------------------------------------------ |
-| **1** | ` run()`       | `run(AccessLevel)`         | Return a `List<SObject>` from Salesforce database.           |
-| **2** | `getLocator()` | ` getLocator(AccessLevel)` | Return a `Database.QueryLocator` to be used by a batch class start method. |
+| **1** | `run()`        | `run(AccessLevel)`         | Return a `List<SObject>` from Salesforce database.           |
+| **2** | `getLocator()` | `getLocator(AccessLevel)`  | Return a `Database.QueryLocator` to be used by a batch class start method. |
 | **3** | `getCount()`   | `getCount(AccessLevel)`    | Return an integer of the number of records, must be used together with `COUNT()`. |
 
 ```java
