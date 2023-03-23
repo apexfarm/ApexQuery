@@ -1,16 +1,16 @@
 # Apex Query
 
-![](https://img.shields.io/badge/version-1.0.1-brightgreen.svg) ![](https://img.shields.io/badge/build-passing-brightgreen.svg) ![](https://img.shields.io/badge/coverage-98%25-brightgreen.svg)
+![](https://img.shields.io/badge/version-1.0.2-brightgreen.svg) ![](https://img.shields.io/badge/build-passing-brightgreen.svg) ![](https://img.shields.io/badge/coverage-98%25-brightgreen.svg)
 
 Using a query builder to build dynamic SOQL gives many advantages:
 
 1. **More efficient**: No need to deal with string concatenation, and handsfree from handling binding variable names.
 2. **Less error-prone**: APIs are carefully designed with strong types, cannot pass wrong values.
 
-| Environment           | Installation Link                                            | Version   |
-| --------------------- | ------------------------------------------------------------ | --------- |
-| Production, Developer | <a target="_blank" href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t2v000007CfibAAC"><img src="docs/images/deploy-button.png"></a> | ver 1.0.1 |
-| Sandbox               | <a target="_blank" href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t2v000007CfibAAC"><img src="docs/images/deploy-button.png"></a> | ver 1.0.1 |
+| Environment           | Installation Link                                                                                                                                         | Version   |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
+| Production, Developer | <a target="_blank" href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t2v000007Cfj0AAC"><img src="docs/images/deploy-button.png"></a> | ver 1.0.2 |
+| Sandbox               | <a target="_blank" href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t2v000007Cfj0AAC"><img src="docs/images/deploy-button.png"></a>  | ver 1.0.2 |
 
 ## Table of Contents
 
@@ -87,12 +87,12 @@ Using a query builder to build dynamic SOQL gives many advantages:
 
 Here are the naming conventions to increase query readability:
 
-|               | Description                                                  | Naming Convention | Reasoning                                                    | Example                                                      |
-| ------------- | ------------------------------------------------------------ | ----------------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
-| **Keywords**  | These are backbone structures of a SOQL.                     | camelCase         | Keywords should easily remind users to their SOQL counterparts. | `selectBy`, `filterBy`, `groupBy`, `havingBy`, `orderBy`     |
-| **Operators** | These are mainly logical and comparison operators.           | camelCase         | Operators should be small and short to be operator-like, abbreviation is used when appropriate. | `eq`, `ne`, `gt`, `gte`, `lt`, `lte`, `inx`, `nin`           |
+|               | Description                                                                | Naming Convention | Reasoning                                                                                                                                          | Example                                                               |
+| ------------- | -------------------------------------------------------------------------- | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| **Keywords**  | These are backbone structures of a SOQL.                                   | camelCase         | Keywords should easily remind users to their SOQL counterparts.                                                                                    | `selectBy`, `filterBy`, `groupBy`, `havingBy`, `orderBy`              |
+| **Operators** | These are mainly logical and comparison operators.                         | camelCase         | Operators should be small and short to be operator-like, abbreviation is used when appropriate.                                                    | `eq`, `ne`, `gt`, `gte`, `lt`, `lte`, `inx`, `nin`                    |
 | **Functions** | These are used to perform aggregation, formatting, and date accessing etc. | UPPER_CASE        | This gives best readability, because it can be easily noticed when appear among many lower case characters of field names, keywords and operators. | `COUNT`, `MAX`, `TO_LABEL`, `FORMAT`, `CALENDAR_MONTH`, `FISCAL_YEAR` |
-| **Literals**  | There are only date and currency literals.                   | UPPER_CASE        | Those are constant-like values, so static constant variable naming convention is preferred. | `LAST_90_DAYS()`, `LAST_N_DAYS(30)`, `USD(100)`, `CYN(888)`  |
+| **Literals**  | There are only date and currency literals.                                 | UPPER_CASE        | Those are constant-like values, so static constant variable naming convention is preferred.                                                        | `LAST_90_DAYS()`, `LAST_N_DAYS(30)`, `USD(100)`, `CYN(888)`           |
 
 ### 2.2 Naming Confliction
 
@@ -136,10 +136,10 @@ public with sharing class AccountQuery extends Query {
 
 There are three ways to invoke a `Query`. And by default they are running in system mode, `AccessLevel` can be supplied to change their running mode, i.e. `run(AccessLevel.USER_MODE)`.
 
-|       | API            | API with Access Level      | Description                                                  |
-| ----- | -------------- | -------------------------- | ------------------------------------------------------------ |
-| **1** | ` run()`       | `run(AccessLevel)`         | Return a `List<SObject>` from Salesforce database.           |
-| **2** | `getLocator()` | ` getLocator(AccessLevel)` | Return a `Database.QueryLocator` to be used by a batch class start method. |
+|       | API            | API with Access Level      | Description                                                                       |
+| ----- | -------------- | -------------------------- | --------------------------------------------------------------------------------- |
+| **1** | ` run()`       | `run(AccessLevel)`         | Return a `List<SObject>` from Salesforce database.                                |
+| **2** | `getLocator()` | ` getLocator(AccessLevel)` | Return a `Database.QueryLocator` to be used by a batch class start method.        |
 | **3** | `getCount()`   | `getCount(AccessLevel)`    | Return an integer of the number of records, must be used together with `COUNT()`. |
 
 ```java
@@ -171,13 +171,13 @@ Query accountQuery = Query.of(Account.SOBjectType);
 
 There are five types of `selectBy()` statements, each accept different input types. They can chain from one after another, so developers can select as many fields as they want.
 
-|       | API                                                  | Description                                                  |
-| ----- | ---------------------------------------------------- | ------------------------------------------------------------ |
-| **1** | `selectBy(SObjectField ... )`                        | Select `SObjectField`, up to 5 params are supported          |
-| **2** | `selectBy(Function ... )`                            | Select functions, up to 5 params are supported.              |
+|       | API                                                  | Description                                                                            |
+| ----- | ---------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| **1** | `selectBy(SObjectField ... )`                        | Select `SObjectField`, up to 5 params are supported                                    |
+| **2** | `selectBy(Function ... )`                            | Select functions, up to 5 params are supported.                                        |
 | **3** | `selectBy(String ... )`                              | Select strings, up to 5 params are supported. Mainly used for parent field references. |
-| **4** | `selectBy(String childRelationName, Query subQuery)` | Select subquery, a subquery is built in the same way as a standard query. |
-| **5** | `selectBy(List<Object>)`                             | Select a `List<Object>` mixing of fields, functions or strings, but not queries. |
+| **4** | `selectBy(String childRelationName, Query subQuery)` | Select subquery, a subquery is built in the same way as a standard query.              |
+| **5** | `selectBy(List<Object>)`                             | Select a `List<Object>` mixing of fields, functions or strings, but not queries.       |
 
 ```java
 Query accountQuery = Query.of(Account.SObjectType)
@@ -193,8 +193,7 @@ Query accountQuery = Query.of(Account.SObjectType)
     .selectBy(new List<Object> { Account.Description, FORMAT(Account.CreatedDate), 'Owner.Name' });
 ```
 
-
-#### Outline Select
+#### Compose with Selector
 
 Use a `selector()` to compose the field selection outside of a query. And one selector can be added to another one for reuse. The selector `add` methods support the same inputs as the `selectBy()` introduced in the above section.
 
@@ -208,8 +207,15 @@ Query.Selector anotherSelector = Query.selector()
     .add(Account.Description, Account.NumberOfEmployees)
     .add(selector);             // selector can be consumed by another selector
 
-Query query = Query.of(Account.SObjectType)
+Query accountQuery = Query.of(Account.SObjectType)
     .selectBy(anotherSelector); // selector can be comsumed by a query
+```
+
+**Note**: If selectors are accidentally modified by some methods later, they won't impact the selectors or queries already composed with them.
+
+```java
+selector.add(Account.CreatedDate);
+// both anotherSelector and accountQuery are not impacted.
 ```
 
 #### TYPEOF Select
@@ -377,7 +383,7 @@ Query accountQuery = Query.of(Account.SObjectType)
     .orderBy(Account.BillingState).ascending().nullsFirst();
 ```
 
-#### Outline Order By
+#### Compose with Orderer
 
 Use a `orderer()` to compose the field ordering logic outside of a query. And one orderer can be added to another one for reuse. The orderer `add` methods support the same inputs as the `orderBy()` introduced in the above section.
 
@@ -392,6 +398,13 @@ Query.Orderer anotherOrderer = Query.orderer()
 Query accountQuery = Query.of(Account.SObjectType)
     .selectBy(Account.Name)
     .orderBy(anotherOrderer); // orderer can be comsumed by a query
+```
+
+**Note**: If orderers are accidentally modified by some methods later, they won't impact the orderers or queries already composed with them.
+
+```java
+orderer.add(Account.CreatedDate);
+// both anotherOrderer and accountQuery are not impacted.
 ```
 
 ### 4.5 Group By Statement
@@ -434,7 +447,7 @@ Query accountQuery = Query.of(Account.SObjectType)
     .rollup();
 ```
 
-#### Outline Group By
+#### Compose with Grouper
 
 Use a `grouper()` to compose the the field grouping outside of a query. And one grouper can be added to another one for reuse. The grouper `add` methods support the same inputs as the `groupBy()` introduced in the above section.
 
@@ -449,6 +462,13 @@ Query.Grouper anotherGrouper = Query.grouper()
 Query accountQuery = Query.of(Account.SObjectType)
     .selectBy(AVG(Account.AnnualRevenue), SUM(Account.AnnualRevenue))
     .groupBy(anotherGrouper); // grouper can be comsumed by a query
+```
+
+**Note**: If groupers are accidentally modified by some methods later, they won't impact the groupers or queries already composed with them.
+
+```java
+grouper.add(DAY_ONLY(CONVERT_TIMEZONE(Account.CreatedDate)));
+// both anotherGrouper and accountQuery are not impacted.
 ```
 
 ### 4.6 Other Statement

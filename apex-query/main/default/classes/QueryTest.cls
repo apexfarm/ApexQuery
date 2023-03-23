@@ -67,6 +67,18 @@ public with sharing class QueryTest extends Query {
 
         accountQuery = Query.of(Account.SObjectType).updateViewstat();
         Assert.areEqual('SELECT Id FROM Account UPDATE VIEWSTAT', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).forView();
+        Assert.areEqual('SELECT Id FROM Account FOR VIEW', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).forReference();
+        Assert.areEqual('SELECT Id FROM Account FOR REFERENCE', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).forUpdate();
+        Assert.areEqual('SELECT Id FROM Account FOR UPDATE', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).limitx(3).offset(3);
+        Assert.areEqual('SELECT Id FROM Account LIMIT 3 OFFSET 3', accountQuery.build());
     }
 
     @isTest
@@ -184,7 +196,7 @@ public with sharing class QueryTest extends Query {
     }
 
     @isTest
-    static void testKeyword_Select_Fields() {
+    static void testKeyword_Select() {
         // Inline Styles
         Query accountQuery = Query.of(Account.SObjectType).selectBy(Account.Id);
         Assert.areEqual('SELECT Id FROM Account', accountQuery.build());
@@ -228,8 +240,86 @@ public with sharing class QueryTest extends Query {
             accountQuery.build()
         );
 
-        // Outline Styles
-        Query.Selector selector = Query.selector().add(Account.Id);
+        // Strings
+        accountQuery = Query.of(Account.SObjectType).selectBy('Id');
+        Assert.areEqual('SELECT Id FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).selectBy('Id', 'Name');
+        Assert.areEqual('SELECT Id, Name FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).selectBy('Id', 'Name', 'Description');
+        Assert.areEqual('SELECT Id, Name, Description FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).selectBy('Id', 'Name', 'Description', 'BillingCountry');
+        Assert.areEqual('SELECT Id, Name, Description, BillingCountry FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType)
+            .selectBy('Id', 'Name', 'Description', 'BillingCountry', 'BillingState');
+        Assert.areEqual(
+            'SELECT Id, Name, Description, BillingCountry, BillingState FROM Account',
+            accountQuery.build()
+        );
+
+        accountQuery = Query.of(Account.SObjectType)
+            .selectBy('Id', 'Name')
+            .selectBy('Description', 'BillingCountry', 'BillingState');
+        Assert.areEqual(
+            'SELECT Id, Name, Description, BillingCountry, BillingState FROM Account',
+            accountQuery.build()
+        );
+
+        // Function
+        accountQuery = Query.of(Account.SObjectType).selectBy(TO_LABEL(Account.Id));
+        Assert.areEqual('SELECT TOLABEL(Id) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType).selectBy(TO_LABEL(Account.Id), TO_LABEL(Account.Name));
+        Assert.areEqual('SELECT TOLABEL(Id), TOLABEL(Name) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType)
+            .selectBy(TO_LABEL(Account.Id), TO_LABEL(Account.Name), TO_LABEL(Account.Description));
+        Assert.areEqual('SELECT TOLABEL(Id), TOLABEL(Name), TOLABEL(Description) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of(Account.SObjectType)
+            .selectBy(
+                TO_LABEL(Account.Id),
+                TO_LABEL(Account.Name),
+                TO_LABEL(Account.Description),
+                TO_LABEL(Account.BillingCountry)
+            );
+        Assert.areEqual(
+            'SELECT TOLABEL(Id), TOLABEL(Name), TOLABEL(Description), TOLABEL(BillingCountry) FROM Account',
+            accountQuery.build()
+        );
+
+        accountQuery = Query.of(Account.SObjectType)
+            .selectBy(
+                TO_LABEL(Account.Id),
+                TO_LABEL(Account.Name),
+                TO_LABEL(Account.Description),
+                TO_LABEL(Account.BillingCountry),
+                TO_LABEL(Account.BillingState)
+            );
+        Assert.areEqual(
+            'SELECT TOLABEL(Id), TOLABEL(Name), TOLABEL(Description), TOLABEL(BillingCountry), TOLABEL(BillingState) FROM Account',
+            accountQuery.build()
+        );
+
+        accountQuery = Query.of(Account.SObjectType)
+            .selectBy(TO_LABEL(Account.Id), TO_LABEL(Account.Name))
+            .selectBy(TO_LABEL(Account.Description), TO_LABEL(Account.BillingCountry), TO_LABEL(Account.BillingState));
+        Assert.areEqual(
+            'SELECT TOLABEL(Id), TOLABEL(Name), TOLABEL(Description), TOLABEL(BillingCountry), TOLABEL(BillingState) FROM Account',
+            accountQuery.build()
+        );
+    }
+
+    @isTest
+    static void testKeyword_Select_Selector() {
+        Query accountQuery;
+        Query.Selector selector;
+        Query.Selector anotherSelector;
+        // SObjectField
+        selector = Query.selector().add(Account.Id);
         accountQuery = Query.of(Account.SObjectType).selectBy(selector);
         Assert.areEqual('SELECT Id FROM Account', accountQuery.build());
 
@@ -279,56 +369,15 @@ public with sharing class QueryTest extends Query {
         );
 
         selector = Query.selector().add(Account.Description, Account.BillingCountry, Account.BillingState);
-        Query.Selector anotherSelector = Query.selector().add(Account.Id, Account.Name).add(selector);
+        anotherSelector = Query.selector().add(Account.Id, Account.Name).add(selector);
         accountQuery = Query.of(Account.SObjectType).selectBy(anotherSelector);
         Assert.areEqual(
             'SELECT Id, Name, Description, BillingCountry, BillingState FROM Account',
             accountQuery.build()
         );
-    }
 
-    @isTest
-    static void testKeyword_Select_Strings() {
-        // Parents
-        Query contactQuery = Query.of(Contact.SObjectType)
-            .selectBy(Contact.Id, Contact.Name)
-            .selectBy('Account.Owner.Name')
-            .selectBy('FORMAT(Account.AnnualRevenue)', 'TOLABEL(Account.AccountSource)');
-        Assert.areEqual(
-            'SELECT Id, Name, Account.Owner.Name, FORMAT(Account.AnnualRevenue), TOLABEL(Account.AccountSource) FROM Contact',
-            contactQuery.build()
-        );
-
-        // Inline Styles
-        Query accountQuery = Query.of(Account.SObjectType).selectBy('Id');
-        Assert.areEqual('SELECT Id FROM Account', accountQuery.build());
-
-        accountQuery = Query.of(Account.SObjectType).selectBy('Id', 'Name');
-        Assert.areEqual('SELECT Id, Name FROM Account', accountQuery.build());
-
-        accountQuery = Query.of(Account.SObjectType).selectBy('Id', 'Name', 'Description');
-        Assert.areEqual('SELECT Id, Name, Description FROM Account', accountQuery.build());
-
-        accountQuery = Query.of(Account.SObjectType).selectBy('Id', 'Name', 'Description', 'BillingCountry');
-        Assert.areEqual('SELECT Id, Name, Description, BillingCountry FROM Account', accountQuery.build());
-
-        accountQuery = Query.of(Account.SObjectType)
-            .selectBy('Id', 'Name', 'Description', 'BillingCountry', 'BillingState');
-        Assert.areEqual(
-            'SELECT Id, Name, Description, BillingCountry, BillingState FROM Account',
-            accountQuery.build()
-        );
-
-        accountQuery = Query.of(Account.SObjectType)
-            .selectBy('Id', 'Name')
-            .selectBy('Description', 'BillingCountry', 'BillingState');
-        Assert.areEqual(
-            'SELECT Id, Name, Description, BillingCountry, BillingState FROM Account',
-            accountQuery.build()
-        );
-
-        // Outline Styles
-        Query.Selector selector = Query.selector().add('Id');
+        // String
+        selector = Query.selector().add('Id');
         accountQuery = Query.of(Account.SObjectType).selectBy(selector);
         Assert.areEqual('SELECT Id FROM Account', accountQuery.build());
 
@@ -359,62 +408,15 @@ public with sharing class QueryTest extends Query {
         );
 
         selector = Query.selector().add('Description', 'BillingCountry', 'BillingState');
-        Query.Selector anotherSelector = Query.selector().add('Id', 'Name').add(selector);
+        anotherSelector = Query.selector().add('Id', 'Name').add(selector);
         accountQuery = Query.of(Account.SObjectType).selectBy(anotherSelector);
         Assert.areEqual(
             'SELECT Id, Name, Description, BillingCountry, BillingState FROM Account',
             accountQuery.build()
         );
-    }
 
-    @isTest
-    static void testKeyword_Select_Functions() {
-        // Inline Styles
-        Query accountQuery = Query.of(Account.SObjectType).selectBy(TO_LABEL(Account.Id));
-        Assert.areEqual('SELECT TOLABEL(Id) FROM Account', accountQuery.build());
-
-        accountQuery = Query.of(Account.SObjectType).selectBy(TO_LABEL(Account.Id), TO_LABEL(Account.Name));
-        Assert.areEqual('SELECT TOLABEL(Id), TOLABEL(Name) FROM Account', accountQuery.build());
-
-        accountQuery = Query.of(Account.SObjectType)
-            .selectBy(TO_LABEL(Account.Id), TO_LABEL(Account.Name), TO_LABEL(Account.Description));
-        Assert.areEqual('SELECT TOLABEL(Id), TOLABEL(Name), TOLABEL(Description) FROM Account', accountQuery.build());
-
-        accountQuery = Query.of(Account.SObjectType)
-            .selectBy(
-                TO_LABEL(Account.Id),
-                TO_LABEL(Account.Name),
-                TO_LABEL(Account.Description),
-                TO_LABEL(Account.BillingCountry)
-            );
-        Assert.areEqual(
-            'SELECT TOLABEL(Id), TOLABEL(Name), TOLABEL(Description), TOLABEL(BillingCountry) FROM Account',
-            accountQuery.build()
-        );
-
-        accountQuery = Query.of(Account.SObjectType)
-            .selectBy(
-                TO_LABEL(Account.Id),
-                TO_LABEL(Account.Name),
-                TO_LABEL(Account.Description),
-                TO_LABEL(Account.BillingCountry),
-                TO_LABEL(Account.BillingState)
-            );
-        Assert.areEqual(
-            'SELECT TOLABEL(Id), TOLABEL(Name), TOLABEL(Description), TOLABEL(BillingCountry), TOLABEL(BillingState) FROM Account',
-            accountQuery.build()
-        );
-
-        accountQuery = Query.of(Account.SObjectType)
-            .selectBy(TO_LABEL(Account.Id), TO_LABEL(Account.Name))
-            .selectBy(TO_LABEL(Account.Description), TO_LABEL(Account.BillingCountry), TO_LABEL(Account.BillingState));
-        Assert.areEqual(
-            'SELECT TOLABEL(Id), TOLABEL(Name), TOLABEL(Description), TOLABEL(BillingCountry), TOLABEL(BillingState) FROM Account',
-            accountQuery.build()
-        );
-
-        // Outline Styles
-        Query.Selector selector = Query.selector().add(TO_LABEL(Account.Id));
+        // Function
+        selector = Query.selector().add(TO_LABEL(Account.Id));
         accountQuery = Query.of(Account.SObjectType).selectBy(selector);
         Assert.areEqual('SELECT TOLABEL(Id) FROM Account', accountQuery.build());
 
@@ -464,9 +466,7 @@ public with sharing class QueryTest extends Query {
 
         selector = Query.selector()
             .add(TO_LABEL(Account.Description), TO_LABEL(Account.BillingCountry), TO_LABEL(Account.BillingState));
-        Query.Selector anotherSelector = Query.selector()
-            .add(TO_LABEL(Account.Id), TO_LABEL(Account.Name))
-            .add(selector);
+        anotherSelector = Query.selector().add(TO_LABEL(Account.Id), TO_LABEL(Account.Name)).add(selector);
         accountQuery = Query.of(Account.SObjectType).selectBy(anotherSelector);
         Assert.areEqual(
             'SELECT TOLABEL(Id), TOLABEL(Name), TOLABEL(Description), TOLABEL(BillingCountry), TOLABEL(BillingState) FROM Account',
@@ -475,10 +475,43 @@ public with sharing class QueryTest extends Query {
     }
 
     @isTest
-    static void testKeyword_Select_Queries() {
-        // Inline Styles
-        Query contactQuery = Query.of(Contact.SObjectType);
-        Query accountQuery = Query.of(Account.SObjectType).selectBy('Contacts', contactQuery);
+    static void testKeyword_Select_Selector_Clone() {
+        Query accountQuery;
+
+        Query.Selector selector = Query.selector().add(Account.Id);
+        accountQuery = Query.of(Account.SObjectType).selectBy(selector);
+        selector.add(Account.CreatedDate); // this will not be added to query
+        Assert.areEqual('SELECT Id FROM Account', accountQuery.build());
+
+        selector = Query.selector().add('Id');
+        accountQuery = Query.of(Account.SObjectType).selectBy(selector);
+        selector.add('CreatedDate'); // this will not be added to query
+        Assert.areEqual('SELECT Id FROM Account', accountQuery.build());
+
+        selector = Query.selector().add(TO_LABEL(Account.Id));
+        accountQuery = Query.of(Account.SObjectType).selectBy(selector);
+        selector.add(FORMAT(Account.CreatedDate)); // this will not be added to query
+        Assert.areEqual('SELECT TOLABEL(Id) FROM Account', accountQuery.build());
+    }
+
+    @isTest
+    static void testKeyword_Select_Relations() {
+        Query accountQuery;
+        Query contactQuery;
+
+        // Strings - Parent
+        contactQuery = Query.of(Contact.SObjectType)
+            .selectBy(Contact.Id, Contact.Name)
+            .selectBy('Account.Owner.Name')
+            .selectBy('FORMAT(Account.AnnualRevenue)', 'TOLABEL(Account.AccountSource)');
+        Assert.areEqual(
+            'SELECT Id, Name, Account.Owner.Name, FORMAT(Account.AnnualRevenue), TOLABEL(Account.AccountSource) FROM Contact',
+            contactQuery.build()
+        );
+
+        // Queries - Inline Styles
+        contactQuery = Query.of(Contact.SObjectType);
+        accountQuery = Query.of(Account.SObjectType).selectBy('Contacts', contactQuery);
         Assert.areEqual('SELECT (SELECT Id FROM Contacts) FROM Account', accountQuery.build());
 
         contactQuery = Query.of(Contact.SObjectType).selectBy(Contact.Name);
@@ -496,7 +529,7 @@ public with sharing class QueryTest extends Query {
             accountQuery.build()
         );
 
-        // Outline Styles
+        // Queries - Outline Styles
         contactQuery = Query.of(Contact.SObjectType);
         Query.Selector selector = Query.selector().add('Contacts', contactQuery);
         accountQuery = Query.of(Account.SObjectType).selectBy(selector);
@@ -3617,7 +3650,7 @@ public with sharing class QueryTest extends Query {
     // #region Order By
 
     @isTest
-    static void testKeywork_OrderBy() {
+    static void testKeyword_OrderBy() {
         Query accountQuery;
 
         // Mixing
@@ -3683,7 +3716,7 @@ public with sharing class QueryTest extends Query {
     }
 
     @isTest
-    static void testKeywork_OrderBy_Orderer() {
+    static void testKeyword_OrderBy_Orderer() {
         Query accountQuery;
         Query.Orderer orderer;
 
@@ -3764,14 +3797,51 @@ public with sharing class QueryTest extends Query {
     }
 
     @isTest
-    static void testKeywork_OrderBy_Others() {
+    static void testKeyword_OrderBy_Orderer_Clone() {
+        Query accountQuery;
+
+        Query.Orderer orderer = Query.orderer().add(Account.Id).descending().nullsLast();
+        accountQuery = Query.of(Account.SObjectType).orderBy(Account.Name).orderBy(orderer);
+        orderer.add(Account.CreatedDate); // this will not be added to query
+        Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Id DESC NULLS LAST', accountQuery.build());
+
+        orderer = Query.orderer().add('Id');
+        accountQuery = Query.of(Account.SObjectType).orderBy(Account.Name).descending().nullsLast().orderBy(orderer);
+        orderer.add('CreatedDate'); // this will not be added to query
+        Assert.areEqual('SELECT Id FROM Account ORDER BY Name DESC NULLS LAST, Id', accountQuery.build());
+
+        orderer = Query.orderer().add(MAX(Account.Id)).descending().nullsLast();
+        accountQuery = Query.of(Account.SObjectType)
+            .orderBy(Account.Name)
+            .descending()
+            .nullsLast()
+            .orderBy(orderer)
+            .ascending()
+            .nullsFirst();
+        orderer.add(MIN(Account.CreatedDate)); // this will not be added to query
+        Assert.areEqual(
+            'SELECT Id FROM Account ORDER BY Name DESC NULLS LAST, MAX(Id) DESC NULLS LAST',
+            accountQuery.build()
+        );
+    }
+
+    @isTest
+    static void testKeyword_OrderBy_Others() {
         Query accountQuery;
         Query.Orderer orderer;
 
         orderer = orderer().add(Account.Name, Account.Name).ascending().nullsFirst();
         accountQuery = Query.of(Account.SObjectType).orderBy(orderer);
+        Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name', accountQuery.build());
+
+        orderer = orderer().add(Account.Name, Account.Name).descending().nullsLast().ascending().nullsFirst();
+        accountQuery = Query.of(Account.SObjectType).orderBy(orderer);
+        Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name', accountQuery.build());
+
+        orderer = orderer().add(Account.Name, Account.Name).ascending().nullsFirst().descending().nullsLast();
+        accountQuery = Query.of(Account.SObjectType).orderBy(orderer);
         Assert.areEqual(
-            'SELECT Id FROM Account ORDER BY Name ASC NULLS FIRST, Name ASC NULLS FIRST',
+            'SELECT Id FROM Account ORDER BY Name DESC NULLS LAST, Name DESC NULLS LAST',
             accountQuery.build()
         );
 
@@ -3791,15 +3861,12 @@ public with sharing class QueryTest extends Query {
             .nullsLast();
         accountQuery = Query.of(Account.SObjectType).orderBy(orderer);
         Assert.areEqual(
-            'SELECT Id FROM Account ORDER BY Name ASC NULLS FIRST, Name ASC NULLS FIRST, Name DESC NULLS LAST, Name DESC NULLS LAST',
+            'SELECT Id FROM Account ORDER BY Name, Name, Name DESC NULLS LAST, Name DESC NULLS LAST',
             accountQuery.build()
         );
 
         accountQuery = Query.of(Account.SObjectType).orderBy(Account.Name, Account.Name).ascending().nullsFirst();
-        Assert.areEqual(
-            'SELECT Id FROM Account ORDER BY Name ASC NULLS FIRST, Name ASC NULLS FIRST',
-            accountQuery.build()
-        );
+        Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name', accountQuery.build());
 
         accountQuery = Query.of(Account.SObjectType).orderBy(Account.Name, Account.Name).descending().nullsLast();
         Assert.areEqual(
@@ -3815,7 +3882,7 @@ public with sharing class QueryTest extends Query {
             .descending()
             .nullsLast();
         Assert.areEqual(
-            'SELECT Id FROM Account ORDER BY Name ASC NULLS FIRST, Name ASC NULLS FIRST, Name DESC NULLS LAST, Name DESC NULLS LAST',
+            'SELECT Id FROM Account ORDER BY Name, Name, Name DESC NULLS LAST, Name DESC NULLS LAST',
             accountQuery.build()
         );
     }
@@ -3827,7 +3894,7 @@ public with sharing class QueryTest extends Query {
     // #region Group By
 
     @isTest
-    static void testKeywork_GroupBy() {
+    static void testKeyword_GroupBy() {
         Query accountQuery;
 
         // Mixing
@@ -3919,7 +3986,7 @@ public with sharing class QueryTest extends Query {
     }
 
     @isTest
-    static void testKeywork_GroupBy_Grouper() {
+    static void testKeyword_GroupBy_Grouper() {
         Query accountQuery;
         Query.Grouper grouper;
 
@@ -4023,6 +4090,26 @@ public with sharing class QueryTest extends Query {
             'SELECT Id FROM Account GROUP BY CALENDAR_MONTH(CreatedDate), CALENDAR_MONTH(CreatedDate), CALENDAR_MONTH(CreatedDate), CALENDAR_MONTH(CreatedDate), CALENDAR_MONTH(CreatedDate)',
             accountQuery.build()
         );
+    }
+
+    @isTest
+    static void testKeyword_GroupBy_Grouper_Clone() {
+        Query accountQuery;
+
+        Query.Grouper grouper = Query.grouper().add(Account.Id);
+        accountQuery = Query.of(Account.SObjectType).groupBy(grouper);
+        grouper.add(Account.CreatedDate); // this will not be added to query
+        Assert.areEqual('SELECT Id FROM Account GROUP BY Id', accountQuery.build());
+
+        grouper = Query.grouper().add('Id');
+        accountQuery = Query.of(Account.SObjectType).groupBy(grouper);
+        grouper.add('CreatedDate'); // this will not be added to query
+        Assert.areEqual('SELECT Id FROM Account GROUP BY Id', accountQuery.build());
+
+        grouper = Query.grouper().add(CALENDAR_MONTH(Account.CreatedDate));
+        accountQuery = Query.of(Account.SObjectType).groupBy(grouper);
+        grouper.add(CALENDAR_YEAR(Account.CreatedDate)); // this will not be added to query
+        Assert.areEqual('SELECT Id FROM Account GROUP BY CALENDAR_MONTH(CreatedDate)', accountQuery.build());
     }
 
     // #endregion
@@ -4376,25 +4463,25 @@ public with sharing class QueryTest extends Query {
 
         Query query = Query.of(Account.SObjectType);
 
-        Query.Selector fields = selector();
-        fields.add(Account.Name, Account.AnnualRevenue);
-        fields.add(Account.BillingCountry, Account.BillingState);
-        fields.add('Contacts', contactQuery);
-        query.selectBy(fields);
+        Query.Selector selector = selector();
+        selector = selector.add(Account.Name, Account.AnnualRevenue);
+        selector = selector.add(Account.BillingCountry, Account.BillingState);
+        selector = selector.add('Contacts', contactQuery);
+        query.selectBy(selector);
 
         Query.CompositeFilter filters = orx();
 
-        filters.add(andx()
-            .add(gt(Account.AnnualRevenue, 1000))
-            .add(eq(Account.BillingCountry, 'China'))
-            .add(eq(Account.BillingState, 'Beijing'))
-        );
+        filters = filters.add(andx(
+            gt(Account.AnnualRevenue, 1000),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingState, 'Beijing')
+        ));
 
-        filters.add(andx()
-            .add(lt(Account.AnnualRevenue, 1000))
-            .add(eq(Account.BillingCountry, 'China'))
-            .add(eq(Account.BillingState, 'Shanghai'))
-        );
+        filters = filters.add(andx(
+            lt(Account.AnnualRevenue, 1000),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingState, 'Shanghai')
+        ));
 
         query.filterBy(filters);
 
@@ -4422,13 +4509,13 @@ public with sharing class QueryTest extends Query {
 
         Query.CompositeFilter filters = orx();
 
-        filters.add(andx()
+        filters = filters.add(andx()
             .add(gt(Account.AnnualRevenue, 1000))
             .add(eq(Account.BillingCountry, 'China'))
             .add(eq(Account.BillingState, 'Beijing'))
         );
 
-        filters.add(andx()
+        filters = filters.add(andx()
             .add(lt(Account.AnnualRevenue, 1000))
             .add(eq(Account.BillingCountry, 'China'))
             .add(eq(Account.BillingState, 'Shanghai'))
