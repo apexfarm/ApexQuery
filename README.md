@@ -12,6 +12,10 @@ Using a query builder to build dynamic SOQL gives many advantages:
 | Production, Developer | <a target="_blank" href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t2v000007Cfj0AAC"><img src="docs/images/deploy-button.png"></a> | ver 1.0.2 |
 | Sandbox               | <a target="_blank" href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t2v000007Cfj0AAC"><img src="docs/images/deploy-button.png"></a>  | ver 1.0.2 |
 
+### Online Articles
+
+- [Advantages of Using SOQL Builder in Salesforce](https://medium.com/@jeff.jianfeng.jin/advantages-of-using-soql-builder-in-salesforce-9e82925a74b0) (medium link)
+
 ## Table of Contents
 
 - [1. Design Principles](#1-design-principles)
@@ -136,11 +140,11 @@ public with sharing class AccountQuery extends Query {
 
 There are three ways to invoke a `Query`. And by default they are running in system mode, `AccessLevel` can be supplied to change their running mode, i.e. `run(AccessLevel.USER_MODE)`.
 
-|       | API            | API with Access Level      | Description                                                                       |
-| ----- | -------------- | -------------------------- | --------------------------------------------------------------------------------- |
-| **1** | ` run()`       | `run(AccessLevel)`         | Return a `List<SObject>` from Salesforce database.                                |
-| **2** | `getLocator()` | ` getLocator(AccessLevel)` | Return a `Database.QueryLocator` to be used by a batch class start method.        |
-| **3** | `getCount()`   | `getCount(AccessLevel)`    | Return an integer of the number of records, must be used together with `COUNT()`. |
+|       | API            | API with Access Level     | Description                                                                       |
+| ----- | -------------- | ------------------------- | --------------------------------------------------------------------------------- |
+| **1** | `run()`        | `run(AccessLevel)`        | Return a `List<SObject>` from Salesforce database.                                |
+| **2** | `getLocator()` | `getLocator(AccessLevel)` | Return a `Database.QueryLocator` to be used by a batch class start method.        |
+| **3** | `getCount()`   | `getCount(AccessLevel)`   | Return an integer of the number of records, must be used together with `COUNT()`. |
 
 ```java
 List<Account> accounts = (List<Account>) Query.of(Account.SObjectType)
