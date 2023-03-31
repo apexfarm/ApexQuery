@@ -31,14 +31,14 @@ Using a query builder to build dynamic SOQL gives many advantages:
   - [4.3 Where Statement](#43-where-statement)
   - [4.4 Order By Statement](#44-order-by-statement)
   - [4.5 Group By Statement](#45-group-by-statement)
-- [5. Operator References](#5-operator-references)
+- [5. Operators](#5-operators)
   - [5.1 Logical Operators](#51-logical-operators)
   - [5.2 Comparison Operators](#52-comparison-operators)
-- [6. Function References](#6-function-references)
+- [6. Functions](#6-functions)
   - [6.1 Aggregate Functions](#61-aggregate-functions)
   - [6.2 Date/Time Functions](#62-date-time-functions)
   - [6.3 Other Functions](#63-other-functions)
-- [7. Literal References](#7-literal-references)
+- [7. Literals](#7-literals)
   - [7.1 Date Literals](#71-date-literals)
   - [7.2 Currency Literals](#72-currency-literals)
 - [8. License](#8-license)
@@ -487,7 +487,7 @@ grouper.add(DAY_ONLY(CONVERT_TIMEZONE(Account.CreatedDate)));
 | `updateTracking()`  | `UPDATE TRACKING` |
 | `updateViewstat()`  | `UPDATE VIEWSTAT` |
 
-## 5. Operator References
+## 5. Operators
 
 ### 5.1 Logical Operators
 
@@ -541,7 +541,7 @@ As a rule of thumb, there are three different types can be used for `param`:
 | **INCLUDES**   | `includes(param, List<String> values)` | `param INCLUDES :values`                  |
 | **EXCLUDES**   | `excludes(param, List<String> values)` | `param EXCLUDES :values`                  |
 
-## 6. Function References
+## 6. Functions
 
 ### 6.1 Aggregate Functions
 
@@ -605,7 +605,7 @@ Query.Filter filter = lt(DISTANCE_IN_KM(Account.ShippingAddreess, Location.newIn
 | `DISTANCE_IN_KM(field, Location geo)` | `DISTANCE(ShippingAddress, GEOLOCATION(37.775,-122.418), 'km')` |
 | `DISTANCE_IN_MI(field, Location geo)` | `DISTANCE(ShippingAddress, GEOLOCATION(37.775,-122.418), 'mi')` |
 
-## 7. Literal References
+## 7. Literals
 
 ### 7.1 Date Literals
 
