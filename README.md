@@ -262,15 +262,15 @@ The where statement method is called `filterBy()` but not ~~whereBy~~. Both comp
 
 ```java
 Query accountQuery = Query.of(Account.SObjectType)
-	.selectBy(Account.Name)
-	.filterBy(gt(Account.AnnualRevenue, 2000)); // #1. a single comparison expression
+    .selectBy(Account.Name)
+    .filterBy(gt(Account.AnnualRevenue, 2000)); // #1. a single comparison expression
 
 Query accountQuery = Query.of(Account.SObjectType)
-	.selectBy(Account.Name)
-	.filterBy(andx()                            // #2. a single logical statement
-            .add(gt(Account.AnnualRevenue, 2000))
-            .add(lt(Account.AnnualRevenue, 6000))
-        );
+    .selectBy(Account.Name)
+    .filterBy(andx()                            // #2. a single logical statement
+        .add(gt(Account.AnnualRevenue, 2000))
+        .add(lt(Account.AnnualRevenue, 6000))
+    );
 ```
 
 Each `Query` only supports a single method call to `filterBy()`. If there are multiple calls to `filterBy()` are made, the latter will override the former. This is because the filters used by where statement is a tree structure with a single root. Filters can be created and composed outside of the `Query` natively, the following sections introduce two styles to compose them.
