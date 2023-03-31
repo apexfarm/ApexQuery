@@ -268,9 +268,9 @@ Query accountQuery = Query.of(Account.SObjectType)
 Query accountQuery = Query.of(Account.SObjectType)
 	.selectBy(Account.Name)
 	.filterBy(andx()                            // #2. a single logical statement
-        .add(gt(Account.AnnualRevenue, 2000))
-        .add(lt(Account.AnnualRevenue, 6000))
-    );
+            .add(gt(Account.AnnualRevenue, 2000))
+            .add(lt(Account.AnnualRevenue, 6000))
+        );
 ```
 
 Each `Query` only supports a single method call to `filterBy()`. If there are multiple calls to `filterBy()` are made, the latter will override the former. This is because the filters used by where statement is a tree structure with a single root. Filters can be created and composed outside of the `Query` natively, the following sections introduce two styles to compose them.
@@ -634,7 +634,7 @@ Query.Filter filter = orx()
 );
 ```
 
-**NOTE**: TRY is an Apex keyword, so it can not have a corresponding method, instead TRY currency can be generated with a general `CURRENCY` method. In case Salesforce is introducing new currencies, which are not ported into the library, `ISO` method can be used temporarily as well.
+**NOTE**: TRY is an Apex keyword, so it can not have a corresponding method, instead TRY currency can be generated with a general `CURRENCY` method. In case Salesforce is introducing new currencies, which are not ported into the library, `CURRENCY` method can be used temporarily as well.
 
 > AED, AFN, ALL, AMD, ANG, AOA, ARS, AUD, AWG, AZN, BAM, BBD, BDT, BGN, BHD, BIF, BMD, BND, BOB, BRL, BSD, BTN, BWP, BYN, BZD, CAD, CDF, CHF, CLP, CNY, COP, CRC, CSD, CUP, CVE, CZK, DJF, DKK, DOP, DZD, EGP, ERN, ETB, EUR, FJD, FKP, GBP, GEL, GHS, GIP, GMD, GNF, GTQ, GYD, HKD, HNL, HRK, HTG, HUF, IDR, ILS, INR, IQD, IRR, ISK, JMD, JOD, JPY, KES, KGS, KHR, KMF, KPW, KRW, KWD, KYD, KZT, LAK, LBP, LKR, LRD, LYD, MAD, MDL, MGA, MKD, MMK, MOP, MRU, MUR, MWK, MXN, MYR, MZN, NAD, NGN, NIO, NOK, NPR, NZD, OMR, PAB, PEN, PGK, PHP, PKR, PLN, PYG, QAR, RON, RSD, RUB, RWF, SAR, SBD, SCR, SDG, SEK, SGD, SHP, SLE, SLL, SOS, SRD, STN, SYP, SZL, THB, TJS, TND, TOP, ~~TRY~~, TTD, TWD, TZS, UAH, UGX, USD, UYU, UZS, VES, VND, VUV, WST, XAF, XCD, XOF, XPF, YER, ZAR
 
