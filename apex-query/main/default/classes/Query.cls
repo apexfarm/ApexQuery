@@ -52,10 +52,8 @@ public abstract class Query implements Querable {
 
         Query that = (Query) obj;
 
-        Boolean isEqual =
-            this.objectType == that.objectType &&
+        return this.objectType == that.objectType &&
             this.rootSelector == that.rootSelector &&
-            this.rootTypeOf == that.rootTypeOf &&
             this.rootFilter == that.rootFilter &&
             this.rootOrderer == that.rootOrderer &&
             this.limitx == that.limitx &&
@@ -64,17 +62,31 @@ public abstract class Query implements Querable {
             this.forReference == that.forReference &&
             this.updateTracking == that.updateTracking &&
             this.updateViewstat == that.updateViewstat &&
-            this.forUpdate == that.forUpdate;
+            this.forUpdate == that.forUpdate &&
+            this.rollup == that.rollup &&
+            this.cube == that.cube &&
+            this.rootGrouper == that.rootGrouper &&
+            this.rootTypeOf == that.rootTypeOf;
+    }
 
-        if (!isEqual) {
-            return false;
-        }
+    public Integer hashCode() {
+        Integer hashCode = this.objectType == null ? 23 : System.hashCode(this.objectType);
+        hashCode = (hashCode * 397) ^ (this.rootSelector == null ? 23 : this.rootSelector.hashCode());
+        hashCode = (hashCode * 397) ^ (this.rootFilter == null ? 23 : this.rootFilter.hashCode());
+        hashCode = (hashCode * 397) ^ (this.rootOrderer == null ? 23 : this.rootOrderer.hashCode());
+        hashCode = (hashCode * 397) ^ (this.rootGrouper == null ? 23 : this.rootGrouper.hashCode());
+        hashCode = (hashCode * 397) ^ (this.rootTypeOf == null ? 23 : this.rootTypeOf.hashCode());
 
-        if (this.rootGrouper.fieldOrFuncs.isEmpty()) {
-            return true;
-        } else {
-            return this.rootGrouper == that.rootGrouper && this.rollup == that.rollup && this.cube == that.cube;
-        }
+        hashCode = (hashCode * 397) ^ (this.limitx == null ? 23 : System.hashCode(this.limitx));
+        hashCode = (hashCode * 397) ^ (this.offset == null ? 23 : System.hashCode(this.offset));
+        hashCode = (hashCode * 397) ^ (this.forView == null ? 23 : System.hashCode(this.forView));
+        hashCode = (hashCode * 397) ^ (this.forReference == null ? 23 : System.hashCode(this.forReference));
+        hashCode = (hashCode * 397) ^ (this.updateTracking == null ? 23 : System.hashCode(this.updateTracking));
+        hashCode = (hashCode * 397) ^ (this.updateViewstat == null ? 23 : System.hashCode(this.updateViewstat));
+        hashCode = (hashCode * 397) ^ (this.forUpdate == null ? 23 : System.hashCode(this.forUpdate));
+        hashCode = (hashCode * 397) ^ (this.rollup == null ? 23 : System.hashCode(this.rollup));
+        hashCode = (hashCode * 397) ^ (this.cube == null ? 23 : System.hashCode(this.cube));
+        return hashCode;
     }
 
     public static Query of(SObjectType objectType) {
@@ -374,6 +386,12 @@ public abstract class Query implements Querable {
 
             return this.relation == that.relation && this.query == that.query;
         }
+
+        public Integer hashCode() {
+            Integer hashCode = this.relation == null ? 23 : this.relation.hashCode();
+            hashCode = (hashCode * 397) ^ (this.query == null ? 23 : this.query.hashCode());
+            return hashCode;
+        }
     }
 
     public interface Selector {
@@ -425,6 +443,10 @@ public abstract class Query implements Querable {
 
             SelectorImpl that = (SelectorImpl) obj;
             return this.selections == that.selections;
+        }
+
+        public Integer hashCode() {
+            return this.selections == null ? 23 : this.selections.hashCode();
         }
 
         public Selector add(String field) {
@@ -763,6 +785,12 @@ public abstract class Query implements Querable {
             return this.field == that.field && this.fieldsByType == that.fieldsByType;
         }
 
+        public Integer hashCode() {
+            Integer hashCode = this.field == null ? 23 : this.field.hashCode();
+            hashCode = (hashCode * 397) ^ (this.fieldsByType == null ? 23 : this.fieldsByType.hashCode());
+            return hashCode;
+        }
+
         public TypeOf when(SObjectType sobjectType) {
             if (sobjectType != null) {
                 this.currentType = sobjectType;
@@ -1025,6 +1053,13 @@ public abstract class Query implements Querable {
             return this.fieldOrFuncs == that.fieldOrFuncs &&
                 this.descendingIndexes == that.descendingIndexes &&
                 this.nullsLastIndexes == that.nullsLastIndexes;
+        }
+
+        public Integer hashCode() {
+            Integer hashCode = this.fieldOrFuncs == null ? 23 : this.fieldOrFuncs.hashCode();
+            hashCode = (hashCode * 397) ^ (this.descendingIndexes == null ? 23 : this.descendingIndexes.hashCode());
+            hashCode = (hashCode * 397) ^ (this.nullsLastIndexes == null ? 23 : this.nullsLastIndexes.hashCode());
+            return hashCode;
         }
 
         private void setAscending(Boolean ascending) {
@@ -1399,6 +1434,10 @@ public abstract class Query implements Querable {
             return this.fieldOrFuncs == that.fieldOrFuncs;
         }
 
+        public Integer hashCode() {
+            return this.fieldOrFuncs.hashCode();
+        }
+
         // String
         public Grouper add(String field) {
             this.fieldOrFuncs.add(field);
@@ -1744,13 +1783,18 @@ public abstract class Query implements Querable {
             LogicalExpression that = (LogicalExpression) obj;
             return this.tag == that.tag && this.filters == that.filters;
         }
+
+        public Integer hashCode() {
+            Integer hashCode = this.filters == null ? 23 : this.filters.hashCode();
+            hashCode = (hashCode * 397) ^ (this.tag);
+            return hashCode;
+        }
     }
 
     private abstract class ComparisonExpression implements Filter {
         private Object fieldOrFunc { get; set; }
         private String operator { get; set; }
         private Object value { get; set; }
-        private DistanceFunction distance { get; set; } // used by DistanceComparison
         private Integer tag { get; set; } // used to distinguish each implementation.
 
         private ComparisonExpression(Object fieldOrFunc, String operator, Object value) {
@@ -1794,10 +1838,14 @@ public abstract class Query implements Querable {
 
             ComparisonExpression that = (ComparisonExpression) obj;
 
-            return (this.fieldOrFunc == that.fieldOrFunc &&
-            this.tag == that.tag &&
-            this.value == that.value &&
-            this.distance == that.distance);
+            return (this.tag == that.tag && this.fieldOrFunc == that.fieldOrFunc && this.value == that.value);
+        }
+
+        public Integer hashCode() {
+            Integer hashCode = this.fieldOrFunc == null ? 23 : this.fieldOrFunc.hashCode();
+            hashCode = (hashCode * 397) ^ (this.value == null ? 23 : this.value.hashCode());
+            hashCode = (hashCode * 397) ^ (this.tag);
+            return hashCode;
         }
     }
 
@@ -3186,6 +3234,12 @@ public abstract class Query implements Querable {
             GenericFunction that = (GenericFunction) obj;
             return this.tag == that.tag && this.fieldOrFunc == that.fieldOrFunc;
         }
+
+        public Integer hashCode() {
+            Integer hashCode = this.fieldOrFunc == null ? 23 : this.fieldOrFunc.hashCode();
+            hashCode = (hashCode * 397) ^ (this.tag);
+            return hashCode;
+        }
     }
 
     // #endregion
@@ -3408,6 +3462,18 @@ public abstract class Query implements Querable {
             return this.field == that.field &&
                 this.geo.latitude == that.geo.latitude &&
                 this.geo.longitude == that.geo.longitude;
+        }
+
+        public Integer hashCode() {
+            Integer hashCode = this.field == null ? 23 : this.field.hashCode();
+            if (this.geo == null) {
+                hashCode = (hashCode * 397) ^ (23);
+                hashCode = (hashCode * 397) ^ (23);
+            } else {
+                hashCode = (hashCode * 397) ^ (this.geo.latitude == null ? 23 : System.hashCode(this.geo.latitude));
+                hashCode = (hashCode * 397) ^ (this.geo.longitude == null ? 23 : System.hashCode(this.geo.longitude));
+            }
+            return hashCode;
         }
     }
 
@@ -3643,6 +3709,12 @@ public abstract class Query implements Querable {
 
             CurrencyLiteral that = (CurrencyLiteral) obj;
             return this.value == that.value && this.code == that.code;
+        }
+
+        public Integer hashCode() {
+            Integer hashCode = this.value == null ? 23 : System.hashCode(this.value);
+            hashCode = (hashCode * 397) ^ (this.code == null ? 23 : this.code.hashCode());
+            return hashCode;
         }
     }
 
@@ -4285,6 +4357,12 @@ public abstract class Query implements Querable {
             DateLiteral that = (DateLiteral) obj;
             return this.value == that.value && this.name == that.name;
         }
+
+        public Integer hashCode() {
+            Integer hashCode = this.value == null ? 23 : this.value;
+            hashCode = (hashCode * 397) ^ (this.name == null ? 23 : this.name.hashCode());
+            return hashCode;
+        }
     }
 
     private class DateLiteralDictionary {
@@ -4546,8 +4624,6 @@ public abstract class Query implements Querable {
     // prettier-ignore
     public interface Querable {
         // SELECT
-        // TODO: Support select all? And automatically skips fields don't have read permission?
-
         // TODO: support additional syntaxes
         // SELECT fieldList [subquery][...]
         // [TYPEOF typeOfField whenExpression[...] elseExpression END][...]

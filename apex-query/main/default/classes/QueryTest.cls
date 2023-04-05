@@ -4720,81 +4720,85 @@ public with sharing class QueryTest extends Query {
 
     @isTest
     static void testValueObject_Filter() {
+        // Logical
+        Set<Object> bag = new Set<Object>{ eq(Account.Name, 123) };
+        Assert.areEqual(true, bag.contains(eq(Account.Name, 123)));
         Assert.areEqual(eq(Account.Name, 123), eq(Account.Name, 123));
-        Assert.areEqual(ne(Account.Name, 123), ne(Account.Name, 123));
-        Assert.areEqual(gt(Account.Name, 123), gt(Account.Name, 123));
-        Assert.areEqual(gte(Account.Name, 123), gte(Account.Name, 123));
-        Assert.areEqual(lt(Account.Name, 123), lt(Account.Name, 123));
-        Assert.areEqual(lte(Account.Name, 123), lte(Account.Name, 123));
+
+        bag.add(likex(Account.Name, '123'));
+        Assert.areEqual(true, bag.contains(likex(Account.Name, '123')));
         Assert.areEqual(likex(Account.Name, '123'), likex(Account.Name, '123'));
-        Assert.areEqual(nlike(Account.Name, '123'), nlike(Account.Name, '123'));
+
+        bag.add(includes(Account.Name, new List<String>{ '123' }));
+        Assert.areEqual(true, bag.contains(includes(Account.Name, new List<String>{ '123' })));
         Assert.areEqual(
             includes(Account.Name, new List<String>{ '123' }),
             includes(Account.Name, new List<String>{ '123' })
         );
-        Assert.areEqual(
-            excludes(Account.Name, new List<String>{ '123' }),
-            excludes(Account.Name, new List<String>{ '123' })
-        );
+
+        bag.add(inx(Account.Name, new List<String>{ '123' }));
+        Assert.areEqual(true, bag.contains(inx(Account.Name, new List<String>{ '123' })));
         Assert.areEqual(inx(Account.Name, new List<String>{ '123' }), inx(Account.Name, new List<String>{ '123' }));
-        Assert.areEqual(nin(Account.Name, new List<String>{ '123' }), nin(Account.Name, new List<String>{ '123' }));
-        Assert.areEqual(nin(Account.Name, new List<String>{ '123' }), nin(Account.Name, new List<String>{ '123' }));
+
+        bag.add(inx(Account.Name, Query.of(Account.SObjectType).selectBy(Account.Id)));
+        Assert.areEqual(true, bag.contains(inx(Account.Name, Query.of(Account.SObjectType).selectBy(Account.Id))));
         Assert.areEqual(
             inx(Account.Name, Query.of(Account.SObjectType).selectBy(Account.Id)),
             inx(Account.Name, Query.of(Account.SObjectType).selectBy(Account.Id))
         );
-        Assert.areEqual(
-            nin(Account.Name, Query.of(Account.SObjectType).selectBy(Account.Id)),
-            nin(Account.Name, Query.of(Account.SObjectType).selectBy(Account.Id))
-        );
 
+        bag.add(between(Account.BillingState, 'Bd', 'Si'));
+        Assert.areEqual(true, bag.contains(between(Account.BillingState, 'Bd', 'Si')));
+        Assert.areEqual(between(Account.BillingState, 'Bd', 'Si'), between(Account.BillingState, 'Bd', 'Si'));
+
+        // Function
+        bag.add(MAX(Account.ShippingAddress));
+        Assert.areEqual(true, bag.contains(MAX(Account.ShippingAddress)));
+        Assert.areEqual(MAX(Account.ShippingAddress), MAX(Account.ShippingAddress));
+
+        bag.add(DISTANCE_IN_MI(Account.ShippingAddress, Location.newInstance(37.775000, -122.41800)));
+        Assert.areEqual(
+            true,
+            bag.contains(DISTANCE_IN_MI(Account.ShippingAddress, Location.newInstance(37.775000, -122.41800)))
+        );
         Assert.areEqual(
             DISTANCE_IN_MI(Account.ShippingAddress, Location.newInstance(37.775000, -122.41800)),
             DISTANCE_IN_MI(Account.ShippingAddress, Location.newInstance(37.775000, -122.41800))
         );
 
-        Assert.areEqual(
-            DISTANCE_IN_KM(Account.ShippingAddress, Location.newInstance(37.775000, -122.41800)),
-            DISTANCE_IN_KM(Account.ShippingAddress, Location.newInstance(37.775000, -122.41800))
-        );
-
-        Assert.areEqual(
-            lt(DISTANCE_IN_KM(Account.ShippingAddress, Location.newInstance(37.775000, -122.41800)), 20),
-            lt(DISTANCE_IN_KM(Account.ShippingAddress, Location.newInstance(37.775000, -122.41800)), 20)
-        );
-
-        // Date Literal
+        // Literal
+        bag.add(YESTERDAY());
+        Assert.areEqual(true, bag.contains(YESTERDAY()));
         Assert.areEqual(YESTERDAY(), YESTERDAY());
+
+        bag.add(LAST_N_DAYS(123));
+        Assert.areEqual(true, bag.contains(LAST_N_DAYS(123)));
         Assert.areEqual(LAST_N_DAYS(123), LAST_N_DAYS(123));
 
+        bag.add(gt(Account.Name, N_FISCAL_YEARS_AGO(123)));
+        Assert.areEqual(true, bag.contains(gt(Account.Name, N_FISCAL_YEARS_AGO(123))));
         Assert.areEqual(gt(Account.Name, N_FISCAL_YEARS_AGO(123)), gt(Account.Name, N_FISCAL_YEARS_AGO(123)));
-        Assert.areEqual(gte(Account.Name, N_FISCAL_YEARS_AGO(123)), gte(Account.Name, N_FISCAL_YEARS_AGO(123)));
-        Assert.areEqual(lt(Account.Name, N_FISCAL_YEARS_AGO(123)), lt(Account.Name, N_FISCAL_YEARS_AGO(123)));
-        Assert.areEqual(lte(Account.Name, N_FISCAL_YEARS_AGO(123)), lte(Account.Name, N_FISCAL_YEARS_AGO(123)));
 
-        // Date, Datetime, Time
-        Assert.areEqual(gt(Account.Name, Date.newInstance(2023, 1, 1)), gt(Account.Name, Date.newInstance(2023, 1, 1)));
-        Assert.areEqual(
-            gte(Account.Name, Date.newInstance(2023, 1, 1)),
-            gte(Account.Name, Date.newInstance(2023, 1, 1))
-        );
+        bag.add(CNY(123));
+        Assert.areEqual(true, bag.contains(CNY(123)));
+        Assert.areEqual(CNY(123), CNY(123));
 
         Assert.areEqual(
             new List<Query.Filter>{
                 eq(Account.Name, 123),
                 likex(Account.Name, '123'),
                 inx(Account.Name, new List<String>{ '123' }),
-                gt(Account.Name, N_FISCAL_YEARS_AGO(123))
+                gt(Account.Name, N_FISCAL_YEARS_AGO(123)),
+                gte(Account.Name, Date.newInstance(2023, 1, 1))
             },
             new List<Query.Filter>{
                 eq(Account.Name, 123),
                 likex(Account.Name, '123'),
                 inx(Account.Name, new List<String>{ '123' }),
-                gt(Account.Name, N_FISCAL_YEARS_AGO(123))
+                gt(Account.Name, N_FISCAL_YEARS_AGO(123)),
+                gte(Account.Name, Date.newInstance(2023, 1, 1))
             }
         );
-
-        Assert.areEqual(between(Account.BillingState, 'Bd', 'Si'), between(Account.BillingState, 'Bd', 'Si'));
     }
 
     @isTest
@@ -4802,35 +4806,91 @@ public with sharing class QueryTest extends Query {
         Query q = Query.of(Account.SObjectType);
         Assert.areEqual(q, q);
 
+        Set<Object> bag = new Set<Object>();
+
+        bag.add(
+            Query.selector()
+                .add('Name')
+                .add(Account.Name)
+                .add(MAX(Account.Name))
+                .add('Contacts', Query.of(Contact.SObjectType))
+        );
         Assert.areEqual(
-            Query.of(Account.SObjectType).OrderBy(Account.BillingCountry, Account.BillingState).nullsFirst(),
-            Query.of(Account.SObjectType).OrderBy(Account.BillingCountry, Account.BillingState).nullsFirst()
+            true,
+            bag.contains(
+                Query.selector()
+                    .add('Name')
+                    .add(Account.Name)
+                    .add(MAX(Account.Name))
+                    .add('Contacts', Query.of(Contact.SObjectType))
+            )
+        );
+        Assert.areEqual(
+            Query.selector()
+                .add('Name')
+                .add(Account.Name)
+                .add(MAX(Account.Name))
+                .add('Contacts', Query.of(Contact.SObjectType)),
+            Query.selector()
+                .add('Name')
+                .add(Account.Name)
+                .add(MAX(Account.Name))
+                .add('Contacts', Query.of(Contact.SObjectType))
         );
 
+        bag.add(Query.orderer().add(Account.BillingCountry, Account.BillingState).descending().nullsFirst());
         Assert.areEqual(
-            Query.of(Account.SObjectType)
-                .selectBy(GROUPING(Account.BillingCountry))
-                .selectBy(GROUPING(Account.BillingState, 'alias0'))
-                .groupBy(Account.BillingCountry, Account.BillingState)
-                .rollup()
-                .orderBy(grouping(Account.BillingCountry), grouping(Account.BillingState))
-                .nullsLast()
-                .descending(),
-            Query.of(Account.SObjectType)
-                .selectBy(GROUPING(Account.BillingCountry))
-                .selectBy(GROUPING(Account.BillingState, 'alias0'))
-                .groupBy(Account.BillingCountry, Account.BillingState)
-                .rollup()
-                .orderBy(grouping(Account.BillingCountry), grouping(Account.BillingState))
-                .nullsLast()
-                .descending()
+            true,
+            bag.contains(Query.orderer().add(Account.BillingCountry, Account.BillingState).descending().nullsFirst())
+        );
+        Assert.areEqual(
+            Query.orderer().add(Account.BillingCountry, Account.BillingState).descending().nullsFirst(),
+            Query.orderer().add(Account.BillingCountry, Account.BillingState).descending().nullsFirst()
         );
 
+        bag.add(
+            Query.grouper().add(Account.BillingCountry, Account.BillingState).add(CALENDAR_MONTH(Account.CreatedDate))
+        );
         Assert.areEqual(
-            selector().add(Account.Id, Account.Name).add('Contacts', Query.of(Contact.SObjectType)),
-            selector().add(Account.Id, Account.Name).add('Contacts', Query.of(Contact.SObjectType))
+            true,
+            bag.contains(
+                Query.grouper()
+                    .add(Account.BillingCountry, Account.BillingState)
+                    .add(CALENDAR_MONTH(Account.CreatedDate))
+            )
+        );
+        Assert.areEqual(
+            Query.grouper().add(Account.BillingCountry, Account.BillingState).add(CALENDAR_MONTH(Account.CreatedDate)),
+            Query.grouper().add(Account.BillingCountry, Account.BillingState).add(CALENDAR_MONTH(Account.CreatedDate))
         );
 
+        bag.add(
+            typeof('What')
+                .when(Account.SObjectType)
+                .then(Account.Phone, Account.NumberOfEmployees)
+                .when(Contact.SObjectType)
+                .then(Contact.Name, Contact.Birthdate)
+                .then(Contact.Department, Contact.Email)
+                .when(Account.SObjectType)
+                .then(Account.BillingCountry, Account.BillingState)
+                .elsex('Id', 'Status')
+                .elsex('Email', 'Phone')
+        );
+        Assert.areEqual(
+            true,
+            bag.contains(
+                typeof('What')
+                    .when(Account.SObjectType)
+                    .then(Account.Phone, Account.NumberOfEmployees)
+                    .when(Contact.SObjectType)
+                    .then(Contact.Name, Contact.Birthdate)
+                    .then(Contact.Department, Contact.Email)
+                    .when(Account.SObjectType)
+                    .then(Account.BillingCountry, Account.BillingState)
+                    .elsex('Id', 'Status')
+                    .elsex('Email', 'Phone')
+            )
+        );
         Assert.areEqual(
             typeof('What')
                 .when(Account.SObjectType)
@@ -4852,6 +4912,134 @@ public with sharing class QueryTest extends Query {
                 .then(Account.BillingCountry, Account.BillingState)
                 .elsex('Id', 'Status')
                 .elsex('Email', 'Phone')
+        );
+
+        bag.add(Query.of(Account.SObjectType));
+        Assert.areEqual(true, bag.contains(Query.of(Account.SObjectType)));
+        Assert.areEqual(Query.of(Account.SObjectType), Query.of(Account.SObjectType));
+
+        bag.add(
+            Query.of(Account.SObjectType)
+                .selectBy(Account.Name)
+                .selectBy(typeof('What'))
+                .filterBy(neNull(Account.Name))
+                .groupBy(Account.Name)
+                .rollup()
+                .cube()
+                .havingBy(neNull(Account.Name))
+                .orderBy(Account.Name)
+                .descending()
+                .nullsLast()
+                .limitx(1)
+                .offset(1)
+                .forView()
+                .forReference()
+                .forUpdate()
+                .updateTracking()
+                .updateViewstat()
+        );
+        Assert.areEqual(
+            true,
+            bag.contains(
+                Query.of(Account.SObjectType)
+                    .selectBy(Account.Name)
+                    .selectBy(typeof('What'))
+                    .filterBy(neNull(Account.Name))
+                    .groupBy(Account.Name)
+                    .rollup()
+                    .cube()
+                    .havingBy(neNull(Account.Name))
+                    .orderBy(Account.Name)
+                    .descending()
+                    .nullsLast()
+                    .limitx(1)
+                    .offset(1)
+                    .forView()
+                    .forReference()
+                    .forUpdate()
+                    .updateTracking()
+                    .updateViewstat()
+            )
+        );
+        Assert.areEqual(
+            Query.of(Account.SObjectType)
+                .selectBy(Account.Name)
+                .selectBy(typeof('What'))
+                .filterBy(neNull(Account.Name))
+                .groupBy(Account.Name)
+                .rollup()
+                .cube()
+                .havingBy(neNull(Account.Name))
+                .orderBy(Account.Name)
+                .descending()
+                .nullsLast()
+                .limitx(1)
+                .offset(1)
+                .forView()
+                .forReference()
+                .forUpdate()
+                .updateTracking()
+                .updateViewstat(),
+            Query.of(Account.SObjectType)
+                .selectBy(Account.Name)
+                .selectBy(typeof('What'))
+                .filterBy(neNull(Account.Name))
+                .groupBy(Account.Name)
+                .rollup()
+                .cube()
+                .havingBy(neNull(Account.Name))
+                .orderBy(Account.Name)
+                .descending()
+                .nullsLast()
+                .limitx(1)
+                .offset(1)
+                .forView()
+                .forReference()
+                .forUpdate()
+                .updateTracking()
+                .updateViewstat()
+        );
+
+        bag.add(
+            Query.of(Account.SObjectType)
+                .selectBy(GROUPING(Account.BillingCountry))
+                .selectBy(GROUPING(Account.BillingState, 'alias0'))
+                .groupBy(Account.BillingCountry, Account.BillingState)
+                .rollup()
+                .orderBy(grouping(Account.BillingCountry), grouping(Account.BillingState))
+                .nullsLast()
+                .descending()
+        );
+        Assert.areEqual(
+            true,
+            bag.contains(
+                Query.of(Account.SObjectType)
+                    .selectBy(GROUPING(Account.BillingCountry))
+                    .selectBy(GROUPING(Account.BillingState, 'alias0'))
+                    .groupBy(Account.BillingCountry, Account.BillingState)
+                    .rollup()
+                    .orderBy(grouping(Account.BillingCountry), grouping(Account.BillingState))
+                    .nullsLast()
+                    .descending()
+            )
+        );
+        Assert.areEqual(
+            Query.of(Account.SObjectType)
+                .selectBy(GROUPING(Account.BillingCountry))
+                .selectBy(GROUPING(Account.BillingState, 'alias0'))
+                .groupBy(Account.BillingCountry, Account.BillingState)
+                .rollup()
+                .orderBy(grouping(Account.BillingCountry), grouping(Account.BillingState))
+                .nullsLast()
+                .descending(),
+            Query.of(Account.SObjectType)
+                .selectBy(GROUPING(Account.BillingCountry))
+                .selectBy(GROUPING(Account.BillingState, 'alias0'))
+                .groupBy(Account.BillingCountry, Account.BillingState)
+                .rollup()
+                .orderBy(grouping(Account.BillingCountry), grouping(Account.BillingState))
+                .nullsLast()
+                .descending()
         );
     }
     // #endregion
