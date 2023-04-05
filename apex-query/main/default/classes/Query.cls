@@ -15,82 +15,9 @@
  * limitations under the License.
  */
 
-public abstract class Query implements Querable {
-    private SObjectType objectType { get; set; }
-    private SelectorImpl rootSelector { get; set; }
-    private TypeOfImpl rootTypeOf { get; set; }
-    private Filter rootFilter { get; set; }
-    private Filter rootHaving { get; set; }
-    private OrdererImpl rootOrderer { get; set; }
-
-    private GrouperImpl rootGrouper { get; set; }
-
-    private Boolean rollup { get; set; }
-    private Boolean cube { get; set; }
-
-    private Integer offset { get; set; }
-    private Integer limitx { get; set; }
-
-    private Boolean forView { get; set; }
-    private Boolean forReference { get; set; }
-    private Boolean updateTracking { get; set; }
-    private Boolean updateViewstat { get; set; }
-    private Boolean forUpdate { get; set; }
-
-    {
-        this.rootSelector = new SelectorImpl();
-        this.rootOrderer = new OrdererImpl();
-        this.rootGrouper = new GrouperImpl();
-        this.rollup = false;
-        this.cube = false;
-    }
-
-    public Boolean equals(Object obj) {
-        if (this === obj) {
-            return true;
-        }
-
-        Query that = (Query) obj;
-
-        return this.objectType == that.objectType &&
-            this.rootSelector == that.rootSelector &&
-            this.rootFilter == that.rootFilter &&
-            this.rootOrderer == that.rootOrderer &&
-            this.limitx == that.limitx &&
-            this.offset == that.offset &&
-            this.forView == that.forView &&
-            this.forReference == that.forReference &&
-            this.updateTracking == that.updateTracking &&
-            this.updateViewstat == that.updateViewstat &&
-            this.forUpdate == that.forUpdate &&
-            this.rollup == that.rollup &&
-            this.cube == that.cube &&
-            this.rootGrouper == that.rootGrouper &&
-            this.rootTypeOf == that.rootTypeOf;
-    }
-
-    public Integer hashCode() {
-        Integer hashCode = this.objectType == null ? 23 : System.hashCode(this.objectType);
-        hashCode = (hashCode * 397) ^ (this.rootSelector == null ? 23 : this.rootSelector.hashCode());
-        hashCode = (hashCode * 397) ^ (this.rootFilter == null ? 23 : this.rootFilter.hashCode());
-        hashCode = (hashCode * 397) ^ (this.rootOrderer == null ? 23 : this.rootOrderer.hashCode());
-        hashCode = (hashCode * 397) ^ (this.rootGrouper == null ? 23 : this.rootGrouper.hashCode());
-        hashCode = (hashCode * 397) ^ (this.rootTypeOf == null ? 23 : this.rootTypeOf.hashCode());
-
-        hashCode = (hashCode * 397) ^ (this.limitx == null ? 23 : System.hashCode(this.limitx));
-        hashCode = (hashCode * 397) ^ (this.offset == null ? 23 : System.hashCode(this.offset));
-        hashCode = (hashCode * 397) ^ (this.forView == null ? 23 : System.hashCode(this.forView));
-        hashCode = (hashCode * 397) ^ (this.forReference == null ? 23 : System.hashCode(this.forReference));
-        hashCode = (hashCode * 397) ^ (this.updateTracking == null ? 23 : System.hashCode(this.updateTracking));
-        hashCode = (hashCode * 397) ^ (this.updateViewstat == null ? 23 : System.hashCode(this.updateViewstat));
-        hashCode = (hashCode * 397) ^ (this.forUpdate == null ? 23 : System.hashCode(this.forUpdate));
-        hashCode = (hashCode * 397) ^ (this.rollup == null ? 23 : System.hashCode(this.rollup));
-        hashCode = (hashCode * 397) ^ (this.cube == null ? 23 : System.hashCode(this.cube));
-        return hashCode;
-    }
-
+public virtual class Query implements Querable {
     public static Query of(SObjectType objectType) {
-        return new QueryBuilder(objectType);
+        return new QueryImpl(objectType);
     }
 
     protected virtual String build(Map<String, Object> tmpVars) {
@@ -132,8 +59,81 @@ public abstract class Query implements Querable {
 
     // =============
     // #region Query
-    private class QueryBuilder extends Query {
-        private QueryBuilder(SObjectType objectType) {
+    private class QueryImpl extends Query implements Querable {
+        private SObjectType objectType { get; set; }
+        private SelectorImpl rootSelector { get; set; }
+        private TypeOfImpl rootTypeOf { get; set; }
+        private Filter rootFilter { get; set; }
+        private Filter rootHaving { get; set; }
+        private OrdererImpl rootOrderer { get; set; }
+
+        private GrouperImpl rootGrouper { get; set; }
+
+        private Boolean rollup { get; set; }
+        private Boolean cube { get; set; }
+
+        private Integer offset { get; set; }
+        private Integer limitx { get; set; }
+
+        private Boolean forView { get; set; }
+        private Boolean forReference { get; set; }
+        private Boolean updateTracking { get; set; }
+        private Boolean updateViewstat { get; set; }
+        private Boolean forUpdate { get; set; }
+
+        {
+            this.rootSelector = new SelectorImpl();
+            this.rootOrderer = new OrdererImpl();
+            this.rootGrouper = new GrouperImpl();
+            this.rollup = false;
+            this.cube = false;
+        }
+
+        public Boolean equals(Object obj) {
+            if (this === obj) {
+                return true;
+            }
+
+            QueryImpl that = (QueryImpl) obj;
+
+            return this.objectType == that.objectType &&
+                this.rootSelector == that.rootSelector &&
+                this.rootFilter == that.rootFilter &&
+                this.rootOrderer == that.rootOrderer &&
+                this.limitx == that.limitx &&
+                this.offset == that.offset &&
+                this.forView == that.forView &&
+                this.forReference == that.forReference &&
+                this.updateTracking == that.updateTracking &&
+                this.updateViewstat == that.updateViewstat &&
+                this.forUpdate == that.forUpdate &&
+                this.rollup == that.rollup &&
+                this.cube == that.cube &&
+                this.rootGrouper == that.rootGrouper &&
+                this.rootTypeOf == that.rootTypeOf;
+        }
+
+        public Integer hashCode() {
+            Integer hashCode = this.objectType == null ? 23 : System.hashCode(this.objectType);
+            hashCode = (hashCode * 397) ^ (this.rootSelector == null ? 23 : this.rootSelector.hashCode());
+            hashCode = (hashCode * 397) ^ (this.rootFilter == null ? 23 : this.rootFilter.hashCode());
+            hashCode = (hashCode * 397) ^ (this.rootOrderer == null ? 23 : this.rootOrderer.hashCode());
+            hashCode = (hashCode * 397) ^ (this.rootGrouper == null ? 23 : this.rootGrouper.hashCode());
+            hashCode = (hashCode * 397) ^ (this.rootTypeOf == null ? 23 : this.rootTypeOf.hashCode());
+
+            hashCode = (hashCode * 397) ^ (this.limitx == null ? 23 : System.hashCode(this.limitx));
+            hashCode = (hashCode * 397) ^ (this.offset == null ? 23 : System.hashCode(this.offset));
+            hashCode = (hashCode * 397) ^ (this.forView == null ? 23 : System.hashCode(this.forView));
+            hashCode = (hashCode * 397) ^ (this.forReference == null ? 23 : System.hashCode(this.forReference));
+            hashCode = (hashCode * 397) ^ (this.updateTracking == null ? 23 : System.hashCode(this.updateTracking));
+            hashCode = (hashCode * 397) ^ (this.updateViewstat == null ? 23 : System.hashCode(this.updateViewstat));
+            hashCode = (hashCode * 397) ^ (this.forUpdate == null ? 23 : System.hashCode(this.forUpdate));
+            hashCode = (hashCode * 397) ^ (this.rollup == null ? 23 : System.hashCode(this.rollup));
+            hashCode = (hashCode * 397) ^ (this.cube == null ? 23 : System.hashCode(this.cube));
+            return hashCode;
+        }
+
+        private QueryImpl(SObjectType objectType) {
             this.objectType = objectType;
         }
 
@@ -151,7 +151,7 @@ public abstract class Query implements Querable {
                 if (selection instanceof QuerySelection) {
                     QuerySelection child = (QuerySelection) selection;
                     fragments.add('(');
-                    ((QueryBuilder) child.query).buildSoql(child.relation, fragments, tmpVars);
+                    ((QueryImpl) child.query).buildSoql(child.relation, fragments, tmpVars);
                     fragments.add(')');
                 } else {
                     fragments.add(String.valueOf(selection));
@@ -321,49 +321,493 @@ public abstract class Query implements Querable {
             System.debug(tmpVars);
             return query;
         }
+
+        // ============
+        // #region MISC
+        public override Query offset(Integer n) {
+            this.offset = n;
+            return this;
+        }
+
+        public override Query limitx(Integer n) {
+            this.limitx = n;
+            return this;
+        }
+
+        public override Query forView() {
+            this.forView = true;
+            return this;
+        }
+
+        public override Query forReference() {
+            this.forReference = true;
+            return this;
+        }
+
+        public override Query updateTracking() {
+            this.updateTracking = true;
+            return this;
+        }
+
+        public override Query updateViewstat() {
+            this.updateViewstat = true;
+            return this;
+        }
+
+        public override Query forUpdate() {
+            this.forUpdate = true;
+            return this;
+        }
+
+        // #endregion
+        // ============
+
+        // ==============
+        // #region FILTER
+        public override Query filterBy(Filter filter) {
+            this.rootFilter = filter;
+            return this;
+        }
+
+        public override Query havingBy(Filter filter) {
+            this.rootHaving = filter;
+            return this;
+        }
+        // #endregion
+        // ============
+
+        // ==============
+        // #region SELECT
+        public override Query selectBy(Selector selector) {
+            this.rootSelector.add(selector);
+            return this;
+        }
+
+        public override Query selectBy(List<Object> fieldOrFuncs) {
+            this.rootSelector.selections.addAll(fieldOrFuncs);
+            return this;
+        }
+
+        // Field
+        public override Query selectBy(SObjectField field) {
+            this.rootSelector.selections.add(field);
+            return this;
+        }
+
+        public override Query selectBy(SObjectField field1, SObjectField field2) {
+            this.rootSelector.selections.add(field1);
+            this.rootSelector.selections.add(field2);
+            return this;
+        }
+
+        public override Query selectBy(SObjectField field1, SObjectField field2, SObjectField field3) {
+            this.rootSelector.selections.add(field1);
+            this.rootSelector.selections.add(field2);
+            this.rootSelector.selections.add(field3);
+            return this;
+        }
+
+        public override Query selectBy(
+            SObjectField field1,
+            SObjectField field2,
+            SObjectField field3,
+            SObjectField field4
+        ) {
+            this.rootSelector.selections.add(field1);
+            this.rootSelector.selections.add(field2);
+            this.rootSelector.selections.add(field3);
+            this.rootSelector.selections.add(field4);
+            return this;
+        }
+
+        public override Query selectBy(
+            SObjectField field1,
+            SObjectField field2,
+            SObjectField field3,
+            SObjectField field4,
+            SObjectField field5
+        ) {
+            this.rootSelector.selections.add(field1);
+            this.rootSelector.selections.add(field2);
+            this.rootSelector.selections.add(field3);
+            this.rootSelector.selections.add(field4);
+            this.rootSelector.selections.add(field5);
+            return this;
+        }
+
+        // String
+        public override Query selectBy(String field) {
+            this.rootSelector.selections.add(field);
+            return this;
+        }
+
+        public override Query selectBy(String field1, String field2) {
+            this.rootSelector.selections.add(field1);
+            this.rootSelector.selections.add(field2);
+            return this;
+        }
+
+        public override Query selectBy(String field1, String field2, String field3) {
+            this.rootSelector.selections.add(field1);
+            this.rootSelector.selections.add(field2);
+            this.rootSelector.selections.add(field3);
+            return this;
+        }
+
+        public override Query selectBy(String field1, String field2, String field3, String field4) {
+            this.rootSelector.selections.add(field1);
+            this.rootSelector.selections.add(field2);
+            this.rootSelector.selections.add(field3);
+            this.rootSelector.selections.add(field4);
+            return this;
+        }
+
+        public override Query selectBy(String field1, String field2, String field3, String field4, String field5) {
+            this.rootSelector.selections.add(field1);
+            this.rootSelector.selections.add(field2);
+            this.rootSelector.selections.add(field3);
+            this.rootSelector.selections.add(field4);
+            this.rootSelector.selections.add(field5);
+            return this;
+        }
+
+        // Function
+        public override Query selectBy(SelectFunction func) {
+            this.rootSelector.selections.add(func);
+            return this;
+        }
+
+        public override Query selectBy(SelectFunction func1, SelectFunction func2) {
+            this.rootSelector.selections.add(func1);
+            this.rootSelector.selections.add(func2);
+            return this;
+        }
+
+        public override Query selectBy(SelectFunction func1, SelectFunction func2, SelectFunction func3) {
+            this.rootSelector.selections.add(func1);
+            this.rootSelector.selections.add(func2);
+            this.rootSelector.selections.add(func3);
+            return this;
+        }
+
+        public override Query selectBy(
+            SelectFunction func1,
+            SelectFunction func2,
+            SelectFunction func3,
+            SelectFunction func4
+        ) {
+            this.rootSelector.selections.add(func1);
+            this.rootSelector.selections.add(func2);
+            this.rootSelector.selections.add(func3);
+            this.rootSelector.selections.add(func4);
+            return this;
+        }
+
+        public override Query selectBy(
+            SelectFunction func1,
+            SelectFunction func2,
+            SelectFunction func3,
+            SelectFunction func4,
+            SelectFunction func5
+        ) {
+            this.rootSelector.selections.add(func1);
+            this.rootSelector.selections.add(func2);
+            this.rootSelector.selections.add(func3);
+            this.rootSelector.selections.add(func4);
+            this.rootSelector.selections.add(func5);
+            return this;
+        }
+
+        public override Query selectBy(String relationName, Query query) {
+            this.rootSelector.selections.add(new QuerySelection(relationName, query));
+            return this;
+        }
+
+        public override Query selectBy(TypeOf typeof) {
+            this.rootTypeOf = (TypeOfImpl) typeof;
+            return this;
+        }
+        // #endregion
+        // ==============
+
+        // ================
+        // #region ORDER BY
+        public override Query orderBy(Orderer orderer) {
+            this.rootOrderer.add(orderer);
+            return this;
+        }
+
+        public override Query orderBy(List<Object> fieldOrFuncs) {
+            this.rootOrderer.add(fieldOrFuncs);
+            return this;
+        }
+
+        // String
+        public override Query orderBy(String field) {
+            this.rootOrderer.add(field);
+            return this;
+        }
+        public override Query orderBy(String field1, String field2) {
+            this.rootOrderer.add(field1, field2);
+            return this;
+        }
+        public override Query orderBy(String field1, String field2, String field3) {
+            this.rootOrderer.add(field1, field2, field3);
+            return this;
+        }
+        public override Query orderBy(String field1, String field2, String field3, String field4) {
+            this.rootOrderer.add(field1, field2, field3, field4);
+            return this;
+        }
+        public override Query orderBy(String field1, String field2, String field3, String field4, String field5) {
+            this.rootOrderer.add(field1, field2, field3, field4, field5);
+            return this;
+        }
+
+        // SObjectField
+        public override Query orderBy(SObjectField field) {
+            this.rootOrderer.add(field);
+            return this;
+        }
+        public override Query orderBy(SObjectField field1, SObjectField field2) {
+            this.rootOrderer.add(field1, field2);
+            return this;
+        }
+        public override Query orderBy(SObjectField field1, SObjectField field2, SObjectField field3) {
+            this.rootOrderer.add(field1, field2, field3);
+            return this;
+        }
+        public override Query orderBy(
+            SObjectField field1,
+            SObjectField field2,
+            SObjectField field3,
+            SObjectField field4
+        ) {
+            this.rootOrderer.add(field1, field2, field3, field4);
+            return this;
+        }
+        public override Query orderBy(
+            SObjectField field1,
+            SObjectField field2,
+            SObjectField field3,
+            SObjectField field4,
+            SObjectField field5
+        ) {
+            this.rootOrderer.add(field1, field2, field3, field4, field5);
+            return this;
+        }
+
+        // Function
+        public override Query orderBy(OrderFunction func) {
+            this.rootOrderer.add(func);
+            return this;
+        }
+
+        public override Query orderBy(OrderFunction func1, OrderFunction func2) {
+            this.rootOrderer.add(func1, func2);
+            return this;
+        }
+
+        public override Query orderBy(OrderFunction func1, OrderFunction func2, OrderFunction func3) {
+            this.rootOrderer.add(func1, func2, func3);
+            return this;
+        }
+
+        public override Query orderBy(
+            OrderFunction func1,
+            OrderFunction func2,
+            OrderFunction func3,
+            OrderFunction func4
+        ) {
+            this.rootOrderer.add(func1, func2, func3, func4);
+            return this;
+        }
+
+        public override Query orderBy(
+            OrderFunction func1,
+            OrderFunction func2,
+            OrderFunction func3,
+            OrderFunction func4,
+            OrderFunction func5
+        ) {
+            this.rootOrderer.add(func1, func2, func3, func4, func5);
+            return this;
+        }
+
+        // Others
+        public override Query ascending() {
+            this.rootOrderer.setAscending(true);
+            return this;
+        }
+
+        public override Query descending() {
+            this.rootOrderer.setAscending(false);
+            return this;
+        }
+
+        public override Query nullsFirst() {
+            this.rootOrderer.setNullFirst(true);
+            return this;
+        }
+
+        public override Query nullsLast() {
+            this.rootOrderer.setNullFirst(false);
+            return this;
+        }
+        // #endregion
+        // ================
+
+        // ================
+        // #region GROUP BY
+        public override Query groupBy(Grouper grouper) {
+            this.rootGrouper.add(grouper);
+            return this;
+        }
+
+        public override Query groupBy(List<Object> fieldOrFuncs) {
+            this.rootGrouper.fieldOrFuncs.addAll(fieldOrFuncs);
+            return this;
+        }
+
+        // String
+        public override Query groupBy(String field) {
+            this.rootGrouper.fieldOrFuncs.add(field);
+            return this;
+        }
+
+        public override Query groupBy(String field1, String field2) {
+            this.rootGrouper.fieldOrFuncs.add(field1);
+            this.rootGrouper.fieldOrFuncs.add(field2);
+            return this;
+        }
+
+        public override Query groupBy(String field1, String field2, String field3) {
+            this.rootGrouper.fieldOrFuncs.add(field1);
+            this.rootGrouper.fieldOrFuncs.add(field2);
+            this.rootGrouper.fieldOrFuncs.add(field3);
+            return this;
+        }
+
+        public override Query groupBy(String field1, String field2, String field3, String field4) {
+            this.rootGrouper.fieldOrFuncs.add(field1);
+            this.rootGrouper.fieldOrFuncs.add(field2);
+            this.rootGrouper.fieldOrFuncs.add(field3);
+            this.rootGrouper.fieldOrFuncs.add(field4);
+            return this;
+        }
+
+        public override Query groupBy(String field1, String field2, String field3, String field4, String field5) {
+            this.rootGrouper.fieldOrFuncs.add(field1);
+            this.rootGrouper.fieldOrFuncs.add(field2);
+            this.rootGrouper.fieldOrFuncs.add(field3);
+            this.rootGrouper.fieldOrFuncs.add(field4);
+            this.rootGrouper.fieldOrFuncs.add(field5);
+            return this;
+        }
+
+        // SObjectField
+        public override Query groupBy(SObjectField field) {
+            this.rootGrouper.fieldOrFuncs.add(field);
+            return this;
+        }
+
+        public override Query groupBy(SObjectField field1, SObjectField field2) {
+            this.rootGrouper.fieldOrFuncs.add(field1);
+            this.rootGrouper.fieldOrFuncs.add(field2);
+            return this;
+        }
+
+        public override Query groupBy(SObjectField field1, SObjectField field2, SObjectField field3) {
+            this.rootGrouper.fieldOrFuncs.add(field1);
+            this.rootGrouper.fieldOrFuncs.add(field2);
+            this.rootGrouper.fieldOrFuncs.add(field3);
+            return this;
+        }
+
+        public override Query groupBy(
+            SObjectField field1,
+            SObjectField field2,
+            SObjectField field3,
+            SObjectField field4
+        ) {
+            this.rootGrouper.fieldOrFuncs.add(field1);
+            this.rootGrouper.fieldOrFuncs.add(field2);
+            this.rootGrouper.fieldOrFuncs.add(field3);
+            this.rootGrouper.fieldOrFuncs.add(field4);
+            return this;
+        }
+
+        public override Query groupBy(
+            SObjectField field1,
+            SObjectField field2,
+            SObjectField field3,
+            SObjectField field4,
+            SObjectField field5
+        ) {
+            this.rootGrouper.fieldOrFuncs.add(field1);
+            this.rootGrouper.fieldOrFuncs.add(field2);
+            this.rootGrouper.fieldOrFuncs.add(field3);
+            this.rootGrouper.fieldOrFuncs.add(field4);
+            this.rootGrouper.fieldOrFuncs.add(field5);
+            return this;
+        }
+
+        // Function
+        public override Query groupBy(DateFunction func) {
+            this.rootGrouper.fieldOrFuncs.add(func);
+            return this;
+        }
+
+        public override Query groupBy(DateFunction func1, DateFunction func2) {
+            this.rootGrouper.fieldOrFuncs.add(func1);
+            this.rootGrouper.fieldOrFuncs.add(func2);
+            return this;
+        }
+
+        public override Query groupBy(DateFunction func1, DateFunction func2, DateFunction func3) {
+            this.rootGrouper.fieldOrFuncs.add(func1);
+            this.rootGrouper.fieldOrFuncs.add(func2);
+            this.rootGrouper.fieldOrFuncs.add(func3);
+            return this;
+        }
+
+        public override Query groupBy(DateFunction func1, DateFunction func2, DateFunction func3, DateFunction func4) {
+            this.rootGrouper.fieldOrFuncs.add(func1);
+            this.rootGrouper.fieldOrFuncs.add(func2);
+            this.rootGrouper.fieldOrFuncs.add(func3);
+            this.rootGrouper.fieldOrFuncs.add(func4);
+            return this;
+        }
+
+        public override Query groupBy(
+            DateFunction func1,
+            DateFunction func2,
+            DateFunction func3,
+            DateFunction func4,
+            DateFunction func5
+        ) {
+            this.rootGrouper.fieldOrFuncs.add(func1);
+            this.rootGrouper.fieldOrFuncs.add(func2);
+            this.rootGrouper.fieldOrFuncs.add(func3);
+            this.rootGrouper.fieldOrFuncs.add(func4);
+            this.rootGrouper.fieldOrFuncs.add(func5);
+            return this;
+        }
+
+        public override Query rollup() {
+            this.rollup = true;
+            return this;
+        }
+
+        public override Query cube() {
+            this.cube = true;
+            return this;
+        }
+        // #endregion
+        // ================
     }
     // #endregion
     // =============
-
-    // ============
-    // #region MISC
-    public Query offset(Integer n) {
-        this.offset = n;
-        return this;
-    }
-
-    public Query limitx(Integer n) {
-        this.limitx = n;
-        return this;
-    }
-
-    public Query forView() {
-        this.forView = true;
-        return this;
-    }
-
-    public Query forReference() {
-        this.forReference = true;
-        return this;
-    }
-
-    public Query updateTracking() {
-        this.updateTracking = true;
-        return this;
-    }
-
-    public Query updateViewstat() {
-        this.updateViewstat = true;
-        return this;
-    }
-
-    public Query forUpdate() {
-        this.forUpdate = true;
-        return this;
-    }
-
-    // #endregion
-    // ============
 
     // ==============
     // #region SELECT
@@ -584,141 +1028,6 @@ public abstract class Query implements Querable {
 
     public static Selector selector() {
         return new SelectorImpl();
-    }
-
-    public Query selectBy(Selector selector) {
-        this.rootSelector.add(selector);
-        return this;
-    }
-
-    public Query selectBy(List<Object> fieldOrFuncs) {
-        this.rootSelector.selections.addAll(fieldOrFuncs);
-        return this;
-    }
-
-    // Field
-    public Query selectBy(SObjectField field) {
-        this.rootSelector.selections.add(field);
-        return this;
-    }
-
-    public Query selectBy(SObjectField field1, SObjectField field2) {
-        this.rootSelector.selections.add(field1);
-        this.rootSelector.selections.add(field2);
-        return this;
-    }
-
-    public Query selectBy(SObjectField field1, SObjectField field2, SObjectField field3) {
-        this.rootSelector.selections.add(field1);
-        this.rootSelector.selections.add(field2);
-        this.rootSelector.selections.add(field3);
-        return this;
-    }
-
-    public Query selectBy(SObjectField field1, SObjectField field2, SObjectField field3, SObjectField field4) {
-        this.rootSelector.selections.add(field1);
-        this.rootSelector.selections.add(field2);
-        this.rootSelector.selections.add(field3);
-        this.rootSelector.selections.add(field4);
-        return this;
-    }
-
-    public Query selectBy(
-        SObjectField field1,
-        SObjectField field2,
-        SObjectField field3,
-        SObjectField field4,
-        SObjectField field5
-    ) {
-        this.rootSelector.selections.add(field1);
-        this.rootSelector.selections.add(field2);
-        this.rootSelector.selections.add(field3);
-        this.rootSelector.selections.add(field4);
-        this.rootSelector.selections.add(field5);
-        return this;
-    }
-
-    // String
-    public Query selectBy(String field) {
-        this.rootSelector.selections.add(field);
-        return this;
-    }
-
-    public Query selectBy(String field1, String field2) {
-        this.rootSelector.selections.add(field1);
-        this.rootSelector.selections.add(field2);
-        return this;
-    }
-
-    public Query selectBy(String field1, String field2, String field3) {
-        this.rootSelector.selections.add(field1);
-        this.rootSelector.selections.add(field2);
-        this.rootSelector.selections.add(field3);
-        return this;
-    }
-
-    public Query selectBy(String field1, String field2, String field3, String field4) {
-        this.rootSelector.selections.add(field1);
-        this.rootSelector.selections.add(field2);
-        this.rootSelector.selections.add(field3);
-        this.rootSelector.selections.add(field4);
-        return this;
-    }
-
-    public Query selectBy(String field1, String field2, String field3, String field4, String field5) {
-        this.rootSelector.selections.add(field1);
-        this.rootSelector.selections.add(field2);
-        this.rootSelector.selections.add(field3);
-        this.rootSelector.selections.add(field4);
-        this.rootSelector.selections.add(field5);
-        return this;
-    }
-
-    // Function
-    public Query selectBy(SelectFunction func) {
-        this.rootSelector.selections.add(func);
-        return this;
-    }
-
-    public Query selectBy(SelectFunction func1, SelectFunction func2) {
-        this.rootSelector.selections.add(func1);
-        this.rootSelector.selections.add(func2);
-        return this;
-    }
-
-    public Query selectBy(SelectFunction func1, SelectFunction func2, SelectFunction func3) {
-        this.rootSelector.selections.add(func1);
-        this.rootSelector.selections.add(func2);
-        this.rootSelector.selections.add(func3);
-        return this;
-    }
-
-    public Query selectBy(SelectFunction func1, SelectFunction func2, SelectFunction func3, SelectFunction func4) {
-        this.rootSelector.selections.add(func1);
-        this.rootSelector.selections.add(func2);
-        this.rootSelector.selections.add(func3);
-        this.rootSelector.selections.add(func4);
-        return this;
-    }
-
-    public Query selectBy(
-        SelectFunction func1,
-        SelectFunction func2,
-        SelectFunction func3,
-        SelectFunction func4,
-        SelectFunction func5
-    ) {
-        this.rootSelector.selections.add(func1);
-        this.rootSelector.selections.add(func2);
-        this.rootSelector.selections.add(func3);
-        this.rootSelector.selections.add(func4);
-        this.rootSelector.selections.add(func5);
-        return this;
-    }
-
-    public Query selectBy(String relationName, Query query) {
-        this.rootSelector.selections.add(new QuerySelection(relationName, query));
-        return this;
     }
     // #endregion
     // ==============
@@ -976,11 +1285,6 @@ public abstract class Query implements Querable {
 
     public static TypeOf typeof(String field) {
         return new TypeOfImpl(field);
-    }
-
-    public Query selectBy(TypeOf typeof) {
-        this.rootTypeOf = (TypeOfImpl) typeof;
-        return this;
     }
 
     // #endregion
@@ -1271,119 +1575,6 @@ public abstract class Query implements Querable {
     public static Orderer orderer() {
         return new OrdererImpl();
     }
-
-    public Query orderBy(Orderer orderer) {
-        this.rootOrderer.add(orderer);
-        return this;
-    }
-
-    public Query orderBy(List<Object> fieldOrFuncs) {
-        this.rootOrderer.add(fieldOrFuncs);
-        return this;
-    }
-
-    // String
-    public Query orderBy(String field) {
-        this.rootOrderer.add(field);
-        return this;
-    }
-    public Query orderBy(String field1, String field2) {
-        this.rootOrderer.add(field1, field2);
-        return this;
-    }
-    public Query orderBy(String field1, String field2, String field3) {
-        this.rootOrderer.add(field1, field2, field3);
-        return this;
-    }
-    public Query orderBy(String field1, String field2, String field3, String field4) {
-        this.rootOrderer.add(field1, field2, field3, field4);
-        return this;
-    }
-    public Query orderBy(String field1, String field2, String field3, String field4, String field5) {
-        this.rootOrderer.add(field1, field2, field3, field4, field5);
-        return this;
-    }
-
-    // SObjectField
-    public Query orderBy(SObjectField field) {
-        this.rootOrderer.add(field);
-        return this;
-    }
-    public Query orderBy(SObjectField field1, SObjectField field2) {
-        this.rootOrderer.add(field1, field2);
-        return this;
-    }
-    public Query orderBy(SObjectField field1, SObjectField field2, SObjectField field3) {
-        this.rootOrderer.add(field1, field2, field3);
-        return this;
-    }
-    public Query orderBy(SObjectField field1, SObjectField field2, SObjectField field3, SObjectField field4) {
-        this.rootOrderer.add(field1, field2, field3, field4);
-        return this;
-    }
-    public Query orderBy(
-        SObjectField field1,
-        SObjectField field2,
-        SObjectField field3,
-        SObjectField field4,
-        SObjectField field5
-    ) {
-        this.rootOrderer.add(field1, field2, field3, field4, field5);
-        return this;
-    }
-
-    // Function
-    public Query orderBy(OrderFunction func) {
-        this.rootOrderer.add(func);
-        return this;
-    }
-
-    public Query orderBy(OrderFunction func1, OrderFunction func2) {
-        this.rootOrderer.add(func1, func2);
-        return this;
-    }
-
-    public Query orderBy(OrderFunction func1, OrderFunction func2, OrderFunction func3) {
-        this.rootOrderer.add(func1, func2, func3);
-        return this;
-    }
-
-    public Query orderBy(OrderFunction func1, OrderFunction func2, OrderFunction func3, OrderFunction func4) {
-        this.rootOrderer.add(func1, func2, func3, func4);
-        return this;
-    }
-
-    public Query orderBy(
-        OrderFunction func1,
-        OrderFunction func2,
-        OrderFunction func3,
-        OrderFunction func4,
-        OrderFunction func5
-    ) {
-        this.rootOrderer.add(func1, func2, func3, func4, func5);
-        return this;
-    }
-
-    // Others
-    public Query ascending() {
-        this.rootOrderer.setAscending(true);
-        return this;
-    }
-
-    public Query descending() {
-        this.rootOrderer.setAscending(false);
-        return this;
-    }
-
-    public Query nullsFirst() {
-        this.rootOrderer.setNullFirst(true);
-        return this;
-    }
-
-    public Query nullsLast() {
-        this.rootOrderer.setNullFirst(false);
-        return this;
-    }
     // #endregion
     // ================
 
@@ -1572,159 +1763,8 @@ public abstract class Query implements Querable {
     public static Grouper grouper() {
         return new GrouperImpl();
     }
-
-    public Query groupBy(Grouper grouper) {
-        this.rootGrouper.add(grouper);
-        return this;
-    }
-
-    public Query groupBy(List<Object> fieldOrFuncs) {
-        this.rootGrouper.fieldOrFuncs.addAll(fieldOrFuncs);
-        return this;
-    }
-
-    // String
-    public Query groupBy(String field) {
-        this.rootGrouper.fieldOrFuncs.add(field);
-        return this;
-    }
-
-    public Query groupBy(String field1, String field2) {
-        this.rootGrouper.fieldOrFuncs.add(field1);
-        this.rootGrouper.fieldOrFuncs.add(field2);
-        return this;
-    }
-
-    public Query groupBy(String field1, String field2, String field3) {
-        this.rootGrouper.fieldOrFuncs.add(field1);
-        this.rootGrouper.fieldOrFuncs.add(field2);
-        this.rootGrouper.fieldOrFuncs.add(field3);
-        return this;
-    }
-
-    public Query groupBy(String field1, String field2, String field3, String field4) {
-        this.rootGrouper.fieldOrFuncs.add(field1);
-        this.rootGrouper.fieldOrFuncs.add(field2);
-        this.rootGrouper.fieldOrFuncs.add(field3);
-        this.rootGrouper.fieldOrFuncs.add(field4);
-        return this;
-    }
-
-    public Query groupBy(String field1, String field2, String field3, String field4, String field5) {
-        this.rootGrouper.fieldOrFuncs.add(field1);
-        this.rootGrouper.fieldOrFuncs.add(field2);
-        this.rootGrouper.fieldOrFuncs.add(field3);
-        this.rootGrouper.fieldOrFuncs.add(field4);
-        this.rootGrouper.fieldOrFuncs.add(field5);
-        return this;
-    }
-
-    // SObjectField
-    public Query groupBy(SObjectField field) {
-        this.rootGrouper.fieldOrFuncs.add(field);
-        return this;
-    }
-
-    public Query groupBy(SObjectField field1, SObjectField field2) {
-        this.rootGrouper.fieldOrFuncs.add(field1);
-        this.rootGrouper.fieldOrFuncs.add(field2);
-        return this;
-    }
-
-    public Query groupBy(SObjectField field1, SObjectField field2, SObjectField field3) {
-        this.rootGrouper.fieldOrFuncs.add(field1);
-        this.rootGrouper.fieldOrFuncs.add(field2);
-        this.rootGrouper.fieldOrFuncs.add(field3);
-        return this;
-    }
-
-    public Query groupBy(SObjectField field1, SObjectField field2, SObjectField field3, SObjectField field4) {
-        this.rootGrouper.fieldOrFuncs.add(field1);
-        this.rootGrouper.fieldOrFuncs.add(field2);
-        this.rootGrouper.fieldOrFuncs.add(field3);
-        this.rootGrouper.fieldOrFuncs.add(field4);
-        return this;
-    }
-
-    public Query groupBy(
-        SObjectField field1,
-        SObjectField field2,
-        SObjectField field3,
-        SObjectField field4,
-        SObjectField field5
-    ) {
-        this.rootGrouper.fieldOrFuncs.add(field1);
-        this.rootGrouper.fieldOrFuncs.add(field2);
-        this.rootGrouper.fieldOrFuncs.add(field3);
-        this.rootGrouper.fieldOrFuncs.add(field4);
-        this.rootGrouper.fieldOrFuncs.add(field5);
-        return this;
-    }
-
-    // Function
-    public Query groupBy(DateFunction func) {
-        this.rootGrouper.fieldOrFuncs.add(func);
-        return this;
-    }
-
-    public Query groupBy(DateFunction func1, DateFunction func2) {
-        this.rootGrouper.fieldOrFuncs.add(func1);
-        this.rootGrouper.fieldOrFuncs.add(func2);
-        return this;
-    }
-
-    public Query groupBy(DateFunction func1, DateFunction func2, DateFunction func3) {
-        this.rootGrouper.fieldOrFuncs.add(func1);
-        this.rootGrouper.fieldOrFuncs.add(func2);
-        this.rootGrouper.fieldOrFuncs.add(func3);
-        return this;
-    }
-
-    public Query groupBy(DateFunction func1, DateFunction func2, DateFunction func3, DateFunction func4) {
-        this.rootGrouper.fieldOrFuncs.add(func1);
-        this.rootGrouper.fieldOrFuncs.add(func2);
-        this.rootGrouper.fieldOrFuncs.add(func3);
-        this.rootGrouper.fieldOrFuncs.add(func4);
-        return this;
-    }
-
-    public Query groupBy(
-        DateFunction func1,
-        DateFunction func2,
-        DateFunction func3,
-        DateFunction func4,
-        DateFunction func5
-    ) {
-        this.rootGrouper.fieldOrFuncs.add(func1);
-        this.rootGrouper.fieldOrFuncs.add(func2);
-        this.rootGrouper.fieldOrFuncs.add(func3);
-        this.rootGrouper.fieldOrFuncs.add(func4);
-        this.rootGrouper.fieldOrFuncs.add(func5);
-        return this;
-    }
-
-    public Query rollup() {
-        this.rollup = true;
-        return this;
-    }
-
-    public Query cube() {
-        this.cube = true;
-        return this;
-    }
     // #endregion
     // ================
-
-    // ==============
-    // #region HAVING
-
-    public Query havingBy(Filter filter) {
-        this.rootHaving = filter;
-        return this;
-    }
-
-    // #endregion
-    // ==============
 
     // ==============
     // #region Filter
@@ -1847,11 +1887,6 @@ public abstract class Query implements Querable {
             hashCode = (hashCode * 397) ^ (this.tag);
             return hashCode;
         }
-    }
-
-    public Query filterBy(Filter filter) {
-        this.rootFilter = filter;
-        return this;
     }
 
     // #endregion
@@ -2948,11 +2983,11 @@ public abstract class Query implements Querable {
         }
 
         public override void build(List<String> fragments, Map<String, Object> tmpVars) {
-            if (this.value instanceof QueryBuilder) {
+            if (this.value instanceof QueryImpl) {
                 fragments.add(String.valueOf(this.fieldOrFunc));
                 fragments.add(this.operator);
                 fragments.add('(');
-                ((QueryBuilder) this.value).buildSoql(fragments, tmpVars);
+                ((QueryImpl) this.value).buildSoql(fragments, tmpVars);
                 fragments.add(')');
             }
         }
@@ -4739,4 +4774,253 @@ public abstract class Query implements Querable {
         Database.QueryLocator getLocator();
         Database.QueryLocator getLocator(AccessLevel accessLevel);
     }
+    // ===================
+    // #region HIDE SYNTAX
+    public virtual Query selectBy(String field) {
+        return this;
+    }
+    public virtual Query selectBy(String field1, String field2) {
+        return this;
+    }
+    public virtual Query selectBy(String field1, String field2, String field3) {
+        return this;
+    }
+    public virtual Query selectBy(String field1, String field2, String field3, String field4) {
+        return this;
+    }
+    public virtual Query selectBy(String field1, String field2, String field3, String field4, String field5) {
+        return this;
+    }
+    public virtual Query selectBy(SObjectField field) {
+        return this;
+    }
+    public virtual Query selectBy(SObjectField field1, SObjectField field2) {
+        return this;
+    }
+    public virtual Query selectBy(SObjectField field1, SObjectField field2, SObjectField field3) {
+        return this;
+    }
+    public virtual Query selectBy(SObjectField field1, SObjectField field2, SObjectField field3, SObjectField field4) {
+        return this;
+    }
+    public virtual Query selectBy(
+        SObjectField field1,
+        SObjectField field2,
+        SObjectField field3,
+        SObjectField field4,
+        SObjectField field5
+    ) {
+        return this;
+    }
+    public virtual Query selectBy(SelectFunction func) {
+        return this;
+    }
+    public virtual Query selectBy(SelectFunction func1, SelectFunction func2) {
+        return this;
+    }
+    public virtual Query selectBy(SelectFunction func1, SelectFunction func2, SelectFunction func3) {
+        return this;
+    }
+    public virtual Query selectBy(
+        SelectFunction func1,
+        SelectFunction func2,
+        SelectFunction func3,
+        SelectFunction func4
+    ) {
+        return this;
+    }
+    public virtual Query selectBy(
+        SelectFunction func1,
+        SelectFunction func2,
+        SelectFunction func3,
+        SelectFunction func4,
+        SelectFunction func5
+    ) {
+        return this;
+    }
+    public virtual Query selectBy(String relationName, Query query) {
+        return this;
+    }
+    public virtual Query selectBy(List<Object> fieldOrFuncs) {
+        return this;
+    }
+    public virtual Query selectBy(Selector selector) {
+        return this;
+    }
+    public virtual Query selectBy(TypeOf typeof) {
+        return this;
+    }
+    public virtual Query filterBy(Filter filter) {
+        return this;
+    }
+    public virtual Query orderBy(String field) {
+        return this;
+    }
+    public virtual Query orderBy(String field1, String field2) {
+        return this;
+    }
+    public virtual Query orderBy(String field1, String field2, String field3) {
+        return this;
+    }
+    public virtual Query orderBy(String field1, String field2, String field3, String field4) {
+        return this;
+    }
+    public virtual Query orderBy(String field1, String field2, String field3, String field4, String field5) {
+        return this;
+    }
+    public virtual Query orderBy(SObjectField field) {
+        return this;
+    }
+    public virtual Query orderBy(SObjectField field1, SObjectField field2) {
+        return this;
+    }
+    public virtual Query orderBy(SObjectField field1, SObjectField field2, SObjectField field3) {
+        return this;
+    }
+    public virtual Query orderBy(SObjectField field1, SObjectField field2, SObjectField field3, SObjectField field4) {
+        return this;
+    }
+    public virtual Query orderBy(
+        SObjectField field1,
+        SObjectField field2,
+        SObjectField field3,
+        SObjectField field4,
+        SObjectField field5
+    ) {
+        return this;
+    }
+    public virtual Query orderBy(OrderFunction func) {
+        return this;
+    }
+    public virtual Query orderBy(OrderFunction func1, OrderFunction func2) {
+        return this;
+    }
+    public virtual Query orderBy(OrderFunction func1, OrderFunction func2, OrderFunction func3) {
+        return this;
+    }
+    public virtual Query orderBy(OrderFunction func1, OrderFunction func2, OrderFunction func3, OrderFunction func4) {
+        return this;
+    }
+    public virtual Query orderBy(
+        OrderFunction func1,
+        OrderFunction func2,
+        OrderFunction func3,
+        OrderFunction func4,
+        OrderFunction func5
+    ) {
+        return this;
+    }
+    public virtual Query orderBy(List<Object> fieldOrFuncs) {
+        return this;
+    }
+    public virtual Query orderBy(Orderer orderer) {
+        return this;
+    }
+    public virtual Query ascending() {
+        return this;
+    }
+    public virtual Query descending() {
+        return this;
+    }
+    public virtual Query nullsFirst() {
+        return this;
+    }
+    public virtual Query nullsLast() {
+        return this;
+    }
+    public virtual Query groupBy(String field) {
+        return this;
+    }
+    public virtual Query groupBy(String field1, String field2) {
+        return this;
+    }
+    public virtual Query groupBy(String field1, String field2, String field3) {
+        return this;
+    }
+    public virtual Query groupBy(String field1, String field2, String field3, String field4) {
+        return this;
+    }
+    public virtual Query groupBy(String field1, String field2, String field3, String field4, String field5) {
+        return this;
+    }
+    public virtual Query groupBy(SObjectField field) {
+        return this;
+    }
+    public virtual Query groupBy(SObjectField field1, SObjectField field2) {
+        return this;
+    }
+    public virtual Query groupBy(SObjectField field1, SObjectField field2, SObjectField field3) {
+        return this;
+    }
+    public virtual Query groupBy(SObjectField field1, SObjectField field2, SObjectField field3, SObjectField field4) {
+        return this;
+    }
+    public virtual Query groupBy(
+        SObjectField field1,
+        SObjectField field2,
+        SObjectField field3,
+        SObjectField field4,
+        SObjectField field5
+    ) {
+        return this;
+    }
+    public virtual Query groupBy(DateFunction func) {
+        return this;
+    }
+    public virtual Query groupBy(DateFunction func1, DateFunction func2) {
+        return this;
+    }
+    public virtual Query groupBy(DateFunction func1, DateFunction func2, DateFunction func3) {
+        return this;
+    }
+    public virtual Query groupBy(DateFunction func1, DateFunction func2, DateFunction func3, DateFunction func4) {
+        return this;
+    }
+    public virtual Query groupBy(
+        DateFunction func1,
+        DateFunction func2,
+        DateFunction func3,
+        DateFunction func4,
+        DateFunction func5
+    ) {
+        return this;
+    }
+    public virtual Query groupBy(List<Object> fieldOrFuncs) {
+        return this;
+    }
+    public virtual Query groupBy(Grouper rootGrouper) {
+        return this;
+    }
+    public virtual Query rollup() {
+        return this;
+    }
+    public virtual Query cube() {
+        return this;
+    }
+    public virtual Query havingBy(Filter filter) {
+        return this;
+    }
+    public virtual Query offset(Integer n) {
+        return this;
+    }
+    public virtual Query limitx(Integer n) {
+        return this;
+    }
+    public virtual Query forView() {
+        return this;
+    }
+    public virtual Query forReference() {
+        return this;
+    }
+    public virtual Query updateTracking() {
+        return this;
+    }
+    public virtual Query updateViewstat() {
+        return this;
+    }
+    public virtual Query forUpdate() {
+        return this;
+    }
+    // #endregion
+    // ===================
 }

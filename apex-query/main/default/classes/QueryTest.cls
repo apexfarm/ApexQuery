@@ -5044,4 +5044,98 @@ public with sharing class QueryTest extends Query {
     }
     // #endregion
     // ====================
+
+    @isTest
+    static void testNeverNeededVirtualMethods() {
+        Query qry = new Query();
+        qry.selectBy('Name');
+        qry.selectBy('Name', 'Name');
+        qry.selectBy('Name', 'Name', 'Name');
+        qry.selectBy('Name', 'Name', 'Name', 'Name');
+        qry.selectBy('Name', 'Name', 'Name', 'Name', 'Name');
+        qry.selectBy(Account.Name);
+        qry.selectBy(Account.Name, Account.Name);
+        qry.selectBy(Account.Name, Account.Name, Account.Name);
+        qry.selectBy(Account.Name, Account.Name, Account.Name, Account.Name);
+        qry.selectBy(Account.Name, Account.Name, Account.Name, Account.Name, Account.Name);
+        qry.selectBy(TO_LABEL(Account.Name));
+        qry.selectBy(TO_LABEL(Account.Name), TO_LABEL(Account.Name));
+        qry.selectBy(TO_LABEL(Account.Name), TO_LABEL(Account.Name), TO_LABEL(Account.Name));
+        qry.selectBy(TO_LABEL(Account.Name), TO_LABEL(Account.Name), TO_LABEL(Account.Name), TO_LABEL(Account.Name));
+        qry.selectBy(
+            TO_LABEL(Account.Name),
+            TO_LABEL(Account.Name),
+            TO_LABEL(Account.Name),
+            TO_LABEL(Account.Name),
+            TO_LABEL(Account.Name)
+        );
+        qry.selectBy('Contacts', qry);
+        qry.selectBy(new List<Object>());
+        qry.selectBy(selector());
+        qry.selectBy(typeof('What'));
+        qry.filterBy(andx());
+        qry.orderBy('Name');
+        qry.orderBy('Name', 'Name');
+        qry.orderBy('Name', 'Name', 'Name');
+        qry.orderBy('Name', 'Name', 'Name', 'Name');
+        qry.orderBy('Name', 'Name', 'Name', 'Name', 'Name');
+        qry.orderBy(Account.Name);
+        qry.orderBy(Account.Name, Account.Name);
+        qry.orderBy(Account.Name, Account.Name, Account.Name);
+        qry.orderBy(Account.Name, Account.Name, Account.Name, Account.Name);
+        qry.orderBy(Account.Name, Account.Name, Account.Name, Account.Name, Account.Name);
+        qry.orderBy(MAX('Name'));
+        qry.orderBy(MAX('Name'), MAX('Name'));
+        qry.orderBy(MAX('Name'), MAX('Name'), MAX('Name'));
+        qry.orderBy(MAX('Name'), MAX('Name'), MAX('Name'), MAX('Name'));
+        qry.orderBy(MAX('Name'), MAX('Name'), MAX('Name'), MAX('Name'), MAX('Name'));
+        qry.orderBy(new List<Object>());
+        qry.orderBy(orderer());
+        qry.ascending();
+        qry.descending();
+        qry.nullsFirst();
+        qry.nullsLast();
+        qry.groupBy('Name');
+        qry.groupBy('Name', 'Name');
+        qry.groupBy('Name', 'Name', 'Name');
+        qry.groupBy('Name', 'Name', 'Name', 'Name');
+        qry.groupBy('Name', 'Name', 'Name', 'Name', 'Name');
+        qry.groupBy(Account.Name);
+        qry.groupBy(Account.Name, Account.Name);
+        qry.groupBy(Account.Name, Account.Name, Account.Name);
+        qry.groupBy(Account.Name, Account.Name, Account.Name, Account.Name);
+        qry.groupBy(Account.Name, Account.Name, Account.Name, Account.Name, Account.Name);
+        qry.groupBy(CALENDAR_MONTH(Account.CreatedDate));
+        qry.groupBy(CALENDAR_MONTH(Account.CreatedDate), CALENDAR_MONTH(Account.CreatedDate));
+        qry.groupBy(
+            CALENDAR_MONTH(Account.CreatedDate),
+            CALENDAR_MONTH(Account.CreatedDate),
+            CALENDAR_MONTH(Account.CreatedDate)
+        );
+        qry.groupBy(
+            CALENDAR_MONTH(Account.CreatedDate),
+            CALENDAR_MONTH(Account.CreatedDate),
+            CALENDAR_MONTH(Account.CreatedDate),
+            CALENDAR_MONTH(Account.CreatedDate)
+        );
+        qry.groupBy(
+            CALENDAR_MONTH(Account.CreatedDate),
+            CALENDAR_MONTH(Account.CreatedDate),
+            CALENDAR_MONTH(Account.CreatedDate),
+            CALENDAR_MONTH(Account.CreatedDate),
+            CALENDAR_MONTH(Account.CreatedDate)
+        );
+        qry.groupBy(new List<Object>());
+        qry.groupBy(grouper());
+        qry.rollup();
+        qry.cube();
+        qry.havingBy(andx());
+        qry.offset(1);
+        qry.limitx(1);
+        qry.forView();
+        qry.forReference();
+        qry.updateTracking();
+        qry.updateViewstat();
+        qry.forUpdate();
+    }
 }
