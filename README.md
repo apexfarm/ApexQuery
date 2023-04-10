@@ -1,6 +1,6 @@
 # Apex Query
 
-![](https://img.shields.io/badge/version-1.0.6-brightgreen.svg) ![](https://img.shields.io/badge/build-passing-brightgreen.svg) ![](https://img.shields.io/badge/coverage-99%25-brightgreen.svg)
+![](https://img.shields.io/badge/version-1.0.7-brightgreen.svg) ![](https://img.shields.io/badge/build-passing-brightgreen.svg) ![](https://img.shields.io/badge/coverage-99%25-brightgreen.svg)
 
 Using a query builder to build dynamic SOQL gives many advantages:
 
@@ -9,8 +9,8 @@ Using a query builder to build dynamic SOQL gives many advantages:
 
 | Environment           | Installation Link                                                                                                                                         | Version   |
 | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
-| Production, Developer | <a target="_blank" href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t2v000007Cg4MAAS"><img src="docs/images/deploy-button.png"></a> | ver 1.0.6 |
-| Sandbox               | <a target="_blank" href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t2v000007Cg4MAAS"><img src="docs/images/deploy-button.png"></a>  | ver 1.0.6 |
+| Production, Developer | <a target="_blank" href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t2v000007Cg4RAAS"><img src="docs/images/deploy-button.png"></a> | ver 1.0.7 |
+| Sandbox               | <a target="_blank" href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t2v000007Cg4RAAS"><img src="docs/images/deploy-button.png"></a>  | ver 1.0.7 |
 
 ### Online Articles
 

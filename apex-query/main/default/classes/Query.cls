@@ -520,7 +520,7 @@ public virtual class Query implements Querable {
         }
 
         public override Query selectBy(String relationName, Query query) {
-            this.rootSelector.selections.add(new QuerySelection(relationName, query));
+            this.rootSelector.add(relationName, query);
             return this;
         }
 
@@ -1012,7 +1012,9 @@ public virtual class Query implements Querable {
         }
 
         public Selector add(String relationName, Query query) {
-            this.selections.add(new QuerySelection(relationName, query));
+            if (query != null) {
+                this.selections.add(new QuerySelection(relationName, query));
+            }
             return this;
         }
 
