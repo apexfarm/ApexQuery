@@ -1021,7 +1021,9 @@ public virtual class Query implements Querable {
         }
 
         public Selector add(Selector other) {
-            this.selections.addAll(((SelectorImpl) other).selections);
+            if (other != null) {
+                this.selections.addAll(((SelectorImpl) other).selections);
+            }
             return this;
         }
     }
@@ -1554,20 +1556,22 @@ public virtual class Query implements Querable {
         }
 
         public Orderer add(Orderer other) {
-            this.batchSize = this.fieldOrFuncs.size();
-            Set<Integer> descendingIndexes = new Set<Integer>();
-            for (Integer index : ((OrdererImpl) other).descendingIndexes) {
-                descendingIndexes.add(this.batchSize + index);
-            }
-            Set<Integer> nullsLastIndexes = new Set<Integer>();
-            for (Integer index : ((OrdererImpl) other).nullsLastIndexes) {
-                nullsLastIndexes.add(this.batchSize + index);
-            }
+            if (other != null) {
+                this.batchSize = this.fieldOrFuncs.size();
+                Set<Integer> descendingIndexes = new Set<Integer>();
+                for (Integer index : ((OrdererImpl) other).descendingIndexes) {
+                    descendingIndexes.add(this.batchSize + index);
+                }
+                Set<Integer> nullsLastIndexes = new Set<Integer>();
+                for (Integer index : ((OrdererImpl) other).nullsLastIndexes) {
+                    nullsLastIndexes.add(this.batchSize + index);
+                }
 
-            this.descendingIndexes.addAll(descendingIndexes);
-            this.nullsLastIndexes.addAll(nullsLastIndexes);
-            this.fieldOrFuncs.addAll(((OrdererImpl) other).fieldOrFuncs);
-            this.batchSize = 0;
+                this.descendingIndexes.addAll(descendingIndexes);
+                this.nullsLastIndexes.addAll(nullsLastIndexes);
+                this.fieldOrFuncs.addAll(((OrdererImpl) other).fieldOrFuncs);
+                this.batchSize = 0;
+            }
             return this;
         }
     }
@@ -1755,7 +1759,9 @@ public virtual class Query implements Querable {
         }
 
         public Grouper add(Grouper other) {
-            this.fieldOrFuncs.addAll(((GrouperImpl) other).fieldOrFuncs);
+            if (other != null) {
+                this.fieldOrFuncs.addAll(((GrouperImpl) other).fieldOrFuncs);
+            }
             return this;
         }
     }
