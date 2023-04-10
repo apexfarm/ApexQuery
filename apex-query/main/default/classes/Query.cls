@@ -16,6 +16,8 @@
  */
 
 public virtual class Query implements Querable {
+    public SObjectType objectType { get; private set; }
+
     public static Query of(SObjectType objectType) {
         return new QueryImpl(objectType);
     }
@@ -60,7 +62,6 @@ public virtual class Query implements Querable {
     // =============
     // #region Query
     private class QueryImpl extends Query implements Querable {
-        private SObjectType objectType { get; set; }
         private SelectorImpl rootSelector { get; set; }
         private TypeOfImpl rootTypeOf { get; set; }
         private Filter rootFilter { get; set; }
