@@ -22,16 +22,6 @@ public virtual class Query implements Querable {
         return new QueryImpl(objectType);
     }
 
-    protected virtual String build(Map<String, Object> tmpVars) {
-        return null;
-    }
-
-    @TestVisible
-    private String build() {
-        Map<String, Object> tmpVars = new Map<String, Object>();
-        return this.build(tmpVars);
-    }
-
     public Integer getCount() {
         return getCount(AccessLevel.SYSTEM_MODE);
     }
@@ -57,6 +47,17 @@ public virtual class Query implements Querable {
     public Database.QueryLocator getLocator(AccessLevel accessLevel) {
         Map<String, Object> tmpVars = new Map<String, Object>();
         return Database.getQueryLocatorWithBinds(this.build(tmpVars), tmpVars, accessLevel);
+    }
+
+    @TestVisible
+    protected virtual String build(Map<String, Object> tmpVars) {
+        return null;
+    }
+
+    @TestVisible
+    private String build() {
+        Map<String, Object> tmpVars = new Map<String, Object>();
+        return this.build(tmpVars);
     }
 
     // =============
@@ -91,6 +92,10 @@ public virtual class Query implements Querable {
         }
 
         public Boolean equals(Object obj) {
+            if (obj == null) {
+                return false;
+            }
+
             if (this === obj) {
                 return true;
             }
@@ -136,6 +141,68 @@ public virtual class Query implements Querable {
 
         private QueryImpl(SObjectType objectType) {
             this.objectType = objectType;
+        }
+
+        protected override String build(Map<String, Object> tmpVars) {
+            List<String> fragments = new List<String>();
+            buildSoql(fragments, tmpVars);
+            String query = String.join(fragments, '');
+            System.debug(query);
+            System.debug(tmpVars);
+            return query;
+        }
+
+        private void buildSoql(List<String> fragments, Map<String, Object> tmpVars) {
+            this.buildSoql(this.objectType.getDescribe().getName(), fragments, tmpVars);
+        }
+
+        private void buildSoql(String fromObjectName, List<String> fragments, Map<String, Object> tmpVars) {
+            this.buildSelect(fragments, tmpVars);
+            fragments.add(' FROM ');
+            fragments.add(fromObjectName);
+
+            // Build Filters
+            if (this.rootFilter != null) {
+                fragments.add(' WHERE ');
+                this.rootFilter.build(fragments, tmpVars);
+            }
+
+            this.buildGroupBy(fragments);
+
+            // Build Filters
+            if (this.rootHaving != null) {
+                fragments.add(' HAVING ');
+                this.rootHaving.build(fragments, tmpVars);
+            }
+
+            this.buildOrderBy(fragments);
+
+            if (this.limitx != null) {
+                fragments.add(' LIMIT ');
+                fragments.add(String.valueOf(this.limitx));
+            }
+
+            if (this.offset != null) {
+                fragments.add(' OFFSET ');
+                fragments.add(String.valueOf(this.offset));
+            }
+
+            // * SOQL can only has one of the following
+            if (this.forView == true) {
+                fragments.add(' FOR VIEW');
+            }
+            if (this.forReference == true) {
+                fragments.add(' FOR REFERENCE');
+            }
+            if (this.updateTracking == true) {
+                fragments.add(' UPDATE TRACKING');
+            }
+            if (this.updateViewstat == true) {
+                fragments.add(' UPDATE VIEWSTAT');
+            }
+            if (this.forUpdate == true) {
+                fragments.add(' FOR UPDATE');
+            }
         }
 
         private void buildSelect(List<String> fragments, Map<String, Object> tmpVars) {
@@ -259,68 +326,6 @@ public virtual class Query implements Querable {
             if (this.rollup || this.cube) {
                 fragments.add(')');
             }
-        }
-
-        private void buildSoql(String fromObjectName, List<String> fragments, Map<String, Object> tmpVars) {
-            this.buildSelect(fragments, tmpVars);
-            fragments.add(' FROM ');
-            fragments.add(fromObjectName);
-
-            // Build Filters
-            if (this.rootFilter != null) {
-                fragments.add(' WHERE ');
-                this.rootFilter.build(fragments, tmpVars);
-            }
-
-            this.buildGroupBy(fragments);
-
-            // Build Filters
-            if (this.rootHaving != null) {
-                fragments.add(' HAVING ');
-                this.rootHaving.build(fragments, tmpVars);
-            }
-
-            this.buildOrderBy(fragments);
-
-            if (this.limitx != null) {
-                fragments.add(' LIMIT ');
-                fragments.add(String.valueOf(this.limitx));
-            }
-
-            if (this.offset != null) {
-                fragments.add(' OFFSET ');
-                fragments.add(String.valueOf(this.offset));
-            }
-
-            // * SOQL can only has one of the following
-            if (this.forView == true) {
-                fragments.add(' FOR VIEW');
-            }
-            if (this.forReference == true) {
-                fragments.add(' FOR REFERENCE');
-            }
-            if (this.updateTracking == true) {
-                fragments.add(' UPDATE TRACKING');
-            }
-            if (this.updateViewstat == true) {
-                fragments.add(' UPDATE VIEWSTAT');
-            }
-            if (this.forUpdate == true) {
-                fragments.add(' FOR UPDATE');
-            }
-        }
-
-        private void buildSoql(List<String> fragments, Map<String, Object> tmpVars) {
-            this.buildSoql(this.objectType.getDescribe().getName(), fragments, tmpVars);
-        }
-
-        protected override String build(Map<String, Object> tmpVars) {
-            List<String> fragments = new List<String>();
-            buildSoql(fragments, tmpVars);
-            String query = String.join(fragments, '');
-            System.debug(query);
-            System.debug(tmpVars);
-            return query;
         }
 
         // ============
@@ -813,16 +818,22 @@ public virtual class Query implements Querable {
     // ==============
     // #region SELECT
 
+    @TestVisible
     private class QuerySelection {
         private String relation { get; set; }
         private Query query { get; set; }
 
+        @TestVisible
         private QuerySelection(String relation, Query query) {
             this.relation = relation;
             this.query = query;
         }
 
         public Boolean equals(Object obj) {
+            if (obj == null) {
+                return false;
+            }
+
             if (this === obj) {
                 return true;
             }
@@ -882,6 +893,10 @@ public virtual class Query implements Querable {
         }
 
         public Boolean equals(Object obj) {
+            if (obj == null) {
+                return false;
+            }
+
             if (this === obj) {
                 return true;
             }
@@ -1079,18 +1094,22 @@ public virtual class Query implements Querable {
     }
 
     private class TypeOfImpl implements TypeOf {
-        private Object field { get; set; }
+        private string field { get; set; }
         private List<SObjectType> sobjectTypes { get; set; }
         private Map<SObjectType, List<Object>> fieldsByType { get; set; }
         private SObjectType currentType { get; set; }
 
-        private TypeOfImpl(Object field) {
+        private TypeOfImpl(string field) {
             this.field = field;
             this.sobjectTypes = new List<SObjectType>();
             this.fieldsByType = new Map<SObjectType, List<Object>>{ null => new List<Object>() };
         }
 
         public Boolean equals(Object obj) {
+            if (obj == null) {
+                return false;
+            }
+
             if (this === obj) {
                 return true;
             }
@@ -1284,10 +1303,6 @@ public virtual class Query implements Querable {
         }
     }
 
-    public static TypeOf typeof(SObjectField field) {
-        return new TypeOfImpl(field);
-    }
-
     public static TypeOf typeof(String field) {
         return new TypeOfImpl(field);
     }
@@ -1353,6 +1368,10 @@ public virtual class Query implements Querable {
         }
 
         public Boolean equals(Object obj) {
+            if (obj == null) {
+                return false;
+            }
+
             if (this === obj) {
                 return true;
             }
@@ -1624,6 +1643,10 @@ public virtual class Query implements Querable {
         }
 
         public Boolean equals(Object obj) {
+            if (obj == null) {
+                return false;
+            }
+
             if (this === obj) {
                 return true;
             }
@@ -1825,6 +1848,10 @@ public virtual class Query implements Querable {
         }
 
         public Boolean equals(Object obj) {
+            if (obj == null) {
+                return false;
+            }
+
             if (this === obj) {
                 return true;
             }
@@ -1855,6 +1882,7 @@ public virtual class Query implements Querable {
         public virtual void build(List<String> fragments, Map<String, Object> tmpVars) {
             fragments.add(String.valueOf(this.fieldOrFunc));
             fragments.add(this.operator);
+
             if (this.value == null) {
                 fragments.add('NULL');
             } else if (
@@ -1867,20 +1895,25 @@ public virtual class Query implements Querable {
                 tmpVars.put(var, this.value);
                 fragments.add(':');
                 fragments.add(var);
-            } else if (this.value instanceof String) {
-                fragments.add('\'');
-                fragments.add(String.escapeSingleQuotes(String.valueOf(this.value)));
-                fragments.add('\'');
             } else if (this.value instanceof Id) {
                 fragments.add('\'');
                 fragments.add(String.valueOf(this.value));
                 fragments.add('\'');
+            } else if (this.value instanceof String) {
+                fragments.add('\'');
+                fragments.add(String.escapeSingleQuotes(String.valueOf(this.value)));
+                fragments.add('\'');
             } else {
+                // i.e. Numbers and Literals
                 fragments.add(String.valueOf(this.value));
             }
         }
 
         public Boolean equals(Object obj) {
+            if (obj == null) {
+                return false;
+            }
+
             if (this === obj) {
                 return true;
             }
@@ -2941,14 +2974,40 @@ public virtual class Query implements Querable {
 
     // ===============================================
     // #region Operator - includes, excludes, inx, nin
-    private class Includes extends ComparisonExpression {
+    private virtual class MultiComparisonExpression extends ComparisonExpression {
+        private MultiComparisonExpression(Object field, String operator, Object value) {
+            super(field, operator, value);
+        }
+
+        public override void build(List<String> fragments, Map<String, Object> tmpVars) {
+            fragments.add(String.valueOf(this.fieldOrFunc));
+            fragments.add(this.operator);
+            fragments.add('(');
+            Boolean isFirst = true;
+            for (string value : (List<String>) this.value) {
+                if (isFirst) {
+                    isFirst = false;
+                } else {
+                    fragments.add(', ');
+                }
+
+                String var = 'tmpVar' + (tmpVars.size() + 1);
+                tmpVars.put(var, value);
+                fragments.add(':');
+                fragments.add(var);
+            }
+            fragments.add(')');
+        }
+    }
+
+    private class Includes extends MultiComparisonExpression {
         private Includes(Object field, List<String> values) {
             super(field, ' INCLUDES ', values);
             this.tag = FILTER_INCLUDES_TAG;
         }
     }
 
-    private class Excludes extends ComparisonExpression {
+    private class Excludes extends MultiComparisonExpression {
         private Excludes(Object field, List<String> values) {
             super(field, ' EXCLUDES ', values);
             this.tag = FILTER_EXCLUDES_TAG;
@@ -3271,6 +3330,10 @@ public virtual class Query implements Querable {
         }
 
         public Boolean equals(Object obj) {
+            if (obj == null) {
+                return false;
+            }
+
             if (this === obj) {
                 return true;
             }
@@ -3497,6 +3560,10 @@ public virtual class Query implements Querable {
         }
 
         public Boolean equals(Object obj) {
+            if (obj == null) {
+                return false;
+            }
+
             if (this === obj) {
                 return true;
             }
@@ -3747,6 +3814,10 @@ public virtual class Query implements Querable {
         }
 
         public Boolean equals(Object obj) {
+            if (obj == null) {
+                return false;
+            }
+
             if (this === obj) {
                 return true;
             }
@@ -4394,6 +4465,10 @@ public virtual class Query implements Querable {
         }
 
         public Boolean equals(Object obj) {
+            if (obj == null) {
+                return false;
+            }
+
             if (this === obj) {
                 return true;
             }
@@ -4667,23 +4742,14 @@ public virtual class Query implements Querable {
 
     // prettier-ignore
     public interface Querable {
-        // SELECT
-        // TODO: support additional syntaxes
-        // SELECT fieldList [subquery][...]
-        // [TYPEOF typeOfField whenExpression[...] elseExpression END][...]
-        // FROM objectType[,...]
-        //*    [USING SCOPE filterScope]
-        // [WHERE conditionExpression]
-        //*[WITH [DATA CATEGORY] filteringExpression]
-        // [GROUP BY {fieldGroupByList|ROLLUP (fieldSubtotalGroupByList)|CUBE (fieldSubtotalGroupByList)}
-        //     [HAVING havingConditionExpression] ]
-        // [ORDER BY fieldOrderByList {ASC|DESC} [NULLS {FIRST|LAST}] ]
-        // [LIMIT numberOfRowsToReturn]
-        // [OFFSET numberOfRowsToSkip]
-        // [{FOR VIEW  | FOR REFERENCE} ]
-        // [UPDATE {TRACKING|VIEWSTAT} ]
-        // [FOR UPDATE]
+        List<SObject> run();
+        List<SObject> run(AccessLevel accessLevel);
+        Integer getCount();
+        Integer getCount(AccessLevel accessLevel);
+        Database.QueryLocator getLocator();
+        Database.QueryLocator getLocator(AccessLevel accessLevel);
 
+        // SELECT
         Query selectBy(String field);
         Query selectBy(String field1, String field2);
         Query selectBy(String field1, String field2, String field3);
@@ -4738,7 +4804,6 @@ public virtual class Query implements Querable {
         Query nullsLast();
 
         // GROUP BY
-
         Query groupBy(String field);
         Query groupBy(String field1, String field2);
         Query groupBy(String field1, String field2, String field3);
@@ -4775,13 +4840,6 @@ public virtual class Query implements Querable {
         Query updateTracking();
         Query updateViewstat();
         Query forUpdate();
-
-        List<SObject> run();
-        List<SObject> run(AccessLevel accessLevel);
-        Integer getCount();
-        Integer getCount(AccessLevel accessLevel);
-        Database.QueryLocator getLocator();
-        Database.QueryLocator getLocator(AccessLevel accessLevel);
     }
     // ===================
     // #region HIDE SYNTAX

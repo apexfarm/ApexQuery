@@ -10,7 +10,7 @@
       "options": { "parser": "html" }
     },
     {
-      "files": "*.cls",
+      "files": "*.{cls,apex}",
       "options": { "tabWidth": 4, "printWidth": 120 }
     }
   ]

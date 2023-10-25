@@ -2484,13 +2484,13 @@ public with sharing class QueryTest extends Query {
         Query.Filter filter;
         filter = includes(Account.BillingCountry, new List<String>{ 'AAA', 'BBB', 'CCC', 'DDD', 'EEE' });
         Assert.areEqual(
-            'SELECT Id FROM Account WHERE BillingCountry INCLUDES :tmpVar1',
+            'SELECT Id FROM Account WHERE BillingCountry INCLUDES (:tmpVar1, :tmpVar2, :tmpVar3, :tmpVar4, :tmpVar5)',
             Query.of(Account.SObjectType).filterBy(filter).build()
         );
 
         filter = includes('BillingCountry', new List<String>{ 'AAA', 'BBB', 'CCC', 'DDD', 'EEE' });
         Assert.areEqual(
-            'SELECT Id FROM Account WHERE BillingCountry INCLUDES :tmpVar1',
+            'SELECT Id FROM Account WHERE BillingCountry INCLUDES (:tmpVar1, :tmpVar2, :tmpVar3, :tmpVar4, :tmpVar5)',
             Query.of(Account.SObjectType).filterBy(filter).build()
         );
     }
@@ -2500,13 +2500,13 @@ public with sharing class QueryTest extends Query {
         Query.Filter filter;
         filter = excludes(Account.BillingCountry, new List<String>{ 'AAA', 'BBB', 'CCC', 'DDD', 'EEE' });
         Assert.areEqual(
-            'SELECT Id FROM Account WHERE BillingCountry EXCLUDES :tmpVar1',
+            'SELECT Id FROM Account WHERE BillingCountry EXCLUDES (:tmpVar1, :tmpVar2, :tmpVar3, :tmpVar4, :tmpVar5)',
             Query.of(Account.SObjectType).filterBy(filter).build()
         );
 
         filter = excludes('BillingCountry', new List<String>{ 'AAA', 'BBB', 'CCC', 'DDD', 'EEE' });
         Assert.areEqual(
-            'SELECT Id FROM Account WHERE BillingCountry EXCLUDES :tmpVar1',
+            'SELECT Id FROM Account WHERE BillingCountry EXCLUDES (:tmpVar1, :tmpVar2, :tmpVar3, :tmpVar4, :tmpVar5)',
             Query.of(Account.SObjectType).filterBy(filter).build()
         );
     }
@@ -4718,154 +4718,132 @@ public with sharing class QueryTest extends Query {
     // ====================
     // #region Value Object
 
+    /**
+     * ! Commented out due to a Salesforce bug, Map and Set can no longer work with custom keys.
+     * https://developer.salesforce.com/docs/atlas.en-us.apexcode.meta/apexcode/langCon_apex_collections_maps_keys_userdefined.htm
+     */
+
     @isTest
     static void testValueObject_Filter() {
-        // Logical
-        Set<Object> bag = new Set<Object>{ eq(Account.Name, 123) };
-        Assert.areEqual(true, bag.contains(eq(Account.Name, 123)));
-        Assert.areEqual(eq(Account.Name, 123), eq(Account.Name, 123));
-
-        bag.add(likex(Account.Name, '123'));
-        Assert.areEqual(true, bag.contains(likex(Account.Name, '123')));
-        Assert.areEqual(likex(Account.Name, '123'), likex(Account.Name, '123'));
-
-        bag.add(includes(Account.Name, new List<String>{ '123' }));
-        Assert.areEqual(true, bag.contains(includes(Account.Name, new List<String>{ '123' })));
-        Assert.areEqual(
-            includes(Account.Name, new List<String>{ '123' }),
-            includes(Account.Name, new List<String>{ '123' })
-        );
-
-        bag.add(inx(Account.Name, new List<String>{ '123' }));
-        Assert.areEqual(true, bag.contains(inx(Account.Name, new List<String>{ '123' })));
-        Assert.areEqual(inx(Account.Name, new List<String>{ '123' }), inx(Account.Name, new List<String>{ '123' }));
-
-        bag.add(inx(Account.Name, Query.of(Account.SObjectType).selectBy(Account.Id)));
-        Assert.areEqual(true, bag.contains(inx(Account.Name, Query.of(Account.SObjectType).selectBy(Account.Id))));
-        Assert.areEqual(
-            inx(Account.Name, Query.of(Account.SObjectType).selectBy(Account.Id)),
-            inx(Account.Name, Query.of(Account.SObjectType).selectBy(Account.Id))
-        );
-
-        bag.add(between(Account.BillingState, 'Bd', 'Si'));
-        Assert.areEqual(true, bag.contains(between(Account.BillingState, 'Bd', 'Si')));
-        Assert.areEqual(between(Account.BillingState, 'Bd', 'Si'), between(Account.BillingState, 'Bd', 'Si'));
-
-        // Function
-        bag.add(MAX(Account.ShippingAddress));
-        Assert.areEqual(true, bag.contains(MAX(Account.ShippingAddress)));
-        Assert.areEqual(MAX(Account.ShippingAddress), MAX(Account.ShippingAddress));
-
-        bag.add(DISTANCE_IN_MI(Account.ShippingAddress, Location.newInstance(37.775000, -122.41800)));
-        Assert.areEqual(
-            true,
-            bag.contains(DISTANCE_IN_MI(Account.ShippingAddress, Location.newInstance(37.775000, -122.41800)))
-        );
-        Assert.areEqual(
-            DISTANCE_IN_MI(Account.ShippingAddress, Location.newInstance(37.775000, -122.41800)),
-            DISTANCE_IN_MI(Account.ShippingAddress, Location.newInstance(37.775000, -122.41800))
-        );
-
-        // Literal
-        bag.add(YESTERDAY());
-        Assert.areEqual(true, bag.contains(YESTERDAY()));
-        Assert.areEqual(YESTERDAY(), YESTERDAY());
-
-        bag.add(LAST_N_DAYS(123));
-        Assert.areEqual(true, bag.contains(LAST_N_DAYS(123)));
-        Assert.areEqual(LAST_N_DAYS(123), LAST_N_DAYS(123));
-
-        bag.add(gt(Account.Name, N_FISCAL_YEARS_AGO(123)));
-        Assert.areEqual(true, bag.contains(gt(Account.Name, N_FISCAL_YEARS_AGO(123))));
-        Assert.areEqual(gt(Account.Name, N_FISCAL_YEARS_AGO(123)), gt(Account.Name, N_FISCAL_YEARS_AGO(123)));
-
-        bag.add(CNY(123));
-        Assert.areEqual(true, bag.contains(CNY(123)));
-        Assert.areEqual(CNY(123), CNY(123));
-
-        Assert.areEqual(
-            new List<Query.Filter>{
-                eq(Account.Name, 123),
-                likex(Account.Name, '123'),
-                inx(Account.Name, new List<String>{ '123' }),
-                gt(Account.Name, N_FISCAL_YEARS_AGO(123)),
-                gte(Account.Name, Date.newInstance(2023, 1, 1))
-            },
-            new List<Query.Filter>{
-                eq(Account.Name, 123),
-                likex(Account.Name, '123'),
-                inx(Account.Name, new List<String>{ '123' }),
-                gt(Account.Name, N_FISCAL_YEARS_AGO(123)),
-                gte(Account.Name, Date.newInstance(2023, 1, 1))
-            }
-        );
+        {
+            Query.Filter f1 = eq(Account.Name, 123);
+            Query.Filter f2 = eq(Account.Name, 123);
+            Assert.areEqual(f1.HashCode(), f2.HashCode());
+            Assert.areEqual(f1, f2);
+        }
+        {
+            Query.Filter f1 = likex(Account.Name, '123');
+            Query.Filter f2 = likex(Account.Name, '123');
+            Assert.areEqual(f1.HashCode(), f2.HashCode());
+            Assert.areEqual(f1, f2);
+        }
+        {
+            Query.Filter f1 = includes(Account.Name, new List<String>{ '123' });
+            Query.Filter f2 = includes(Account.Name, new List<String>{ '123' });
+            Assert.areEqual(f1.HashCode(), f2.HashCode());
+            Assert.areEqual(f1, f2);
+        }
+        {
+            Query.Filter f1 = inx(Account.Name, new List<String>{ '123' });
+            Query.Filter f2 = inx(Account.Name, new List<String>{ '123' });
+            Assert.areEqual(f1.HashCode(), f2.HashCode());
+            Assert.areEqual(f1, f2);
+        }
+        {
+            Query.Filter f1 = inx(Account.Name, Query.of(Account.SObjectType).selectBy(Account.Id));
+            Query.Filter f2 = inx(Account.Name, Query.of(Account.SObjectType).selectBy(Account.Id));
+            Assert.areEqual(f1.HashCode(), f2.HashCode());
+            Assert.areEqual(f1, f2);
+        }
+        {
+            Query.Filter f1 = between(Account.BillingState, 'Bd', 'Si');
+            Query.Filter f2 = between(Account.BillingState, 'Bd', 'Si');
+            Assert.areEqual(f1.HashCode(), f2.HashCode());
+            Assert.areEqual(f1, f2);
+        }
+        {
+            Query.Function f1 = MAX(Account.ShippingAddress);
+            Query.Function f2 = MAX(Account.ShippingAddress);
+            Assert.areEqual(f1.HashCode(), f2.HashCode());
+            Assert.areEqual(f1, f2);
+        }
+        {
+            Query.Function f1 = DISTANCE_IN_MI(Account.ShippingAddress, Location.newInstance(37.775000, -122.41800));
+            Query.Function f2 = DISTANCE_IN_MI(Account.ShippingAddress, Location.newInstance(37.775000, -122.41800));
+            Assert.areEqual(f1.HashCode(), f2.HashCode());
+            Assert.areEqual(f1, f2);
+        }
+        {
+            Query.DateLiteral f1 = YESTERDAY();
+            Query.DateLiteral f2 = YESTERDAY();
+            Assert.areEqual(f1.HashCode(), f2.HashCode());
+            Assert.areEqual(f1, f2);
+        }
+        {
+            Query.DateLiteral f1 = LAST_N_DAYS(123);
+            Query.DateLiteral f2 = LAST_N_DAYS(123);
+            Assert.areEqual(f1.HashCode(), f2.HashCode());
+            Assert.areEqual(f1, f2);
+        }
+        {
+            Query.Filter f1 = gt(Account.Name, N_FISCAL_YEARS_AGO(123));
+            Query.Filter f2 = gt(Account.Name, N_FISCAL_YEARS_AGO(123));
+            Assert.areEqual(f1.HashCode(), f2.HashCode());
+            Assert.areEqual(f1, f2);
+        }
+        {
+            Query.CurrencyLiteral f1 = CNY(123);
+            Query.CurrencyLiteral f2 = CNY(123);
+            Assert.areEqual(f1.HashCode(), f2.HashCode());
+            Assert.areEqual(f1, f2);
+        }
     }
 
     @isTest
     static void testValueObject_Query() {
-        Query q = Query.of(Account.SObjectType);
-        Assert.areEqual(q, q);
-
-        Set<Object> bag = new Set<Object>();
-
-        bag.add(
-            Query.selector()
+        {
+            Query.Selector s1 = Query.selector()
                 .add('Name')
                 .add(Account.Name)
                 .add(MAX(Account.Name))
-                .add('Contacts', Query.of(Contact.SObjectType))
-        );
-        Assert.areEqual(
-            true,
-            bag.contains(
-                Query.selector()
-                    .add('Name')
-                    .add(Account.Name)
-                    .add(MAX(Account.Name))
-                    .add('Contacts', Query.of(Contact.SObjectType))
-            )
-        );
-        Assert.areEqual(
-            Query.selector()
+                .add('Contacts', Query.of(Contact.SObjectType));
+
+            Query.Selector s2 = Query.selector()
                 .add('Name')
                 .add(Account.Name)
                 .add(MAX(Account.Name))
-                .add('Contacts', Query.of(Contact.SObjectType)),
-            Query.selector()
-                .add('Name')
-                .add(Account.Name)
-                .add(MAX(Account.Name))
-                .add('Contacts', Query.of(Contact.SObjectType))
-        );
+                .add('Contacts', Query.of(Contact.SObjectType));
 
-        bag.add(Query.orderer().add(Account.BillingCountry, Account.BillingState).descending().nullsFirst());
-        Assert.areEqual(
-            true,
-            bag.contains(Query.orderer().add(Account.BillingCountry, Account.BillingState).descending().nullsFirst())
-        );
-        Assert.areEqual(
-            Query.orderer().add(Account.BillingCountry, Account.BillingState).descending().nullsFirst(),
-            Query.orderer().add(Account.BillingCountry, Account.BillingState).descending().nullsFirst()
-        );
+            Assert.areEqual(s1.HashCode(), s2.HashCode());
+            Assert.areEqual(s1, s2);
+        }
 
-        bag.add(
-            Query.grouper().add(Account.BillingCountry, Account.BillingState).add(CALENDAR_MONTH(Account.CreatedDate))
-        );
-        Assert.areEqual(
-            true,
-            bag.contains(
-                Query.grouper()
-                    .add(Account.BillingCountry, Account.BillingState)
-                    .add(CALENDAR_MONTH(Account.CreatedDate))
-            )
-        );
-        Assert.areEqual(
-            Query.grouper().add(Account.BillingCountry, Account.BillingState).add(CALENDAR_MONTH(Account.CreatedDate)),
-            Query.grouper().add(Account.BillingCountry, Account.BillingState).add(CALENDAR_MONTH(Account.CreatedDate))
-        );
+        {
+            Query.Orderer o1 = Query.orderer()
+                .add(Account.BillingCountry, Account.BillingState)
+                .descending()
+                .nullsFirst();
+            Query.Orderer o2 = Query.orderer()
+                .add(Account.BillingCountry, Account.BillingState)
+                .descending()
+                .nullsFirst();
+            Assert.areEqual(o1.HashCode(), o2.HashCode());
+            Assert.areEqual(o1, o2);
+        }
 
-        bag.add(
-            typeof('What')
+        {
+            Query.Grouper g1 = Query.grouper()
+                .add(Account.BillingCountry, Account.BillingState)
+                .add(CALENDAR_MONTH(Account.CreatedDate));
+            Query.Grouper g2 = Query.grouper()
+                .add(Account.BillingCountry, Account.BillingState)
+                .add(CALENDAR_MONTH(Account.CreatedDate));
+            Assert.areEqual(g1.HashCode(), g2.HashCode());
+            Assert.areEqual(g1, g2);
+        }
+
+        {
+            Query.TypeOf t1 = typeof('What')
                 .when(Account.SObjectType)
                 .then(Account.Phone, Account.NumberOfEmployees)
                 .when(Contact.SObjectType)
@@ -4874,25 +4852,8 @@ public with sharing class QueryTest extends Query {
                 .when(Account.SObjectType)
                 .then(Account.BillingCountry, Account.BillingState)
                 .elsex('Id', 'Status')
-                .elsex('Email', 'Phone')
-        );
-        Assert.areEqual(
-            true,
-            bag.contains(
-                typeof('What')
-                    .when(Account.SObjectType)
-                    .then(Account.Phone, Account.NumberOfEmployees)
-                    .when(Contact.SObjectType)
-                    .then(Contact.Name, Contact.Birthdate)
-                    .then(Contact.Department, Contact.Email)
-                    .when(Account.SObjectType)
-                    .then(Account.BillingCountry, Account.BillingState)
-                    .elsex('Id', 'Status')
-                    .elsex('Email', 'Phone')
-            )
-        );
-        Assert.areEqual(
-            typeof('What')
+                .elsex('Email', 'Phone');
+            Query.TypeOf t2 = typeof('What')
                 .when(Account.SObjectType)
                 .then(Account.Phone, Account.NumberOfEmployees)
                 .when(Contact.SObjectType)
@@ -4901,25 +4862,21 @@ public with sharing class QueryTest extends Query {
                 .when(Account.SObjectType)
                 .then(Account.BillingCountry, Account.BillingState)
                 .elsex('Id', 'Status')
-                .elsex('Email', 'Phone'),
-            typeof('What')
-                .when(Account.SObjectType)
-                .then(Account.Phone, Account.NumberOfEmployees)
-                .when(Contact.SObjectType)
-                .then(Contact.Name, Contact.Birthdate)
-                .then(Contact.Department, Contact.Email)
-                .when(Account.SObjectType)
-                .then(Account.BillingCountry, Account.BillingState)
-                .elsex('Id', 'Status')
-                .elsex('Email', 'Phone')
-        );
+                .elsex('Email', 'Phone');
+            Assert.areEqual(t1.HashCode(), t2.HashCode());
+            Assert.areEqual(t1, t2);
+        }
 
-        bag.add(Query.of(Account.SObjectType));
-        Assert.areEqual(true, bag.contains(Query.of(Account.SObjectType)));
-        Assert.areEqual(Query.of(Account.SObjectType), Query.of(Account.SObjectType));
+        {
+            Query q1 = Query.of(Account.SObjectType);
+            Query q2 = Query.of(Account.SObjectType);
 
-        bag.add(
-            Query.of(Account.SObjectType)
+            Assert.areEqual(q1.HashCode(), q2.HashCode());
+            Assert.areEqual(q1, q2);
+        }
+
+        {
+            Query q1 = Query.of(Account.SObjectType)
                 .selectBy(Account.Name)
                 .selectBy(typeof('What'))
                 .filterBy(neNull(Account.Name))
@@ -4936,117 +4893,59 @@ public with sharing class QueryTest extends Query {
                 .forReference()
                 .forUpdate()
                 .updateTracking()
-                .updateViewstat()
-        );
-        Assert.areEqual(
-            true,
-            bag.contains(
-                Query.of(Account.SObjectType)
-                    .selectBy(Account.Name)
-                    .selectBy(typeof('What'))
-                    .filterBy(neNull(Account.Name))
-                    .groupBy(Account.Name)
-                    .rollup()
-                    .cube()
-                    .havingBy(neNull(Account.Name))
-                    .orderBy(Account.Name)
-                    .descending()
-                    .nullsLast()
-                    .limitx(1)
-                    .offset(1)
-                    .forView()
-                    .forReference()
-                    .forUpdate()
-                    .updateTracking()
-                    .updateViewstat()
-            )
-        );
-        Assert.areEqual(
-            Query.of(Account.SObjectType)
-                .selectBy(Account.Name)
-                .selectBy(typeof('What'))
-                .filterBy(neNull(Account.Name))
-                .groupBy(Account.Name)
-                .rollup()
-                .cube()
-                .havingBy(neNull(Account.Name))
-                .orderBy(Account.Name)
-                .descending()
-                .nullsLast()
-                .limitx(1)
-                .offset(1)
-                .forView()
-                .forReference()
-                .forUpdate()
-                .updateTracking()
-                .updateViewstat(),
-            Query.of(Account.SObjectType)
-                .selectBy(Account.Name)
-                .selectBy(typeof('What'))
-                .filterBy(neNull(Account.Name))
-                .groupBy(Account.Name)
-                .rollup()
-                .cube()
-                .havingBy(neNull(Account.Name))
-                .orderBy(Account.Name)
-                .descending()
-                .nullsLast()
-                .limitx(1)
-                .offset(1)
-                .forView()
-                .forReference()
-                .forUpdate()
-                .updateTracking()
-                .updateViewstat()
-        );
+                .updateViewstat();
 
-        bag.add(
-            Query.of(Account.SObjectType)
-                .selectBy(GROUPING(Account.BillingCountry))
-                .selectBy(GROUPING(Account.BillingState, 'alias0'))
-                .groupBy(Account.BillingCountry, Account.BillingState)
+            Query q2 = Query.of(Account.SObjectType)
+                .selectBy(Account.Name)
+                .selectBy(typeof('What'))
+                .filterBy(neNull(Account.Name))
+                .groupBy(Account.Name)
                 .rollup()
-                .orderBy(grouping(Account.BillingCountry), grouping(Account.BillingState))
-                .nullsLast()
+                .cube()
+                .havingBy(neNull(Account.Name))
+                .orderBy(Account.Name)
                 .descending()
-        );
-        Assert.areEqual(
-            true,
-            bag.contains(
-                Query.of(Account.SObjectType)
-                    .selectBy(GROUPING(Account.BillingCountry))
-                    .selectBy(GROUPING(Account.BillingState, 'alias0'))
-                    .groupBy(Account.BillingCountry, Account.BillingState)
-                    .rollup()
-                    .orderBy(grouping(Account.BillingCountry), grouping(Account.BillingState))
-                    .nullsLast()
-                    .descending()
-            )
-        );
-        Assert.areEqual(
-            Query.of(Account.SObjectType)
+                .nullsLast()
+                .limitx(1)
+                .offset(1)
+                .forView()
+                .forReference()
+                .forUpdate()
+                .updateTracking()
+                .updateViewstat();
+
+            Assert.areEqual(q1.HashCode(), q2.HashCode());
+            Assert.areEqual(q1, q2);
+        }
+
+        {
+            Query q1 = Query.of(Account.SObjectType)
                 .selectBy(GROUPING(Account.BillingCountry))
                 .selectBy(GROUPING(Account.BillingState, 'alias0'))
                 .groupBy(Account.BillingCountry, Account.BillingState)
                 .rollup()
                 .orderBy(grouping(Account.BillingCountry), grouping(Account.BillingState))
                 .nullsLast()
-                .descending(),
-            Query.of(Account.SObjectType)
+                .descending();
+
+            Query q2 = Query.of(Account.SObjectType)
                 .selectBy(GROUPING(Account.BillingCountry))
                 .selectBy(GROUPING(Account.BillingState, 'alias0'))
                 .groupBy(Account.BillingCountry, Account.BillingState)
                 .rollup()
                 .orderBy(grouping(Account.BillingCountry), grouping(Account.BillingState))
                 .nullsLast()
-                .descending()
-        );
+                .descending();
+
+            Assert.areEqual(q1.HashCode(), q2.HashCode());
+            Assert.areEqual(q1, q2);
+        }
     }
     // #endregion
     // ====================
 
     @isTest
-    static void testNeverNeededVirtualMethods() {
+    static void testRedundantVirtualMethods() {
         Query qry = new Query();
         qry.selectBy('Name');
         qry.selectBy('Name', 'Name');
@@ -5137,5 +5036,53 @@ public with sharing class QueryTest extends Query {
         qry.updateTracking();
         qry.updateViewstat();
         qry.forUpdate();
+    }
+
+    @isTest
+    static void testUnreachableMethods() {
+        {
+            Query q = new Query();
+            q.build(null);
+        }
+        {
+            Query q = Query.of(Account.SObjectType);
+            q.equals(null);
+            q.equals(q);
+        }
+        {
+            Query.QuerySelection q = new Query.QuerySelection(null, null);
+            q.equals(null);
+            q.equals(q);
+        }
+        {
+            Query.Selector q = selector();
+            q.equals(null);
+            q.equals(q);
+        }
+        {
+            Query.Orderer q = orderer();
+            q.equals(null);
+            q.equals(q);
+        }
+        {
+            Query.Grouper q = grouper();
+            q.equals(null);
+            q.equals(q);
+        }
+        {
+            Query.Filter q = orx();
+            q.equals(null);
+            q.equals(q);
+        }
+        {
+            Query.Filter q = gt(Account.AnnualRevenue, 1000);
+            q.equals(null);
+            q.equals(q);
+        }
+        {
+            Query.TypeOf q = typeof('What');
+            q.equals(null);
+            q.equals(q);
+        }
     }
 }

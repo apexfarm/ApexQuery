@@ -1,6 +1,6 @@
 # Apex Query
 
-![](https://img.shields.io/badge/version-1.0.7-brightgreen.svg) ![](https://img.shields.io/badge/build-passing-brightgreen.svg) ![](https://img.shields.io/badge/coverage-99%25-brightgreen.svg)
+![](https://img.shields.io/badge/version-1.0.8-brightgreen.svg) ![](https://img.shields.io/badge/build-passing-brightgreen.svg) ![](https://img.shields.io/badge/coverage-99%25-brightgreen.svg)
 
 Using a query builder to build dynamic SOQL gives many advantages:
 
@@ -9,12 +9,31 @@ Using a query builder to build dynamic SOQL gives many advantages:
 
 | Environment           | Installation Link                                                                                                                                         | Version   |
 | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
-| Production, Developer | <a target="_blank" href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t2v000007Cg4RAAS"><img src="docs/images/deploy-button.png"></a> | ver 1.0.7 |
-| Sandbox               | <a target="_blank" href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t2v000007Cg4RAAS"><img src="docs/images/deploy-button.png"></a>  | ver 1.0.7 |
+| Production, Developer | <a target="_blank" href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t2v000007OilzAAC"><img src="docs/images/deploy-button.png"></a> | ver 1.0.8 |
+| Sandbox               | <a target="_blank" href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t2v000007OilzAAC"><img src="docs/images/deploy-button.png"></a>  | ver 1.0.8 |
 
 ### Online Articles
 
 - [Advantages of Using SOQL Builder in Salesforce](https://medium.com/@jeff.jianfeng.jin/advantages-of-using-soql-builder-in-salesforce-9e82925a74b0) (medium link)
+
+---
+
+### **v1.0.8 Release Notes**
+
+- Fix includes and excludes keyword bugs.
+
+### Next Release v2.0.0
+
+After releasing v2.0.0, v1.x will be maintained in a separate branch for bug fixes, in case some projects don't want to upgrade. Planning to rename the following types and methods, so the names are more consistent with their keyword counterparts and easy to remember. Small change but it is breaking.
+
+- `Query.Selecter` -> `Query.SelectBy`
+- `Query.selector()` -> `Query.selectBy()`
+- `Query.Orderer` -> `Query.OrderBy`
+- `Query.orderer()` -> `Query.orderBy()`
+- `Query.Grouper` -> `Query.GroupBy`
+- `Query.grouper()` -> `Query.groupBy()`
+
+---
 
 ## Table of Contents
 
