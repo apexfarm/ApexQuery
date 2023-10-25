@@ -1,16 +1,16 @@
 # Apex Query
 
-![](https://img.shields.io/badge/version-1.0.8-brightgreen.svg) ![](https://img.shields.io/badge/build-passing-brightgreen.svg) ![](https://img.shields.io/badge/coverage-99%25-brightgreen.svg)
+![](https://img.shields.io/badge/version-1.1.0-brightgreen.svg) ![](https://img.shields.io/badge/build-passing-brightgreen.svg) ![](https://img.shields.io/badge/coverage-99%25-brightgreen.svg)
 
 Using a query builder to build dynamic SOQL gives many advantages:
 
 1. **More efficient**: No need to deal with string concatenation, and handsfree from handling binding variable names.
 2. **Less error-prone**: APIs are carefully designed with strong types, cannot pass wrong values.
 
-| Environment           | Installation Link                                                                                                                                         | Version   |
-| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
-| Production, Developer | <a target="_blank" href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t2v000007OilzAAC"><img src="docs/images/deploy-button.png"></a> | ver 1.0.8 |
-| Sandbox               | <a target="_blank" href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t2v000007OilzAAC"><img src="docs/images/deploy-button.png"></a>  | ver 1.0.8 |
+| Environment           | Installation Link                                                                                                                                         | Version |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| Production, Developer | <a target="_blank" href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t2v000007Oim9AAC"><img src="docs/images/deploy-button.png"></a> | ver 1.1 |
+| Sandbox               | <a target="_blank" href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t2v000007Oim9AAC"><img src="docs/images/deploy-button.png"></a>  | ver 1.1 |
 
 ### Online Articles
 
@@ -18,7 +18,7 @@ Using a query builder to build dynamic SOQL gives many advantages:
 
 ---
 
-### **v1.0.8 Release Notes**
+### **v1.1 Release Notes**
 
 - Fix includes and excludes keyword bugs.
 
