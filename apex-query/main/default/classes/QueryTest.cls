@@ -2912,7 +2912,7 @@ public with sharing class QueryTest extends Query {
 
         filter = nin(Account.Id, contactQuery);
         Assert.areEqual(
-            'SELECT Id FROM Account WHERE Id IN (SELECT AccountId FROM Contact)',
+            'SELECT Id FROM Account WHERE Id NOT IN (SELECT AccountId FROM Contact)',
             Query.of(Account.SObjectType).filterBy(filter).build()
         );
 
@@ -3008,7 +3008,7 @@ public with sharing class QueryTest extends Query {
 
         filter = nin('Id', contactQuery);
         Assert.areEqual(
-            'SELECT Id FROM Account WHERE Id IN (SELECT AccountId FROM Contact)',
+            'SELECT Id FROM Account WHERE Id NOT IN (SELECT AccountId FROM Contact)',
             Query.of(Account.SObjectType).filterBy(filter).build()
         );
 

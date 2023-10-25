@@ -3206,7 +3206,7 @@ public virtual class Query implements Querable {
         return new NIN(field, values);
     }
     public static Filter nin(String field, Query query) {
-        return new INX_Query(field, false, query);
+        return new INX_Query(field, true, query);
     }
 
     // Comparison - NIN - SObjectField
@@ -3241,7 +3241,7 @@ public virtual class Query implements Querable {
         return new NIN(field, values);
     }
     public static Filter nin(SObjectField field, Query query) {
-        return new INX_Query(field, false, query);
+        return new INX_Query(field, true, query);
     }
 
     // Comparison - NIN - AggregateFunction
