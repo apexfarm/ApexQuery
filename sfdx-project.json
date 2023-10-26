@@ -2,8 +2,8 @@
     "packageDirectories": [
         {
             "path": "apex-query",
-            "versionName": "ver 1.1.0",
-            "versionNumber": "1.1.0.NEXT",
+            "versionName": "ver 2.0.0",
+            "versionNumber": "2.0.0.NEXT",
             "default": true,
             "package": "ApexQuery"
         }
@@ -11,7 +11,7 @@
     "name": "ApexQuery",
     "namespace": "",
     "sfdcLoginUrl": "https://login.salesforce.com",
-    "sourceApiVersion": "58.0",
+    "sourceApiVersion": "59.0",
     "packageAliases": {
         "ApexQuery": "0Ho2v000000PBG5CAO",
         "ApexQuery@1.0.0-1": "04t2v000007CfiRAAS",
@@ -23,6 +23,7 @@
         "ApexQuery@1.0.6-1": "04t2v000007Cg4MAAS",
         "ApexQuery@1.0.7-1": "04t2v000007Cg4RAAS",
         "ApexQuery@1.0.8-1": "04t2v000007OilzAAC",
-        "ApexQuery@1.1.0-1": "04t2v000007Oim9AAC"
+        "ApexQuery@1.1.0-1": "04t2v000007Oim9AAC",
+        "ApexQuery@2.0.0-1": "04t2v000007OimYAAS"
     }
 }

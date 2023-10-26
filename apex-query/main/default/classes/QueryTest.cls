@@ -314,36 +314,36 @@ public with sharing class QueryTest extends Query {
     }
 
     @isTest
-    static void testKeyword_Select_Selector() {
+    static void testKeyword_Select_SelectBy() {
         Query accountQuery;
-        Query.Selector selector;
-        Query.Selector anotherSelector;
+        Query.SelectBy selectBy;
+        Query.SelectBy anotherSelectBy;
         // SObjectField
-        selector = Query.selector().add(Account.Id);
-        accountQuery = Query.of(Account.SObjectType).selectBy(selector);
+        selectBy = Query.selectBy().add(Account.Id);
+        accountQuery = Query.of(Account.SObjectType).selectBy(selectBy);
         Assert.areEqual('SELECT Id FROM Account', accountQuery.build());
 
-        selector = Query.selector().add(Account.Id, Account.Name);
-        accountQuery = Query.of(Account.SObjectType).selectBy(selector);
+        selectBy = Query.selectBy().add(Account.Id, Account.Name);
+        accountQuery = Query.of(Account.SObjectType).selectBy(selectBy);
         Assert.areEqual('SELECT Id, Name FROM Account', accountQuery.build());
 
-        selector = Query.selector().add(Account.Id, Account.Name, Account.Description);
-        accountQuery = Query.of(Account.SObjectType).selectBy(selector);
+        selectBy = Query.selectBy().add(Account.Id, Account.Name, Account.Description);
+        accountQuery = Query.of(Account.SObjectType).selectBy(selectBy);
         Assert.areEqual('SELECT Id, Name, Description FROM Account', accountQuery.build());
 
-        selector = Query.selector().add(Account.Id, Account.Name, Account.Description, Account.BillingCountry);
-        accountQuery = Query.of(Account.SObjectType).selectBy(selector);
+        selectBy = Query.selectBy().add(Account.Id, Account.Name, Account.Description, Account.BillingCountry);
+        accountQuery = Query.of(Account.SObjectType).selectBy(selectBy);
         Assert.areEqual('SELECT Id, Name, Description, BillingCountry FROM Account', accountQuery.build());
 
-        selector = Query.selector()
+        selectBy = Query.selectBy()
             .add(Account.Id, Account.Name, Account.Description, Account.BillingCountry, Account.BillingState);
-        accountQuery = Query.of(Account.SObjectType).selectBy(selector);
+        accountQuery = Query.of(Account.SObjectType).selectBy(selectBy);
         Assert.areEqual(
             'SELECT Id, Name, Description, BillingCountry, BillingState FROM Account',
             accountQuery.build()
         );
 
-        selector = Query.selector()
+        selectBy = Query.selectBy()
             .add(
                 new List<Object>{
                     Account.Id,
@@ -353,95 +353,95 @@ public with sharing class QueryTest extends Query {
                     Account.BillingState
                 }
             );
-        accountQuery = Query.of(Account.SObjectType).selectBy(selector);
+        accountQuery = Query.of(Account.SObjectType).selectBy(selectBy);
         Assert.areEqual(
             'SELECT Id, Name, Description, BillingCountry, BillingState FROM Account',
             accountQuery.build()
         );
 
-        selector = Query.selector()
+        selectBy = Query.selectBy()
             .add(Account.Id, Account.Name)
             .add(Account.Description, Account.BillingCountry, Account.BillingState);
-        accountQuery = Query.of(Account.SObjectType).selectBy(selector);
+        accountQuery = Query.of(Account.SObjectType).selectBy(selectBy);
         Assert.areEqual(
             'SELECT Id, Name, Description, BillingCountry, BillingState FROM Account',
             accountQuery.build()
         );
 
-        selector = Query.selector().add(Account.Description, Account.BillingCountry, Account.BillingState);
-        anotherSelector = Query.selector().add(Account.Id, Account.Name).add(selector);
-        accountQuery = Query.of(Account.SObjectType).selectBy(anotherSelector);
+        selectBy = Query.selectBy().add(Account.Description, Account.BillingCountry, Account.BillingState);
+        anotherSelectBy = Query.selectBy().add(Account.Id, Account.Name).add(selectBy);
+        accountQuery = Query.of(Account.SObjectType).selectBy(anotherSelectBy);
         Assert.areEqual(
             'SELECT Id, Name, Description, BillingCountry, BillingState FROM Account',
             accountQuery.build()
         );
 
         // String
-        selector = Query.selector().add('Id');
-        accountQuery = Query.of(Account.SObjectType).selectBy(selector);
+        selectBy = Query.selectBy().add('Id');
+        accountQuery = Query.of(Account.SObjectType).selectBy(selectBy);
         Assert.areEqual('SELECT Id FROM Account', accountQuery.build());
 
-        selector = Query.selector().add('Id', 'Name');
-        accountQuery = Query.of(Account.SObjectType).selectBy(selector);
+        selectBy = Query.selectBy().add('Id', 'Name');
+        accountQuery = Query.of(Account.SObjectType).selectBy(selectBy);
         Assert.areEqual('SELECT Id, Name FROM Account', accountQuery.build());
 
-        selector = Query.selector().add('Id', 'Name', 'Description');
-        accountQuery = Query.of(Account.SObjectType).selectBy(selector);
+        selectBy = Query.selectBy().add('Id', 'Name', 'Description');
+        accountQuery = Query.of(Account.SObjectType).selectBy(selectBy);
         Assert.areEqual('SELECT Id, Name, Description FROM Account', accountQuery.build());
 
-        selector = Query.selector().add('Id', 'Name', 'Description', 'BillingCountry');
-        accountQuery = Query.of(Account.SObjectType).selectBy(selector);
+        selectBy = Query.selectBy().add('Id', 'Name', 'Description', 'BillingCountry');
+        accountQuery = Query.of(Account.SObjectType).selectBy(selectBy);
         Assert.areEqual('SELECT Id, Name, Description, BillingCountry FROM Account', accountQuery.build());
 
-        selector = Query.selector().add('Id', 'Name', 'Description', 'BillingCountry', 'BillingState');
-        accountQuery = Query.of(Account.SObjectType).selectBy(selector);
+        selectBy = Query.selectBy().add('Id', 'Name', 'Description', 'BillingCountry', 'BillingState');
+        accountQuery = Query.of(Account.SObjectType).selectBy(selectBy);
         Assert.areEqual(
             'SELECT Id, Name, Description, BillingCountry, BillingState FROM Account',
             accountQuery.build()
         );
 
-        selector = Query.selector().add('Id', 'Name').add('Description', 'BillingCountry', 'BillingState');
-        accountQuery = Query.of(Account.SObjectType).selectBy(selector);
+        selectBy = Query.selectBy().add('Id', 'Name').add('Description', 'BillingCountry', 'BillingState');
+        accountQuery = Query.of(Account.SObjectType).selectBy(selectBy);
         Assert.areEqual(
             'SELECT Id, Name, Description, BillingCountry, BillingState FROM Account',
             accountQuery.build()
         );
 
-        selector = Query.selector().add('Description', 'BillingCountry', 'BillingState');
-        anotherSelector = Query.selector().add('Id', 'Name').add(selector);
-        accountQuery = Query.of(Account.SObjectType).selectBy(anotherSelector);
+        selectBy = Query.selectBy().add('Description', 'BillingCountry', 'BillingState');
+        anotherSelectBy = Query.selectBy().add('Id', 'Name').add(selectBy);
+        accountQuery = Query.of(Account.SObjectType).selectBy(anotherSelectBy);
         Assert.areEqual(
             'SELECT Id, Name, Description, BillingCountry, BillingState FROM Account',
             accountQuery.build()
         );
 
         // Function
-        selector = Query.selector().add(TO_LABEL(Account.Id));
-        accountQuery = Query.of(Account.SObjectType).selectBy(selector);
+        selectBy = Query.selectBy().add(TO_LABEL(Account.Id));
+        accountQuery = Query.of(Account.SObjectType).selectBy(selectBy);
         Assert.areEqual('SELECT TOLABEL(Id) FROM Account', accountQuery.build());
 
-        selector = Query.selector().add(TO_LABEL(Account.Id), TO_LABEL(Account.Name));
-        accountQuery = Query.of(Account.SObjectType).selectBy(selector);
+        selectBy = Query.selectBy().add(TO_LABEL(Account.Id), TO_LABEL(Account.Name));
+        accountQuery = Query.of(Account.SObjectType).selectBy(selectBy);
         Assert.areEqual('SELECT TOLABEL(Id), TOLABEL(Name) FROM Account', accountQuery.build());
 
-        selector = Query.selector().add(TO_LABEL(Account.Id), TO_LABEL(Account.Name), TO_LABEL(Account.Description));
-        accountQuery = Query.of(Account.SObjectType).selectBy(selector);
+        selectBy = Query.selectBy().add(TO_LABEL(Account.Id), TO_LABEL(Account.Name), TO_LABEL(Account.Description));
+        accountQuery = Query.of(Account.SObjectType).selectBy(selectBy);
         Assert.areEqual('SELECT TOLABEL(Id), TOLABEL(Name), TOLABEL(Description) FROM Account', accountQuery.build());
 
-        selector = Query.selector()
+        selectBy = Query.selectBy()
             .add(
                 TO_LABEL(Account.Id),
                 TO_LABEL(Account.Name),
                 TO_LABEL(Account.Description),
                 TO_LABEL(Account.BillingCountry)
             );
-        accountQuery = Query.of(Account.SObjectType).selectBy(selector);
+        accountQuery = Query.of(Account.SObjectType).selectBy(selectBy);
         Assert.areEqual(
             'SELECT TOLABEL(Id), TOLABEL(Name), TOLABEL(Description), TOLABEL(BillingCountry) FROM Account',
             accountQuery.build()
         );
 
-        selector = Query.selector()
+        selectBy = Query.selectBy()
             .add(
                 TO_LABEL(Account.Id),
                 TO_LABEL(Account.Name),
@@ -449,25 +449,25 @@ public with sharing class QueryTest extends Query {
                 TO_LABEL(Account.BillingCountry),
                 TO_LABEL(Account.BillingState)
             );
-        accountQuery = Query.of(Account.SObjectType).selectBy(selector);
+        accountQuery = Query.of(Account.SObjectType).selectBy(selectBy);
         Assert.areEqual(
             'SELECT TOLABEL(Id), TOLABEL(Name), TOLABEL(Description), TOLABEL(BillingCountry), TOLABEL(BillingState) FROM Account',
             accountQuery.build()
         );
 
-        selector = Query.selector()
+        selectBy = Query.selectBy()
             .add(TO_LABEL(Account.Id), TO_LABEL(Account.Name))
             .add(TO_LABEL(Account.Description), TO_LABEL(Account.BillingCountry), TO_LABEL(Account.BillingState));
-        accountQuery = Query.of(Account.SObjectType).selectBy(selector);
+        accountQuery = Query.of(Account.SObjectType).selectBy(selectBy);
         Assert.areEqual(
             'SELECT TOLABEL(Id), TOLABEL(Name), TOLABEL(Description), TOLABEL(BillingCountry), TOLABEL(BillingState) FROM Account',
             accountQuery.build()
         );
 
-        selector = Query.selector()
+        selectBy = Query.selectBy()
             .add(TO_LABEL(Account.Description), TO_LABEL(Account.BillingCountry), TO_LABEL(Account.BillingState));
-        anotherSelector = Query.selector().add(TO_LABEL(Account.Id), TO_LABEL(Account.Name)).add(selector);
-        accountQuery = Query.of(Account.SObjectType).selectBy(anotherSelector);
+        anotherSelectBy = Query.selectBy().add(TO_LABEL(Account.Id), TO_LABEL(Account.Name)).add(selectBy);
+        accountQuery = Query.of(Account.SObjectType).selectBy(anotherSelectBy);
         Assert.areEqual(
             'SELECT TOLABEL(Id), TOLABEL(Name), TOLABEL(Description), TOLABEL(BillingCountry), TOLABEL(BillingState) FROM Account',
             accountQuery.build()
@@ -475,22 +475,22 @@ public with sharing class QueryTest extends Query {
     }
 
     @isTest
-    static void testKeyword_Select_Selector_Clone() {
+    static void testKeyword_Select_SelectBy_Clone() {
         Query accountQuery;
 
-        Query.Selector selector = Query.selector().add(Account.Id);
-        accountQuery = Query.of(Account.SObjectType).selectBy(selector);
-        selector.add(Account.CreatedDate); // this will not be added to query
+        Query.SelectBy selectBy = Query.selectBy().add(Account.Id);
+        accountQuery = Query.of(Account.SObjectType).selectBy(selectBy);
+        selectBy.add(Account.CreatedDate); // this will not be added to query
         Assert.areEqual('SELECT Id FROM Account', accountQuery.build());
 
-        selector = Query.selector().add('Id');
-        accountQuery = Query.of(Account.SObjectType).selectBy(selector);
-        selector.add('CreatedDate'); // this will not be added to query
+        selectBy = Query.selectBy().add('Id');
+        accountQuery = Query.of(Account.SObjectType).selectBy(selectBy);
+        selectBy.add('CreatedDate'); // this will not be added to query
         Assert.areEqual('SELECT Id FROM Account', accountQuery.build());
 
-        selector = Query.selector().add(TO_LABEL(Account.Id));
-        accountQuery = Query.of(Account.SObjectType).selectBy(selector);
-        selector.add(FORMAT(Account.CreatedDate)); // this will not be added to query
+        selectBy = Query.selectBy().add(TO_LABEL(Account.Id));
+        accountQuery = Query.of(Account.SObjectType).selectBy(selectBy);
+        selectBy.add(FORMAT(Account.CreatedDate)); // this will not be added to query
         Assert.areEqual('SELECT TOLABEL(Id) FROM Account', accountQuery.build());
     }
 
@@ -531,21 +531,21 @@ public with sharing class QueryTest extends Query {
 
         // Queries - Outline Styles
         contactQuery = Query.of(Contact.SObjectType);
-        Query.Selector selector = Query.selector().add('Contacts', contactQuery);
-        accountQuery = Query.of(Account.SObjectType).selectBy(selector);
+        Query.SelectBy selectBy = Query.selectBy().add('Contacts', contactQuery);
+        accountQuery = Query.of(Account.SObjectType).selectBy(selectBy);
         Assert.areEqual('SELECT (SELECT Id FROM Contacts) FROM Account', accountQuery.build());
 
         contactQuery = Query.of(Contact.SObjectType).selectBy(Contact.Name);
-        selector = Query.selector().add('Contacts', contactQuery).add(Account.Name);
-        accountQuery = Query.of(Account.SObjectType).selectBy(selector);
+        selectBy = Query.selectBy().add('Contacts', contactQuery).add(Account.Name);
+        accountQuery = Query.of(Account.SObjectType).selectBy(selectBy);
         Assert.areEqual('SELECT (SELECT Name FROM Contacts), Name FROM Account', accountQuery.build());
 
-        selector = Query.selector().add(Account.Name).add('Contacts', contactQuery);
-        accountQuery = Query.of(Account.SObjectType).selectBy(selector);
+        selectBy = Query.selectBy().add(Account.Name).add('Contacts', contactQuery);
+        accountQuery = Query.of(Account.SObjectType).selectBy(selectBy);
         Assert.areEqual('SELECT Name, (SELECT Name FROM Contacts) FROM Account', accountQuery.build());
 
-        selector = Query.selector().add('Contacts', contactQuery).add('Contacts', contactQuery);
-        accountQuery = Query.of(Account.SObjectType).selectBy(selector);
+        selectBy = Query.selectBy().add('Contacts', contactQuery).add('Contacts', contactQuery);
+        accountQuery = Query.of(Account.SObjectType).selectBy(selectBy);
         Assert.areEqual(
             'SELECT (SELECT Name FROM Contacts), (SELECT Name FROM Contacts) FROM Account',
             accountQuery.build()
@@ -1220,7 +1220,7 @@ public with sharing class QueryTest extends Query {
         );
 
         // param1 are others
-        filter = eq(DISTANCE_IN_KM(Account.ShippingAddress, Location.newInstance(37.775001, -122.41801)), 12.3);
+        filter = eq(DISTANCE(Account.ShippingAddress, Location.newInstance(37.775001, -122.41801), 'km'), 12.3);
         Assert.areEqual(
             'SELECT Id FROM Account WHERE DISTANCE(ShippingAddress, GEOLOCATION(37.775001, -122.41801), \'km\') = 12.3',
             Query.of(Account.SObjectType).filterBy(filter).build()
@@ -1444,7 +1444,7 @@ public with sharing class QueryTest extends Query {
         );
 
         // param1 are others
-        filter = ne(DISTANCE_IN_KM(Account.ShippingAddress, Location.newInstance(37.775001, -122.41801)), 12.3);
+        filter = ne(DISTANCE(Account.ShippingAddress, Location.newInstance(37.775001, -122.41801), 'km'), 12.3);
         Assert.areEqual(
             'SELECT Id FROM Account WHERE DISTANCE(ShippingAddress, GEOLOCATION(37.775001, -122.41801), \'km\') != 12.3',
             Query.of(Account.SObjectType).filterBy(filter).build()
@@ -1632,7 +1632,7 @@ public with sharing class QueryTest extends Query {
         );
 
         // param1 are others
-        filter = gt(DISTANCE_IN_KM(Account.ShippingAddress, Location.newInstance(37.775001, -122.41801)), 12.3);
+        filter = gt(DISTANCE(Account.ShippingAddress, Location.newInstance(37.775001, -122.41801), 'km'), 12.3);
         Assert.areEqual(
             'SELECT Id FROM Account WHERE DISTANCE(ShippingAddress, GEOLOCATION(37.775001, -122.41801), \'km\') > 12.3',
             Query.of(Account.SObjectType).filterBy(filter).build()
@@ -1820,7 +1820,7 @@ public with sharing class QueryTest extends Query {
         );
 
         // param1 are others
-        filter = gte(DISTANCE_IN_KM(Account.ShippingAddress, Location.newInstance(37.775001, -122.41801)), 12.3);
+        filter = gte(DISTANCE(Account.ShippingAddress, Location.newInstance(37.775001, -122.41801), 'km'), 12.3);
         Assert.areEqual(
             'SELECT Id FROM Account WHERE DISTANCE(ShippingAddress, GEOLOCATION(37.775001, -122.41801), \'km\') >= 12.3',
             Query.of(Account.SObjectType).filterBy(filter).build()
@@ -2008,7 +2008,7 @@ public with sharing class QueryTest extends Query {
         );
 
         // param1 are others
-        filter = lt(DISTANCE_IN_KM(Account.ShippingAddress, Location.newInstance(37.775001, -122.41801)), 12.3);
+        filter = lt(DISTANCE(Account.ShippingAddress, Location.newInstance(37.775001, -122.41801), 'km'), 12.3);
         Assert.areEqual(
             'SELECT Id FROM Account WHERE DISTANCE(ShippingAddress, GEOLOCATION(37.775001, -122.41801), \'km\') < 12.3',
             Query.of(Account.SObjectType).filterBy(filter).build()
@@ -2196,7 +2196,7 @@ public with sharing class QueryTest extends Query {
         );
 
         // param1 are others
-        filter = lte(DISTANCE_IN_KM(Account.ShippingAddress, Location.newInstance(37.775001, -122.41801)), 12.3);
+        filter = lte(DISTANCE(Account.ShippingAddress, Location.newInstance(37.775001, -122.41801), 'km'), 12.3);
         Assert.areEqual(
             'SELECT Id FROM Account WHERE DISTANCE(ShippingAddress, GEOLOCATION(37.775001, -122.41801), \'km\') <= 12.3',
             Query.of(Account.SObjectType).filterBy(filter).build()
@@ -2405,7 +2405,7 @@ public with sharing class QueryTest extends Query {
 
         // param1 are others
         filter = between(
-            DISTANCE_IN_KM(Account.ShippingAddress, Location.newInstance(37.775001, -122.41801)),
+            DISTANCE(Account.ShippingAddress, Location.newInstance(37.775001, -122.41801), 'km'),
             12.3,
             12.3
         );
@@ -2800,7 +2800,7 @@ public with sharing class QueryTest extends Query {
 
         // Other Functions
         filter = inx(
-            DISTANCE_IN_KM(Account.ShippingAddress, Location.newInstance(37.775000, -122.41800)),
+            DISTANCE(Account.ShippingAddress, Location.newInstance(37.775000, -122.41800), 'km'),
             new List<Decimal>{ 12.3, 45.6, null }
         );
         Assert.areEqual(
@@ -3104,7 +3104,7 @@ public with sharing class QueryTest extends Query {
 
         // Other Functions
         filter = nin(
-            DISTANCE_IN_KM(Account.ShippingAddress, Location.newInstance(37.775000, -122.41800)),
+            DISTANCE(Account.ShippingAddress, Location.newInstance(37.775000, -122.41800), 'km'),
             new List<Decimal>{ 12.3, 45.6, null }
         );
         Assert.areEqual(
@@ -3329,28 +3329,28 @@ public with sharing class QueryTest extends Query {
         Assert.areEqual('SELECT FORMAT(CONVERTCURRENCY(AnnualRevenue)) FROM Account', accountQuery.build());
 
         accountQuery = Query.of(Account.SObjectType)
-            .filterBy(lt(DISTANCE_IN_MI(Account.ShippingAddress, Location.newInstance(37.775000, -122.41800)), 20));
+            .filterBy(lt(DISTANCE(Account.ShippingAddress, Location.newInstance(37.775000, -122.41800), 'mi'), 20));
         Assert.areEqual(
             'SELECT Id FROM Account WHERE DISTANCE(ShippingAddress, GEOLOCATION(37.775, -122.418), \'mi\') < 20',
             accountQuery.build()
         );
 
         accountQuery = Query.of(Account.SObjectType)
-            .filterBy(lt(DISTANCE_IN_MI('ShippingAddress', Location.newInstance(37.775000, -122.41800)), 20));
+            .filterBy(lt(DISTANCE('ShippingAddress', Location.newInstance(37.775000, -122.41800), 'mi'), 20));
         Assert.areEqual(
             'SELECT Id FROM Account WHERE DISTANCE(ShippingAddress, GEOLOCATION(37.775, -122.418), \'mi\') < 20',
             accountQuery.build()
         );
 
         accountQuery = Query.of(Account.SObjectType)
-            .filterBy(lt(DISTANCE_IN_KM(Account.ShippingAddress, Location.newInstance(37.775000, -122.41800)), 20));
+            .filterBy(lt(DISTANCE(Account.ShippingAddress, Location.newInstance(37.775000, -122.41800), 'km'), 20));
         Assert.areEqual(
             'SELECT Id FROM Account WHERE DISTANCE(ShippingAddress, GEOLOCATION(37.775, -122.418), \'km\') < 20',
             accountQuery.build()
         );
 
         accountQuery = Query.of(Account.SObjectType)
-            .filterBy(lt(DISTANCE_IN_KM('ShippingAddress', Location.newInstance(37.775000, -122.41800)), 20));
+            .filterBy(lt(DISTANCE('ShippingAddress', Location.newInstance(37.775000, -122.41800), 'km'), 20));
         Assert.areEqual(
             'SELECT Id FROM Account WHERE DISTANCE(ShippingAddress, GEOLOCATION(37.775, -122.418), \'km\') < 20',
             accountQuery.build()
@@ -3716,80 +3716,80 @@ public with sharing class QueryTest extends Query {
     }
 
     @isTest
-    static void testKeyword_OrderBy_Orderer() {
+    static void testKeyword_OrderBy_OrderBy() {
         Query accountQuery;
-        Query.Orderer orderer;
+        Query.OrderBy orderBy;
 
         // Mixing
-        orderer = orderer().add(new List<Object>{ Account.Name, 'Name', MAX(Account.Name) });
-        accountQuery = Query.of(Account.SObjectType).orderBy(orderer);
+        orderBy = orderBy().add(new List<Object>{ Account.Name, 'Name', MAX(Account.Name) });
+        accountQuery = Query.of(Account.SObjectType).orderBy(orderBy);
         Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name, MAX(Name)', accountQuery.build());
 
         // SObjectField
-        orderer = orderer().add(Account.Name);
-        accountQuery = Query.of(Account.SObjectType).orderBy(orderer);
+        orderBy = orderBy().add(Account.Name);
+        accountQuery = Query.of(Account.SObjectType).orderBy(orderBy);
         Assert.areEqual('SELECT Id FROM Account ORDER BY Name', accountQuery.build());
 
-        orderer = orderer().add(Account.Name, Account.Name);
-        accountQuery = Query.of(Account.SObjectType).orderBy(orderer);
+        orderBy = orderBy().add(Account.Name, Account.Name);
+        accountQuery = Query.of(Account.SObjectType).orderBy(orderBy);
         Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name', accountQuery.build());
 
-        orderer = orderer().add(Account.Name, Account.Name, Account.Name);
-        accountQuery = Query.of(Account.SObjectType).orderBy(orderer);
+        orderBy = orderBy().add(Account.Name, Account.Name, Account.Name);
+        accountQuery = Query.of(Account.SObjectType).orderBy(orderBy);
         Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name, Name', accountQuery.build());
 
-        orderer = orderer().add(Account.Name, Account.Name, Account.Name, Account.Name);
-        accountQuery = Query.of(Account.SObjectType).orderBy(orderer);
+        orderBy = orderBy().add(Account.Name, Account.Name, Account.Name, Account.Name);
+        accountQuery = Query.of(Account.SObjectType).orderBy(orderBy);
         Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name, Name, Name', accountQuery.build());
 
-        orderer = orderer().add(Account.Name, Account.Name, Account.Name, Account.Name, Account.Name);
-        accountQuery = Query.of(Account.SObjectType).orderBy(orderer);
+        orderBy = orderBy().add(Account.Name, Account.Name, Account.Name, Account.Name, Account.Name);
+        accountQuery = Query.of(Account.SObjectType).orderBy(orderBy);
         Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name, Name, Name, Name', accountQuery.build());
 
         // String
-        orderer = orderer().add('Name');
-        accountQuery = Query.of(Account.SObjectType).orderBy(orderer);
+        orderBy = orderBy().add('Name');
+        accountQuery = Query.of(Account.SObjectType).orderBy(orderBy);
         Assert.areEqual('SELECT Id FROM Account ORDER BY Name', accountQuery.build());
 
-        orderer = orderer().add('Name', 'Name');
-        accountQuery = Query.of(Account.SObjectType).orderBy(orderer);
+        orderBy = orderBy().add('Name', 'Name');
+        accountQuery = Query.of(Account.SObjectType).orderBy(orderBy);
         Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name', accountQuery.build());
 
-        orderer = orderer().add('Name', 'Name', 'Name');
-        accountQuery = Query.of(Account.SObjectType).orderBy(orderer);
+        orderBy = orderBy().add('Name', 'Name', 'Name');
+        accountQuery = Query.of(Account.SObjectType).orderBy(orderBy);
         Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name, Name', accountQuery.build());
 
-        orderer = orderer().add('Name', 'Name', 'Name', 'Name');
-        accountQuery = Query.of(Account.SObjectType).orderBy(orderer);
+        orderBy = orderBy().add('Name', 'Name', 'Name', 'Name');
+        accountQuery = Query.of(Account.SObjectType).orderBy(orderBy);
         Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name, Name, Name', accountQuery.build());
 
-        orderer = orderer().add('Name', 'Name', 'Name', 'Name', 'Name');
-        accountQuery = Query.of(Account.SObjectType).orderBy(orderer);
+        orderBy = orderBy().add('Name', 'Name', 'Name', 'Name', 'Name');
+        accountQuery = Query.of(Account.SObjectType).orderBy(orderBy);
         Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name, Name, Name, Name', accountQuery.build());
 
         // Function
-        orderer = orderer().add(MAX(Account.Name));
-        accountQuery = Query.of(Account.SObjectType).orderBy(orderer);
+        orderBy = orderBy().add(MAX(Account.Name));
+        accountQuery = Query.of(Account.SObjectType).orderBy(orderBy);
         Assert.areEqual('SELECT Id FROM Account ORDER BY MAX(Name)', accountQuery.build());
 
-        orderer = orderer().add(MAX(Account.Name), MAX(Account.Name));
-        accountQuery = Query.of(Account.SObjectType).orderBy(orderer);
+        orderBy = orderBy().add(MAX(Account.Name), MAX(Account.Name));
+        accountQuery = Query.of(Account.SObjectType).orderBy(orderBy);
         Assert.areEqual('SELECT Id FROM Account ORDER BY MAX(Name), MAX(Name)', accountQuery.build());
 
-        orderer = orderer().add(MAX(Account.Name), MAX(Account.Name), MAX(Account.Name));
-        accountQuery = Query.of(Account.SObjectType).orderBy(orderer);
+        orderBy = orderBy().add(MAX(Account.Name), MAX(Account.Name), MAX(Account.Name));
+        accountQuery = Query.of(Account.SObjectType).orderBy(orderBy);
         Assert.areEqual('SELECT Id FROM Account ORDER BY MAX(Name), MAX(Name), MAX(Name)', accountQuery.build());
 
-        orderer = orderer().add(MAX(Account.Name), MAX(Account.Name), MAX(Account.Name), MAX(Account.Name));
-        accountQuery = Query.of(Account.SObjectType).orderBy(orderer);
+        orderBy = orderBy().add(MAX(Account.Name), MAX(Account.Name), MAX(Account.Name), MAX(Account.Name));
+        accountQuery = Query.of(Account.SObjectType).orderBy(orderBy);
         Assert.areEqual(
             'SELECT Id FROM Account ORDER BY MAX(Name), MAX(Name), MAX(Name), MAX(Name)',
             accountQuery.build()
         );
 
-        orderer = orderer()
+        orderBy = orderBy()
             .add(MAX(Account.Name), MAX(Account.Name), MAX(Account.Name), MAX(Account.Name), MAX(Account.Name));
-        accountQuery = Query.of(Account.SObjectType).orderBy(orderer);
+        accountQuery = Query.of(Account.SObjectType).orderBy(orderBy);
         Assert.areEqual(
             'SELECT Id FROM Account ORDER BY MAX(Name), MAX(Name), MAX(Name), MAX(Name), MAX(Name)',
             accountQuery.build()
@@ -3797,28 +3797,28 @@ public with sharing class QueryTest extends Query {
     }
 
     @isTest
-    static void testKeyword_OrderBy_Orderer_Clone() {
+    static void testKeyword_OrderBy_OrderBy_Clone() {
         Query accountQuery;
 
-        Query.Orderer orderer = Query.orderer().add(Account.Id).descending().nullsLast();
-        accountQuery = Query.of(Account.SObjectType).orderBy(Account.Name).orderBy(orderer);
-        orderer.add(Account.CreatedDate); // this will not be added to query
+        Query.OrderBy orderBy = Query.orderBy().add(Account.Id).descending().nullsLast();
+        accountQuery = Query.of(Account.SObjectType).orderBy(Account.Name).orderBy(orderBy);
+        orderBy.add(Account.CreatedDate); // this will not be added to query
         Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Id DESC NULLS LAST', accountQuery.build());
 
-        orderer = Query.orderer().add('Id');
-        accountQuery = Query.of(Account.SObjectType).orderBy(Account.Name).descending().nullsLast().orderBy(orderer);
-        orderer.add('CreatedDate'); // this will not be added to query
+        orderBy = Query.orderBy().add('Id');
+        accountQuery = Query.of(Account.SObjectType).orderBy(Account.Name).descending().nullsLast().orderBy(orderBy);
+        orderBy.add('CreatedDate'); // this will not be added to query
         Assert.areEqual('SELECT Id FROM Account ORDER BY Name DESC NULLS LAST, Id', accountQuery.build());
 
-        orderer = Query.orderer().add(MAX(Account.Id)).descending().nullsLast();
+        orderBy = Query.orderBy().add(MAX(Account.Id)).descending().nullsLast();
         accountQuery = Query.of(Account.SObjectType)
             .orderBy(Account.Name)
             .descending()
             .nullsLast()
-            .orderBy(orderer)
+            .orderBy(orderBy)
             .ascending()
             .nullsFirst();
-        orderer.add(MIN(Account.CreatedDate)); // this will not be added to query
+        orderBy.add(MIN(Account.CreatedDate)); // this will not be added to query
         Assert.areEqual(
             'SELECT Id FROM Account ORDER BY Name DESC NULLS LAST, MAX(Id) DESC NULLS LAST',
             accountQuery.build()
@@ -3828,38 +3828,38 @@ public with sharing class QueryTest extends Query {
     @isTest
     static void testKeyword_OrderBy_Others() {
         Query accountQuery;
-        Query.Orderer orderer;
+        Query.OrderBy orderBy;
 
-        orderer = orderer().add(Account.Name, Account.Name).ascending().nullsFirst();
-        accountQuery = Query.of(Account.SObjectType).orderBy(orderer);
+        orderBy = orderBy().add(Account.Name, Account.Name).ascending().nullsFirst();
+        accountQuery = Query.of(Account.SObjectType).orderBy(orderBy);
         Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name', accountQuery.build());
 
-        orderer = orderer().add(Account.Name, Account.Name).descending().nullsLast().ascending().nullsFirst();
-        accountQuery = Query.of(Account.SObjectType).orderBy(orderer);
+        orderBy = orderBy().add(Account.Name, Account.Name).descending().nullsLast().ascending().nullsFirst();
+        accountQuery = Query.of(Account.SObjectType).orderBy(orderBy);
         Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name', accountQuery.build());
 
-        orderer = orderer().add(Account.Name, Account.Name).ascending().nullsFirst().descending().nullsLast();
-        accountQuery = Query.of(Account.SObjectType).orderBy(orderer);
+        orderBy = orderBy().add(Account.Name, Account.Name).ascending().nullsFirst().descending().nullsLast();
+        accountQuery = Query.of(Account.SObjectType).orderBy(orderBy);
         Assert.areEqual(
             'SELECT Id FROM Account ORDER BY Name DESC NULLS LAST, Name DESC NULLS LAST',
             accountQuery.build()
         );
 
-        orderer = orderer().add(Account.Name, Account.Name).descending().nullsLast();
-        accountQuery = Query.of(Account.SObjectType).orderBy(orderer);
+        orderBy = orderBy().add(Account.Name, Account.Name).descending().nullsLast();
+        accountQuery = Query.of(Account.SObjectType).orderBy(orderBy);
         Assert.areEqual(
             'SELECT Id FROM Account ORDER BY Name DESC NULLS LAST, Name DESC NULLS LAST',
             accountQuery.build()
         );
 
-        orderer = orderer()
+        orderBy = orderBy()
             .add(Account.Name, Account.Name)
             .ascending()
             .nullsFirst()
             .add(Account.Name, Account.Name)
             .descending()
             .nullsLast();
-        accountQuery = Query.of(Account.SObjectType).orderBy(orderer);
+        accountQuery = Query.of(Account.SObjectType).orderBy(orderBy);
         Assert.areEqual(
             'SELECT Id FROM Account ORDER BY Name, Name, Name DESC NULLS LAST, Name DESC NULLS LAST',
             accountQuery.build()
@@ -3986,98 +3986,98 @@ public with sharing class QueryTest extends Query {
     }
 
     @isTest
-    static void testKeyword_GroupBy_Grouper() {
+    static void testKeyword_GroupBy_GroupBy() {
         Query accountQuery;
-        Query.Grouper grouper;
+        Query.GroupBy groupBy;
 
         // Mixing
-        grouper = grouper().add(new List<Object>{ Account.Name, 'Name', CALENDAR_MONTH(Account.CreatedDate) });
-        accountQuery = Query.of(Account.SObjectType).groupBy(grouper);
+        groupBy = groupBy().add(new List<Object>{ Account.Name, 'Name', CALENDAR_MONTH(Account.CreatedDate) });
+        accountQuery = Query.of(Account.SObjectType).groupBy(groupBy);
         Assert.areEqual(
             'SELECT Id FROM Account GROUP BY Name, Name, CALENDAR_MONTH(CreatedDate)',
             accountQuery.build()
         );
 
         // SObjectField
-        grouper = grouper().add(Account.Name);
-        accountQuery = Query.of(Account.SObjectType).groupBy(grouper);
+        groupBy = groupBy().add(Account.Name);
+        accountQuery = Query.of(Account.SObjectType).groupBy(groupBy);
         Assert.areEqual('SELECT Id FROM Account GROUP BY Name', accountQuery.build());
 
-        grouper = grouper().add(Account.Name, Account.Name);
-        accountQuery = Query.of(Account.SObjectType).groupBy(grouper);
+        groupBy = groupBy().add(Account.Name, Account.Name);
+        accountQuery = Query.of(Account.SObjectType).groupBy(groupBy);
         Assert.areEqual('SELECT Id FROM Account GROUP BY Name, Name', accountQuery.build());
 
-        grouper = grouper().add(Account.Name, Account.Name, Account.Name);
-        accountQuery = Query.of(Account.SObjectType).groupBy(grouper);
+        groupBy = groupBy().add(Account.Name, Account.Name, Account.Name);
+        accountQuery = Query.of(Account.SObjectType).groupBy(groupBy);
         Assert.areEqual('SELECT Id FROM Account GROUP BY Name, Name, Name', accountQuery.build());
 
-        grouper = grouper().add(Account.Name, Account.Name, Account.Name, Account.Name);
-        accountQuery = Query.of(Account.SObjectType).groupBy(grouper);
+        groupBy = groupBy().add(Account.Name, Account.Name, Account.Name, Account.Name);
+        accountQuery = Query.of(Account.SObjectType).groupBy(groupBy);
         Assert.areEqual('SELECT Id FROM Account GROUP BY Name, Name, Name, Name', accountQuery.build());
 
-        grouper = grouper().add(Account.Name, Account.Name, Account.Name, Account.Name, Account.Name);
-        accountQuery = Query.of(Account.SObjectType).groupBy(grouper);
+        groupBy = groupBy().add(Account.Name, Account.Name, Account.Name, Account.Name, Account.Name);
+        accountQuery = Query.of(Account.SObjectType).groupBy(groupBy);
         Assert.areEqual('SELECT Id FROM Account GROUP BY Name, Name, Name, Name, Name', accountQuery.build());
 
         // String
-        grouper = grouper().add('Name');
-        accountQuery = Query.of(Account.SObjectType).groupBy(grouper);
+        groupBy = groupBy().add('Name');
+        accountQuery = Query.of(Account.SObjectType).groupBy(groupBy);
         Assert.areEqual('SELECT Id FROM Account GROUP BY Name', accountQuery.build());
 
-        grouper = grouper().add('Name', 'Name');
-        accountQuery = Query.of(Account.SObjectType).groupBy(grouper);
+        groupBy = groupBy().add('Name', 'Name');
+        accountQuery = Query.of(Account.SObjectType).groupBy(groupBy);
         Assert.areEqual('SELECT Id FROM Account GROUP BY Name, Name', accountQuery.build());
 
-        grouper = grouper().add('Name', 'Name', 'Name');
-        accountQuery = Query.of(Account.SObjectType).groupBy(grouper);
+        groupBy = groupBy().add('Name', 'Name', 'Name');
+        accountQuery = Query.of(Account.SObjectType).groupBy(groupBy);
         Assert.areEqual('SELECT Id FROM Account GROUP BY Name, Name, Name', accountQuery.build());
 
-        grouper = grouper().add('Name', 'Name', 'Name', 'Name');
-        accountQuery = Query.of(Account.SObjectType).groupBy(grouper);
+        groupBy = groupBy().add('Name', 'Name', 'Name', 'Name');
+        accountQuery = Query.of(Account.SObjectType).groupBy(groupBy);
         Assert.areEqual('SELECT Id FROM Account GROUP BY Name, Name, Name, Name', accountQuery.build());
 
-        grouper = grouper().add('Name', 'Name', 'Name', 'Name', 'Name');
-        accountQuery = Query.of(Account.SObjectType).groupBy(grouper);
+        groupBy = groupBy().add('Name', 'Name', 'Name', 'Name', 'Name');
+        accountQuery = Query.of(Account.SObjectType).groupBy(groupBy);
         Assert.areEqual('SELECT Id FROM Account GROUP BY Name, Name, Name, Name, Name', accountQuery.build());
 
         // Function
-        grouper = grouper().add(CALENDAR_MONTH(Account.CreatedDate));
-        accountQuery = Query.of(Account.SObjectType).groupBy(grouper);
+        groupBy = groupBy().add(CALENDAR_MONTH(Account.CreatedDate));
+        accountQuery = Query.of(Account.SObjectType).groupBy(groupBy);
         Assert.areEqual('SELECT Id FROM Account GROUP BY CALENDAR_MONTH(CreatedDate)', accountQuery.build());
 
-        grouper = grouper().add(CALENDAR_MONTH(Account.CreatedDate), CALENDAR_MONTH(Account.CreatedDate));
-        accountQuery = Query.of(Account.SObjectType).groupBy(grouper);
+        groupBy = groupBy().add(CALENDAR_MONTH(Account.CreatedDate), CALENDAR_MONTH(Account.CreatedDate));
+        accountQuery = Query.of(Account.SObjectType).groupBy(groupBy);
         Assert.areEqual(
             'SELECT Id FROM Account GROUP BY CALENDAR_MONTH(CreatedDate), CALENDAR_MONTH(CreatedDate)',
             accountQuery.build()
         );
 
-        grouper = grouper()
+        groupBy = groupBy()
             .add(
                 CALENDAR_MONTH(Account.CreatedDate),
                 CALENDAR_MONTH(Account.CreatedDate),
                 CALENDAR_MONTH(Account.CreatedDate)
             );
-        accountQuery = Query.of(Account.SObjectType).groupBy(grouper);
+        accountQuery = Query.of(Account.SObjectType).groupBy(groupBy);
         Assert.areEqual(
             'SELECT Id FROM Account GROUP BY CALENDAR_MONTH(CreatedDate), CALENDAR_MONTH(CreatedDate), CALENDAR_MONTH(CreatedDate)',
             accountQuery.build()
         );
 
-        grouper = grouper()
+        groupBy = groupBy()
             .add(
                 CALENDAR_MONTH(Account.CreatedDate),
                 CALENDAR_MONTH(Account.CreatedDate),
                 CALENDAR_MONTH(Account.CreatedDate),
                 CALENDAR_MONTH(Account.CreatedDate)
             );
-        accountQuery = Query.of(Account.SObjectType).groupBy(grouper);
+        accountQuery = Query.of(Account.SObjectType).groupBy(groupBy);
         Assert.areEqual(
             'SELECT Id FROM Account GROUP BY CALENDAR_MONTH(CreatedDate), CALENDAR_MONTH(CreatedDate), CALENDAR_MONTH(CreatedDate), CALENDAR_MONTH(CreatedDate)',
             accountQuery.build()
         );
 
-        grouper = grouper()
+        groupBy = groupBy()
             .add(
                 CALENDAR_MONTH(Account.CreatedDate),
                 CALENDAR_MONTH(Account.CreatedDate),
@@ -4085,7 +4085,7 @@ public with sharing class QueryTest extends Query {
                 CALENDAR_MONTH(Account.CreatedDate),
                 CALENDAR_MONTH(Account.CreatedDate)
             );
-        accountQuery = Query.of(Account.SObjectType).groupBy(grouper);
+        accountQuery = Query.of(Account.SObjectType).groupBy(groupBy);
         Assert.areEqual(
             'SELECT Id FROM Account GROUP BY CALENDAR_MONTH(CreatedDate), CALENDAR_MONTH(CreatedDate), CALENDAR_MONTH(CreatedDate), CALENDAR_MONTH(CreatedDate), CALENDAR_MONTH(CreatedDate)',
             accountQuery.build()
@@ -4093,22 +4093,22 @@ public with sharing class QueryTest extends Query {
     }
 
     @isTest
-    static void testKeyword_GroupBy_Grouper_Clone() {
+    static void testKeyword_GroupBy_GroupBy_Clone() {
         Query accountQuery;
 
-        Query.Grouper grouper = Query.grouper().add(Account.Id);
-        accountQuery = Query.of(Account.SObjectType).groupBy(grouper);
-        grouper.add(Account.CreatedDate); // this will not be added to query
+        Query.GroupBy groupBy = Query.groupBy().add(Account.Id);
+        accountQuery = Query.of(Account.SObjectType).groupBy(groupBy);
+        groupBy.add(Account.CreatedDate); // this will not be added to query
         Assert.areEqual('SELECT Id FROM Account GROUP BY Id', accountQuery.build());
 
-        grouper = Query.grouper().add('Id');
-        accountQuery = Query.of(Account.SObjectType).groupBy(grouper);
-        grouper.add('CreatedDate'); // this will not be added to query
+        groupBy = Query.groupBy().add('Id');
+        accountQuery = Query.of(Account.SObjectType).groupBy(groupBy);
+        groupBy.add('CreatedDate'); // this will not be added to query
         Assert.areEqual('SELECT Id FROM Account GROUP BY Id', accountQuery.build());
 
-        grouper = Query.grouper().add(CALENDAR_MONTH(Account.CreatedDate));
-        accountQuery = Query.of(Account.SObjectType).groupBy(grouper);
-        grouper.add(CALENDAR_YEAR(Account.CreatedDate)); // this will not be added to query
+        groupBy = Query.groupBy().add(CALENDAR_MONTH(Account.CreatedDate));
+        accountQuery = Query.of(Account.SObjectType).groupBy(groupBy);
+        groupBy.add(CALENDAR_YEAR(Account.CreatedDate)); // this will not be added to query
         Assert.areEqual('SELECT Id FROM Account GROUP BY CALENDAR_MONTH(CreatedDate)', accountQuery.build());
     }
 
@@ -4127,7 +4127,7 @@ public with sharing class QueryTest extends Query {
         // Filter Style 1
         // prettier-ignore
         accountList = (List<Account>) Query.of(Account.SObjectType)
-            .selectBy(selector()
+            .selectBy(selectBy()
                 .add(Account.Name, Account.AnnualRevenue, Account.BillingState)
                 .add('Contacts', Query.of(Contact.SObjectType).selectBy(Contact.Name))
             )
@@ -4213,7 +4213,7 @@ public with sharing class QueryTest extends Query {
         contactList = (List<Contact>) Query.of(Contact.SObjectType).selectBy(Contact.Id, Contact.Name).run();
         // prettier-ignore
         accountList = (List<Account>) Query.of(Account.SObjectType)
-            .selectBy(selector()
+            .selectBy(selectBy()
                 .add(Account.Name, Account.AnnualRevenue, Account.BillingCountry, Account.BillingState)
                 .add('Contacts', Query.of(Contact.SObjectType).selectBy(Contact.Name).filterBy(inx(Contact.Id, contactList)))
             )
@@ -4232,7 +4232,7 @@ public with sharing class QueryTest extends Query {
                     )
                 )
             ))
-            .orderBy(orderer().add(Account.AnnualRevenue).descending().nullsLast())
+            .orderBy(orderBy().add(Account.AnnualRevenue).descending().nullsLast())
             .run();
         Assert.areEqual(2, accountList.size());
         Assert.areEqual(1500, accountList[0].AnnualRevenue);
@@ -4290,7 +4290,7 @@ public with sharing class QueryTest extends Query {
         makeData();
         List<AggregateResult> results = (List<AggregateResult>) Query.of(Contact.SObjectType)
             .selectBy(
-                selector()
+                selectBy()
                     .add(CALENDAR_MONTH(Contact.Birthdate))
                     .add(CALENDAR_QUARTER(Contact.Birthdate))
                     .add(CALENDAR_YEAR(Contact.Birthdate))
@@ -4307,7 +4307,7 @@ public with sharing class QueryTest extends Query {
 
         results = (List<AggregateResult>) Query.of(Contact.SObjectType)
             .selectBy(
-                selector()
+                selectBy()
                     .add(CALENDAR_MONTH(CONVERT_TIMEZONE(Contact.Birthdate)))
                     .add(CALENDAR_QUARTER(CONVERT_TIMEZONE(Contact.Birthdate)))
                     .add(CALENDAR_YEAR(CONVERT_TIMEZONE(Contact.Birthdate)))
@@ -4324,14 +4324,14 @@ public with sharing class QueryTest extends Query {
 
         results = (List<AggregateResult>) Query.of(Contact.SObjectType)
             .selectBy(
-                selector()
+                selectBy()
                     .add(DAY_ONLY(Contact.CreatedDate))
                     .add(HOUR_IN_DAY(Contact.CreatedDate))
                     .add(WEEK_IN_MONTH(Contact.CreatedDate))
                     .add(WEEK_IN_YEAR(Contact.CreatedDate))
             )
             .groupBy(
-                grouper()
+                groupBy()
                     .add(DAY_ONLY(Contact.CreatedDate))
                     .add(HOUR_IN_DAY(Contact.CreatedDate))
                     .add(WEEK_IN_MONTH(Contact.CreatedDate))
@@ -4342,14 +4342,14 @@ public with sharing class QueryTest extends Query {
 
         results = (List<AggregateResult>) Query.of(Contact.SObjectType)
             .selectBy(
-                selector()
+                selectBy()
                     .add(DAY_ONLY(CONVERT_TIMEZONE(Contact.CreatedDate)))
                     .add(HOUR_IN_DAY(CONVERT_TIMEZONE(Contact.CreatedDate)))
                     .add(WEEK_IN_MONTH(CONVERT_TIMEZONE(Contact.CreatedDate)))
                     .add(WEEK_IN_YEAR(CONVERT_TIMEZONE(Contact.CreatedDate)))
             )
             .groupBy(
-                grouper()
+                groupBy()
                     .add(DAY_ONLY(CONVERT_TIMEZONE(Contact.CreatedDate)))
                     .add(HOUR_IN_DAY(CONVERT_TIMEZONE(Contact.CreatedDate)))
                     .add(WEEK_IN_MONTH(CONVERT_TIMEZONE(Contact.CreatedDate)))
@@ -4463,11 +4463,11 @@ public with sharing class QueryTest extends Query {
 
         Query query = Query.of(Account.SObjectType);
 
-        Query.Selector selector = selector();
-        selector = selector.add(Account.Name, Account.AnnualRevenue);
-        selector = selector.add(Account.BillingCountry, Account.BillingState);
-        selector = selector.add('Contacts', contactQuery);
-        query.selectBy(selector);
+        Query.SelectBy selectBy = selectBy();
+        selectBy = selectBy.add(Account.Name, Account.AnnualRevenue);
+        selectBy = selectBy.add(Account.BillingCountry, Account.BillingState);
+        selectBy = selectBy.add('Contacts', contactQuery);
+        query.selectBy(selectBy);
 
         Query.CompositeFilter filters = orx();
 
@@ -4540,9 +4540,9 @@ public with sharing class QueryTest extends Query {
         List<Account> accountList = (List<Account>) Query.of(Account.SObjectType)
             .selectBy(Account.Name, Account.AnnualRevenue, Account.BillingCountry, Account.BillingState, Account.ShippingAddress)
             .filterBy(
-                lt(DISTANCE_IN_KM(Account.ShippingAddress, Location.newInstance(37.775000, -122.41800)), 20)
+                lt(DISTANCE(Account.ShippingAddress, Location.newInstance(37.775000, -122.41800), 'km'), 20)
             )
-            .orderBy(DISTANCE_IN_MI(Account.ShippingAddress, Location.newInstance(37.775000, -122.41800))).ascending().nullsLast()
+            .orderBy(DISTANCE(Account.ShippingAddress, Location.newInstance(37.775000, -122.41800), 'mi')).ascending().nullsLast()
             .run();
         Assert.areEqual(2, accountList.size());
         Assert.areEqual(1500, accountList[0].AnnualRevenue);
@@ -4768,8 +4768,8 @@ public with sharing class QueryTest extends Query {
             Assert.areEqual(f1, f2);
         }
         {
-            Query.Function f1 = DISTANCE_IN_MI(Account.ShippingAddress, Location.newInstance(37.775000, -122.41800));
-            Query.Function f2 = DISTANCE_IN_MI(Account.ShippingAddress, Location.newInstance(37.775000, -122.41800));
+            Query.Function f1 = DISTANCE(Account.ShippingAddress, Location.newInstance(37.775000, -122.41800), 'km');
+            Query.Function f2 = DISTANCE(Account.ShippingAddress, Location.newInstance(37.775000, -122.41800), 'km');
             Assert.areEqual(f1.HashCode(), f2.HashCode());
             Assert.areEqual(f1, f2);
         }
@@ -4802,13 +4802,13 @@ public with sharing class QueryTest extends Query {
     @isTest
     static void testValueObject_Query() {
         {
-            Query.Selector s1 = Query.selector()
+            Query.SelectBy s1 = Query.selectBy()
                 .add('Name')
                 .add(Account.Name)
                 .add(MAX(Account.Name))
                 .add('Contacts', Query.of(Contact.SObjectType));
 
-            Query.Selector s2 = Query.selector()
+            Query.SelectBy s2 = Query.selectBy()
                 .add('Name')
                 .add(Account.Name)
                 .add(MAX(Account.Name))
@@ -4819,11 +4819,11 @@ public with sharing class QueryTest extends Query {
         }
 
         {
-            Query.Orderer o1 = Query.orderer()
+            Query.OrderBy o1 = Query.orderBy()
                 .add(Account.BillingCountry, Account.BillingState)
                 .descending()
                 .nullsFirst();
-            Query.Orderer o2 = Query.orderer()
+            Query.OrderBy o2 = Query.orderBy()
                 .add(Account.BillingCountry, Account.BillingState)
                 .descending()
                 .nullsFirst();
@@ -4832,10 +4832,10 @@ public with sharing class QueryTest extends Query {
         }
 
         {
-            Query.Grouper g1 = Query.grouper()
+            Query.GroupBy g1 = Query.groupBy()
                 .add(Account.BillingCountry, Account.BillingState)
                 .add(CALENDAR_MONTH(Account.CreatedDate));
-            Query.Grouper g2 = Query.grouper()
+            Query.GroupBy g2 = Query.groupBy()
                 .add(Account.BillingCountry, Account.BillingState)
                 .add(CALENDAR_MONTH(Account.CreatedDate));
             Assert.areEqual(g1.HashCode(), g2.HashCode());
@@ -4970,7 +4970,7 @@ public with sharing class QueryTest extends Query {
         );
         qry.selectBy('Contacts', qry);
         qry.selectBy(new List<Object>());
-        qry.selectBy(selector());
+        qry.selectBy(selectBy());
         qry.selectBy(typeof('What'));
         qry.filterBy(andx());
         qry.orderBy('Name');
@@ -4989,7 +4989,7 @@ public with sharing class QueryTest extends Query {
         qry.orderBy(MAX('Name'), MAX('Name'), MAX('Name'), MAX('Name'));
         qry.orderBy(MAX('Name'), MAX('Name'), MAX('Name'), MAX('Name'), MAX('Name'));
         qry.orderBy(new List<Object>());
-        qry.orderBy(orderer());
+        qry.orderBy(orderBy());
         qry.ascending();
         qry.descending();
         qry.nullsFirst();
@@ -5025,7 +5025,7 @@ public with sharing class QueryTest extends Query {
             CALENDAR_MONTH(Account.CreatedDate)
         );
         qry.groupBy(new List<Object>());
-        qry.groupBy(grouper());
+        qry.groupBy(groupBy());
         qry.rollup();
         qry.cube();
         qry.havingBy(andx());
@@ -5055,17 +5055,17 @@ public with sharing class QueryTest extends Query {
             q.equals(q);
         }
         {
-            Query.Selector q = selector();
+            Query.SelectBy q = selectBy();
             q.equals(null);
             q.equals(q);
         }
         {
-            Query.Orderer q = orderer();
+            Query.OrderBy q = orderBy();
             q.equals(null);
             q.equals(q);
         }
         {
-            Query.Grouper q = grouper();
+            Query.GroupBy q = groupBy();
             q.equals(null);
             q.equals(q);
         }

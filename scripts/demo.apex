@@ -5,7 +5,7 @@ public List<Account> findAccounts(
     Decimal minAmount,
     Decimal maxAmount
 ) {
-    Query.Selector selector = selector()
+    Query.SelectBy selectBy = selectBy()
         .add(Account.Name, Account.BillingCountry, Account.BillingState)
         .add(FORMAT(CONVERT_CURRENCY(Account.AnnualRevenue)))
         .add('Contacts', Query.of(Contact.SObjectType).selectBy('Name'));
@@ -15,15 +15,15 @@ public List<Account> findAccounts(
         .add(between(Account.AnnualRevenue, USD(minAmount), USD(maxAmount)))
         .add(eq(Account.BillingCountry, countryName));
 
-    Query.Orderer orderer = orderer()
+    Query.OrderBy orderBy = orderBy()
         .add(Account.AnnualRevenue)
         .descending()
         .nullsLast();
 
     return (List<Account>) Query.of(Account.SObjectType)
-        .selectBy(selector)
+        .selectBy(selectBy)
         .filterBy(filter)
-        .orderBy(orderer)
+        .orderBy(orderBy)
         .run();
 }
 // prettier-ignore
