@@ -41,3 +41,8 @@ $RECYCLE.BIN/
 .husky
 .vscode
 package-lock.json
+
+# Python Salesforce Functions
+**/__pycache__/
+**/.venv/
+**/venv/

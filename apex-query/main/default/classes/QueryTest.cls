@@ -99,9 +99,9 @@ public with sharing class QueryTest extends Query {
             );
         Assert.areEqual(
             'SELECT TYPEOF What ' +
-            'WHEN Account THEN Phone, NumberOfEmployees, BillingCountry, BillingState ' +
-            'WHEN Contact THEN Name, Birthdate, Department, Email ' +
-            'ELSE Id, Status, Email, Phone END FROM Account',
+                'WHEN Account THEN Phone, NumberOfEmployees, BillingCountry, BillingState ' +
+                'WHEN Contact THEN Name, Birthdate, Department, Email ' +
+                'ELSE Id, Status, Email, Phone END FROM Account',
             accountQuery.build()
         );
 
@@ -633,8 +633,8 @@ public with sharing class QueryTest extends Query {
         accountQuery = Query.of(Account.SObjectType).filterBy(filter);
         Assert.areEqual(
             'SELECT Id FROM Account WHERE NOT(BillingCountry = \'China\' ' +
-            'AND BillingState = \'Shanghai\' ' +
-            'AND AnnualRevenue = 1500)',
+                'AND BillingState = \'Shanghai\' ' +
+                'AND AnnualRevenue = 1500)',
             accountQuery.build()
         );
     }
@@ -648,8 +648,8 @@ public with sharing class QueryTest extends Query {
         Query accountQuery = Query.of(Account.SObjectType).filterBy(filter);
         Assert.areEqual(
             'SELECT Id FROM Account WHERE (BillingCountry = \'China\' ' +
-            'AND BillingCountry = \'China\' ' +
-            'AND BillingCountry = \'China\')',
+                'AND BillingCountry = \'China\' ' +
+                'AND BillingCountry = \'China\')',
             accountQuery.build()
         );
     }
@@ -671,8 +671,8 @@ public with sharing class QueryTest extends Query {
         accountQuery = Query.of(Account.SObjectType).filterBy(filter);
         Assert.areEqual(
             'SELECT Id FROM Account WHERE (BillingCountry = \'China\' ' +
-            'AND BillingCountry = \'China\' ' +
-            'AND BillingCountry = \'China\')',
+                'AND BillingCountry = \'China\' ' +
+                'AND BillingCountry = \'China\')',
             accountQuery.build()
         );
 
@@ -685,9 +685,9 @@ public with sharing class QueryTest extends Query {
         accountQuery = Query.of(Account.SObjectType).filterBy(filter);
         Assert.areEqual(
             'SELECT Id FROM Account WHERE (BillingCountry = \'China\' ' +
-            'AND BillingCountry = \'China\' ' +
-            'AND BillingCountry = \'China\' ' +
-            'AND BillingCountry = \'China\')',
+                'AND BillingCountry = \'China\' ' +
+                'AND BillingCountry = \'China\' ' +
+                'AND BillingCountry = \'China\')',
             accountQuery.build()
         );
 
@@ -701,10 +701,10 @@ public with sharing class QueryTest extends Query {
         accountQuery = Query.of(Account.SObjectType).filterBy(filter);
         Assert.areEqual(
             'SELECT Id FROM Account WHERE (BillingCountry = \'China\' ' +
-            'AND BillingCountry = \'China\' ' +
-            'AND BillingCountry = \'China\' ' +
-            'AND BillingCountry = \'China\' ' +
-            'AND BillingCountry = \'China\')',
+                'AND BillingCountry = \'China\' ' +
+                'AND BillingCountry = \'China\' ' +
+                'AND BillingCountry = \'China\' ' +
+                'AND BillingCountry = \'China\')',
             accountQuery.build()
         );
 
@@ -719,11 +719,11 @@ public with sharing class QueryTest extends Query {
         accountQuery = Query.of(Account.SObjectType).filterBy(filter);
         Assert.areEqual(
             'SELECT Id FROM Account WHERE (BillingCountry = \'China\' ' +
-            'AND BillingCountry = \'China\' ' +
-            'AND BillingCountry = \'China\' ' +
-            'AND BillingCountry = \'China\' ' +
-            'AND BillingCountry = \'China\' ' +
-            'AND BillingCountry = \'China\')',
+                'AND BillingCountry = \'China\' ' +
+                'AND BillingCountry = \'China\' ' +
+                'AND BillingCountry = \'China\' ' +
+                'AND BillingCountry = \'China\' ' +
+                'AND BillingCountry = \'China\')',
             accountQuery.build()
         );
 
@@ -739,12 +739,12 @@ public with sharing class QueryTest extends Query {
         accountQuery = Query.of(Account.SObjectType).filterBy(filter);
         Assert.areEqual(
             'SELECT Id FROM Account WHERE (BillingCountry = \'China\' ' +
-            'AND BillingCountry = \'China\' ' +
-            'AND BillingCountry = \'China\' ' +
-            'AND BillingCountry = \'China\' ' +
-            'AND BillingCountry = \'China\' ' +
-            'AND BillingCountry = \'China\' ' +
-            'AND BillingCountry = \'China\')',
+                'AND BillingCountry = \'China\' ' +
+                'AND BillingCountry = \'China\' ' +
+                'AND BillingCountry = \'China\' ' +
+                'AND BillingCountry = \'China\' ' +
+                'AND BillingCountry = \'China\' ' +
+                'AND BillingCountry = \'China\')',
             accountQuery.build()
         );
 
@@ -761,43 +761,17 @@ public with sharing class QueryTest extends Query {
         accountQuery = Query.of(Account.SObjectType).filterBy(filter);
         Assert.areEqual(
             'SELECT Id FROM Account WHERE (BillingCountry = \'China\' ' +
-            'AND BillingCountry = \'China\' ' +
-            'AND BillingCountry = \'China\' ' +
-            'AND BillingCountry = \'China\' ' +
-            'AND BillingCountry = \'China\' ' +
-            'AND BillingCountry = \'China\' ' +
-            'AND BillingCountry = \'China\' ' +
-            'AND BillingCountry = \'China\')',
+                'AND BillingCountry = \'China\' ' +
+                'AND BillingCountry = \'China\' ' +
+                'AND BillingCountry = \'China\' ' +
+                'AND BillingCountry = \'China\' ' +
+                'AND BillingCountry = \'China\' ' +
+                'AND BillingCountry = \'China\' ' +
+                'AND BillingCountry = \'China\')',
             accountQuery.build()
         );
 
         filter = andx(
-            eq(Account.BillingCountry, 'China'),
-            eq(Account.BillingCountry, 'China'),
-            eq(Account.BillingCountry, 'China'),
-            eq(Account.BillingCountry, 'China'),
-            eq(Account.BillingCountry, 'China'),
-            eq(Account.BillingCountry, 'China'),
-            eq(Account.BillingCountry, 'China'),
-            eq(Account.BillingCountry, 'China'),
-            eq(Account.BillingCountry, 'China')
-        );
-        accountQuery = Query.of(Account.SObjectType).filterBy(filter);
-        Assert.areEqual(
-            'SELECT Id FROM Account WHERE (BillingCountry = \'China\' ' +
-            'AND BillingCountry = \'China\' ' +
-            'AND BillingCountry = \'China\' ' +
-            'AND BillingCountry = \'China\' ' +
-            'AND BillingCountry = \'China\' ' +
-            'AND BillingCountry = \'China\' ' +
-            'AND BillingCountry = \'China\' ' +
-            'AND BillingCountry = \'China\' ' +
-            'AND BillingCountry = \'China\')',
-            accountQuery.build()
-        );
-
-        filter = andx(
-            eq(Account.BillingCountry, 'China'),
             eq(Account.BillingCountry, 'China'),
             eq(Account.BillingCountry, 'China'),
             eq(Account.BillingCountry, 'China'),
@@ -811,15 +785,41 @@ public with sharing class QueryTest extends Query {
         accountQuery = Query.of(Account.SObjectType).filterBy(filter);
         Assert.areEqual(
             'SELECT Id FROM Account WHERE (BillingCountry = \'China\' ' +
-            'AND BillingCountry = \'China\' ' +
-            'AND BillingCountry = \'China\' ' +
-            'AND BillingCountry = \'China\' ' +
-            'AND BillingCountry = \'China\' ' +
-            'AND BillingCountry = \'China\' ' +
-            'AND BillingCountry = \'China\' ' +
-            'AND BillingCountry = \'China\' ' +
-            'AND BillingCountry = \'China\' ' +
-            'AND BillingCountry = \'China\')',
+                'AND BillingCountry = \'China\' ' +
+                'AND BillingCountry = \'China\' ' +
+                'AND BillingCountry = \'China\' ' +
+                'AND BillingCountry = \'China\' ' +
+                'AND BillingCountry = \'China\' ' +
+                'AND BillingCountry = \'China\' ' +
+                'AND BillingCountry = \'China\' ' +
+                'AND BillingCountry = \'China\')',
+            accountQuery.build()
+        );
+
+        filter = andx(
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China')
+        );
+        accountQuery = Query.of(Account.SObjectType).filterBy(filter);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE (BillingCountry = \'China\' ' +
+                'AND BillingCountry = \'China\' ' +
+                'AND BillingCountry = \'China\' ' +
+                'AND BillingCountry = \'China\' ' +
+                'AND BillingCountry = \'China\' ' +
+                'AND BillingCountry = \'China\' ' +
+                'AND BillingCountry = \'China\' ' +
+                'AND BillingCountry = \'China\' ' +
+                'AND BillingCountry = \'China\' ' +
+                'AND BillingCountry = \'China\')',
             accountQuery.build()
         );
     }
@@ -833,8 +833,8 @@ public with sharing class QueryTest extends Query {
         Query accountQuery = Query.of(Account.SObjectType).filterBy(filter);
         Assert.areEqual(
             'SELECT Id FROM Account WHERE (BillingCountry = \'China\' ' +
-            'OR BillingCountry = \'China\' ' +
-            'OR BillingCountry = \'China\')',
+                'OR BillingCountry = \'China\' ' +
+                'OR BillingCountry = \'China\')',
             accountQuery.build()
         );
     }
@@ -856,8 +856,8 @@ public with sharing class QueryTest extends Query {
         accountQuery = Query.of(Account.SObjectType).filterBy(filter);
         Assert.areEqual(
             'SELECT Id FROM Account WHERE (BillingCountry = \'China\' ' +
-            'OR BillingCountry = \'China\' ' +
-            'OR BillingCountry = \'China\')',
+                'OR BillingCountry = \'China\' ' +
+                'OR BillingCountry = \'China\')',
             accountQuery.build()
         );
 
@@ -870,9 +870,9 @@ public with sharing class QueryTest extends Query {
         accountQuery = Query.of(Account.SObjectType).filterBy(filter);
         Assert.areEqual(
             'SELECT Id FROM Account WHERE (BillingCountry = \'China\' ' +
-            'OR BillingCountry = \'China\' ' +
-            'OR BillingCountry = \'China\' ' +
-            'OR BillingCountry = \'China\')',
+                'OR BillingCountry = \'China\' ' +
+                'OR BillingCountry = \'China\' ' +
+                'OR BillingCountry = \'China\')',
             accountQuery.build()
         );
 
@@ -886,10 +886,10 @@ public with sharing class QueryTest extends Query {
         accountQuery = Query.of(Account.SObjectType).filterBy(filter);
         Assert.areEqual(
             'SELECT Id FROM Account WHERE (BillingCountry = \'China\' ' +
-            'OR BillingCountry = \'China\' ' +
-            'OR BillingCountry = \'China\' ' +
-            'OR BillingCountry = \'China\' ' +
-            'OR BillingCountry = \'China\')',
+                'OR BillingCountry = \'China\' ' +
+                'OR BillingCountry = \'China\' ' +
+                'OR BillingCountry = \'China\' ' +
+                'OR BillingCountry = \'China\')',
             accountQuery.build()
         );
 
@@ -904,11 +904,11 @@ public with sharing class QueryTest extends Query {
         accountQuery = Query.of(Account.SObjectType).filterBy(filter);
         Assert.areEqual(
             'SELECT Id FROM Account WHERE (BillingCountry = \'China\' ' +
-            'OR BillingCountry = \'China\' ' +
-            'OR BillingCountry = \'China\' ' +
-            'OR BillingCountry = \'China\' ' +
-            'OR BillingCountry = \'China\' ' +
-            'OR BillingCountry = \'China\')',
+                'OR BillingCountry = \'China\' ' +
+                'OR BillingCountry = \'China\' ' +
+                'OR BillingCountry = \'China\' ' +
+                'OR BillingCountry = \'China\' ' +
+                'OR BillingCountry = \'China\')',
             accountQuery.build()
         );
 
@@ -924,12 +924,12 @@ public with sharing class QueryTest extends Query {
         accountQuery = Query.of(Account.SObjectType).filterBy(filter);
         Assert.areEqual(
             'SELECT Id FROM Account WHERE (BillingCountry = \'China\' ' +
-            'OR BillingCountry = \'China\' ' +
-            'OR BillingCountry = \'China\' ' +
-            'OR BillingCountry = \'China\' ' +
-            'OR BillingCountry = \'China\' ' +
-            'OR BillingCountry = \'China\' ' +
-            'OR BillingCountry = \'China\')',
+                'OR BillingCountry = \'China\' ' +
+                'OR BillingCountry = \'China\' ' +
+                'OR BillingCountry = \'China\' ' +
+                'OR BillingCountry = \'China\' ' +
+                'OR BillingCountry = \'China\' ' +
+                'OR BillingCountry = \'China\')',
             accountQuery.build()
         );
 
@@ -946,43 +946,17 @@ public with sharing class QueryTest extends Query {
         accountQuery = Query.of(Account.SObjectType).filterBy(filter);
         Assert.areEqual(
             'SELECT Id FROM Account WHERE (BillingCountry = \'China\' ' +
-            'OR BillingCountry = \'China\' ' +
-            'OR BillingCountry = \'China\' ' +
-            'OR BillingCountry = \'China\' ' +
-            'OR BillingCountry = \'China\' ' +
-            'OR BillingCountry = \'China\' ' +
-            'OR BillingCountry = \'China\' ' +
-            'OR BillingCountry = \'China\')',
+                'OR BillingCountry = \'China\' ' +
+                'OR BillingCountry = \'China\' ' +
+                'OR BillingCountry = \'China\' ' +
+                'OR BillingCountry = \'China\' ' +
+                'OR BillingCountry = \'China\' ' +
+                'OR BillingCountry = \'China\' ' +
+                'OR BillingCountry = \'China\')',
             accountQuery.build()
         );
 
         filter = orx(
-            eq(Account.BillingCountry, 'China'),
-            eq(Account.BillingCountry, 'China'),
-            eq(Account.BillingCountry, 'China'),
-            eq(Account.BillingCountry, 'China'),
-            eq(Account.BillingCountry, 'China'),
-            eq(Account.BillingCountry, 'China'),
-            eq(Account.BillingCountry, 'China'),
-            eq(Account.BillingCountry, 'China'),
-            eq(Account.BillingCountry, 'China')
-        );
-        accountQuery = Query.of(Account.SObjectType).filterBy(filter);
-        Assert.areEqual(
-            'SELECT Id FROM Account WHERE (BillingCountry = \'China\' ' +
-            'OR BillingCountry = \'China\' ' +
-            'OR BillingCountry = \'China\' ' +
-            'OR BillingCountry = \'China\' ' +
-            'OR BillingCountry = \'China\' ' +
-            'OR BillingCountry = \'China\' ' +
-            'OR BillingCountry = \'China\' ' +
-            'OR BillingCountry = \'China\' ' +
-            'OR BillingCountry = \'China\')',
-            accountQuery.build()
-        );
-
-        filter = orx(
-            eq(Account.BillingCountry, 'China'),
             eq(Account.BillingCountry, 'China'),
             eq(Account.BillingCountry, 'China'),
             eq(Account.BillingCountry, 'China'),
@@ -996,15 +970,41 @@ public with sharing class QueryTest extends Query {
         accountQuery = Query.of(Account.SObjectType).filterBy(filter);
         Assert.areEqual(
             'SELECT Id FROM Account WHERE (BillingCountry = \'China\' ' +
-            'OR BillingCountry = \'China\' ' +
-            'OR BillingCountry = \'China\' ' +
-            'OR BillingCountry = \'China\' ' +
-            'OR BillingCountry = \'China\' ' +
-            'OR BillingCountry = \'China\' ' +
-            'OR BillingCountry = \'China\' ' +
-            'OR BillingCountry = \'China\' ' +
-            'OR BillingCountry = \'China\' ' +
-            'OR BillingCountry = \'China\')',
+                'OR BillingCountry = \'China\' ' +
+                'OR BillingCountry = \'China\' ' +
+                'OR BillingCountry = \'China\' ' +
+                'OR BillingCountry = \'China\' ' +
+                'OR BillingCountry = \'China\' ' +
+                'OR BillingCountry = \'China\' ' +
+                'OR BillingCountry = \'China\' ' +
+                'OR BillingCountry = \'China\')',
+            accountQuery.build()
+        );
+
+        filter = orx(
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China'),
+            eq(Account.BillingCountry, 'China')
+        );
+        accountQuery = Query.of(Account.SObjectType).filterBy(filter);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE (BillingCountry = \'China\' ' +
+                'OR BillingCountry = \'China\' ' +
+                'OR BillingCountry = \'China\' ' +
+                'OR BillingCountry = \'China\' ' +
+                'OR BillingCountry = \'China\' ' +
+                'OR BillingCountry = \'China\' ' +
+                'OR BillingCountry = \'China\' ' +
+                'OR BillingCountry = \'China\' ' +
+                'OR BillingCountry = \'China\' ' +
+                'OR BillingCountry = \'China\')',
             accountQuery.build()
         );
     }
@@ -3412,21 +3412,21 @@ public with sharing class QueryTest extends Query {
             );
         Assert.areEqual(
             'SELECT Id FROM Account WHERE ' +
-            '(CreatedDate = YESTERDAY OR CreatedDate = TODAY OR CreatedDate = TOMORROW OR ' +
-            'CreatedDate = LAST_WEEK OR CreatedDate = THIS_WEEK OR CreatedDate = NEXT_WEEK OR ' +
-            'CreatedDate = LAST_MONTH OR CreatedDate = THIS_MONTH OR CreatedDate = NEXT_MONTH OR ' +
-            'CreatedDate = LAST_90_DAYS OR CreatedDate = NEXT_90_DAYS OR CreatedDate = THIS_QUARTER OR ' +
-            'CreatedDate = LAST_QUARTER OR CreatedDate = NEXT_QUARTER OR CreatedDate = THIS_YEAR OR ' +
-            'CreatedDate = LAST_YEAR OR CreatedDate = NEXT_YEAR OR CreatedDate = THIS_FISCAL_QUARTER OR ' +
-            'CreatedDate = LAST_FISCAL_QUARTER OR CreatedDate = NEXT_FISCAL_QUARTER OR ' +
-            'CreatedDate = THIS_FISCAL_YEAR OR CreatedDate = LAST_FISCAL_YEAR OR CreatedDate = NEXT_FISCAL_YEAR OR ' +
-            'CreatedDate = LAST_N_DAYS:3 OR CreatedDate = NEXT_N_DAYS:3 OR CreatedDate = N_DAYS_AGO:3 OR ' +
-            'CreatedDate = NEXT_N_WEEKS:3 OR CreatedDate = LAST_N_WEEKS:3 OR CreatedDate = N_WEEKS_AGO:3 OR ' +
-            'CreatedDate = NEXT_N_MONTHS:3 OR CreatedDate = LAST_N_MONTHS:3 OR CreatedDate = N_MONTHS_AGO:3 OR ' +
-            'CreatedDate = NEXT_N_QUARTERS:3 OR CreatedDate = LAST_N_QUARTERS:3 OR CreatedDate = N_QUARTERS_AGO:3 OR ' +
-            'CreatedDate = NEXT_N_YEARS:3 OR CreatedDate = LAST_N_YEARS:3 OR CreatedDate = N_YEARS_AGO:3 OR ' +
-            'CreatedDate = NEXT_N_FISCAL_QUARTERS:3 OR CreatedDate = N_FISCAL_QUARTERS_AGO:3 OR ' +
-            'CreatedDate = NEXT_N_FISCAL_YEARS:3 OR CreatedDate = LAST_N_FISCAL_YEARS:3 OR CreatedDate = N_FISCAL_YEARS_AGO:3)',
+                '(CreatedDate = YESTERDAY OR CreatedDate = TODAY OR CreatedDate = TOMORROW OR ' +
+                'CreatedDate = LAST_WEEK OR CreatedDate = THIS_WEEK OR CreatedDate = NEXT_WEEK OR ' +
+                'CreatedDate = LAST_MONTH OR CreatedDate = THIS_MONTH OR CreatedDate = NEXT_MONTH OR ' +
+                'CreatedDate = LAST_90_DAYS OR CreatedDate = NEXT_90_DAYS OR CreatedDate = THIS_QUARTER OR ' +
+                'CreatedDate = LAST_QUARTER OR CreatedDate = NEXT_QUARTER OR CreatedDate = THIS_YEAR OR ' +
+                'CreatedDate = LAST_YEAR OR CreatedDate = NEXT_YEAR OR CreatedDate = THIS_FISCAL_QUARTER OR ' +
+                'CreatedDate = LAST_FISCAL_QUARTER OR CreatedDate = NEXT_FISCAL_QUARTER OR ' +
+                'CreatedDate = THIS_FISCAL_YEAR OR CreatedDate = LAST_FISCAL_YEAR OR CreatedDate = NEXT_FISCAL_YEAR OR ' +
+                'CreatedDate = LAST_N_DAYS:3 OR CreatedDate = NEXT_N_DAYS:3 OR CreatedDate = N_DAYS_AGO:3 OR ' +
+                'CreatedDate = NEXT_N_WEEKS:3 OR CreatedDate = LAST_N_WEEKS:3 OR CreatedDate = N_WEEKS_AGO:3 OR ' +
+                'CreatedDate = NEXT_N_MONTHS:3 OR CreatedDate = LAST_N_MONTHS:3 OR CreatedDate = N_MONTHS_AGO:3 OR ' +
+                'CreatedDate = NEXT_N_QUARTERS:3 OR CreatedDate = LAST_N_QUARTERS:3 OR CreatedDate = N_QUARTERS_AGO:3 OR ' +
+                'CreatedDate = NEXT_N_YEARS:3 OR CreatedDate = LAST_N_YEARS:3 OR CreatedDate = N_YEARS_AGO:3 OR ' +
+                'CreatedDate = NEXT_N_FISCAL_QUARTERS:3 OR CreatedDate = N_FISCAL_QUARTERS_AGO:3 OR ' +
+                'CreatedDate = NEXT_N_FISCAL_YEARS:3 OR CreatedDate = LAST_N_FISCAL_YEARS:3 OR CreatedDate = N_FISCAL_YEARS_AGO:3)',
             accountQuery.build()
         );
     }
@@ -3590,56 +3590,56 @@ public with sharing class QueryTest extends Query {
 
         Assert.areEqual(
             'SELECT Id FROM Account WHERE ' +
-            '(AnnualRevenue = AED100 OR AnnualRevenue = AFN100 OR AnnualRevenue = ALL100 OR ' +
-            'AnnualRevenue = AMD100 OR AnnualRevenue = ANG100 OR AnnualRevenue = AOA100 OR ' +
-            'AnnualRevenue = ARS100 OR AnnualRevenue = AUD100 OR AnnualRevenue = AWG100 OR ' +
-            'AnnualRevenue = AZN100 OR AnnualRevenue = BAM100 OR AnnualRevenue = BBD100 OR ' +
-            'AnnualRevenue = BDT100 OR AnnualRevenue = BGN100 OR AnnualRevenue = BHD100 OR ' +
-            'AnnualRevenue = BIF100 OR AnnualRevenue = BMD100 OR AnnualRevenue = BND100 OR ' +
-            'AnnualRevenue = BOB100 OR AnnualRevenue = BRL100 OR AnnualRevenue = BSD100 OR ' +
-            'AnnualRevenue = BTN100 OR AnnualRevenue = BWP100 OR AnnualRevenue = BYN100 OR ' +
-            'AnnualRevenue = BZD100 OR AnnualRevenue = CAD100 OR AnnualRevenue = CDF100 OR ' +
-            'AnnualRevenue = CHF100 OR AnnualRevenue = CLP100 OR AnnualRevenue = CNY100 OR ' +
-            'AnnualRevenue = COP100 OR AnnualRevenue = CRC100 OR AnnualRevenue = CSD100 OR ' +
-            'AnnualRevenue = CUP100 OR AnnualRevenue = CVE100 OR AnnualRevenue = CZK100 OR ' +
-            'AnnualRevenue = DJF100 OR AnnualRevenue = DKK100 OR AnnualRevenue = DOP100 OR ' +
-            'AnnualRevenue = DZD100 OR AnnualRevenue = EGP100 OR AnnualRevenue = ERN100 OR ' +
-            'AnnualRevenue = ETB100 OR AnnualRevenue = EUR100 OR AnnualRevenue = FJD100 OR ' +
-            'AnnualRevenue = FKP100 OR AnnualRevenue = GBP100 OR AnnualRevenue = GEL100 OR ' +
-            'AnnualRevenue = GHS100 OR AnnualRevenue = GIP100 OR AnnualRevenue = GMD100 OR ' +
-            'AnnualRevenue = GNF100 OR AnnualRevenue = GTQ100 OR AnnualRevenue = GYD100 OR ' +
-            'AnnualRevenue = HKD100 OR AnnualRevenue = HNL100 OR AnnualRevenue = HRK100 OR ' +
-            'AnnualRevenue = HTG100 OR AnnualRevenue = HUF100 OR AnnualRevenue = IDR100 OR ' +
-            'AnnualRevenue = ILS100 OR AnnualRevenue = INR100 OR AnnualRevenue = IQD100 OR ' +
-            'AnnualRevenue = IRR100 OR AnnualRevenue = ISK100 OR AnnualRevenue = JMD100 OR ' +
-            'AnnualRevenue = JOD100 OR AnnualRevenue = JPY100 OR AnnualRevenue = KES100 OR ' +
-            'AnnualRevenue = KGS100 OR AnnualRevenue = KHR100 OR AnnualRevenue = KMF100 OR ' +
-            'AnnualRevenue = KPW100 OR AnnualRevenue = KRW100 OR AnnualRevenue = KWD100 OR ' +
-            'AnnualRevenue = KYD100 OR AnnualRevenue = KZT100 OR AnnualRevenue = LAK100 OR ' +
-            'AnnualRevenue = LBP100 OR AnnualRevenue = LKR100 OR AnnualRevenue = LRD100 OR ' +
-            'AnnualRevenue = LYD100 OR AnnualRevenue = MAD100 OR AnnualRevenue = MDL100 OR ' +
-            'AnnualRevenue = MGA100 OR AnnualRevenue = MKD100 OR AnnualRevenue = MMK100 OR ' +
-            'AnnualRevenue = MOP100 OR AnnualRevenue = MRU100 OR AnnualRevenue = MUR100 OR ' +
-            'AnnualRevenue = MWK100 OR AnnualRevenue = MXN100 OR AnnualRevenue = MYR100 OR ' +
-            'AnnualRevenue = MZN100 OR AnnualRevenue = NAD100 OR AnnualRevenue = NGN100 OR ' +
-            'AnnualRevenue = NIO100 OR AnnualRevenue = NOK100 OR AnnualRevenue = NPR100 OR ' +
-            'AnnualRevenue = NZD100 OR AnnualRevenue = OMR100 OR AnnualRevenue = PAB100 OR ' +
-            'AnnualRevenue = PEN100 OR AnnualRevenue = PGK100 OR AnnualRevenue = PHP100 OR ' +
-            'AnnualRevenue = PKR100 OR AnnualRevenue = PLN100 OR AnnualRevenue = PYG100 OR ' +
-            'AnnualRevenue = QAR100 OR AnnualRevenue = RON100 OR AnnualRevenue = RSD100 OR ' +
-            'AnnualRevenue = RUB100 OR AnnualRevenue = RWF100 OR AnnualRevenue = SAR100 OR ' +
-            'AnnualRevenue = SBD100 OR AnnualRevenue = SCR100 OR AnnualRevenue = SDG100 OR ' +
-            'AnnualRevenue = SEK100 OR AnnualRevenue = SGD100 OR AnnualRevenue = SHP100 OR ' +
-            'AnnualRevenue = SLE100 OR AnnualRevenue = SLL100 OR AnnualRevenue = SOS100 OR ' +
-            'AnnualRevenue = SRD100 OR AnnualRevenue = STN100 OR AnnualRevenue = SYP100 OR ' +
-            'AnnualRevenue = SZL100 OR AnnualRevenue = THB100 OR AnnualRevenue = TJS100 OR ' +
-            'AnnualRevenue = TND100 OR AnnualRevenue = TOP100 OR AnnualRevenue = TTD100 OR ' +
-            'AnnualRevenue = TWD100 OR AnnualRevenue = TZS100 OR AnnualRevenue = UAH100 OR ' +
-            'AnnualRevenue = UGX100 OR AnnualRevenue = USD100 OR AnnualRevenue = UYU100 OR ' +
-            'AnnualRevenue = UZS100 OR AnnualRevenue = VES100 OR AnnualRevenue = VND100 OR ' +
-            'AnnualRevenue = VUV100 OR AnnualRevenue = WST100 OR AnnualRevenue = XAF100 OR ' +
-            'AnnualRevenue = XCD100 OR AnnualRevenue = XOF100 OR AnnualRevenue = XPF100 OR ' +
-            'AnnualRevenue = YER100 OR AnnualRevenue = ZAR100 OR AnnualRevenue = TRY100)',
+                '(AnnualRevenue = AED100 OR AnnualRevenue = AFN100 OR AnnualRevenue = ALL100 OR ' +
+                'AnnualRevenue = AMD100 OR AnnualRevenue = ANG100 OR AnnualRevenue = AOA100 OR ' +
+                'AnnualRevenue = ARS100 OR AnnualRevenue = AUD100 OR AnnualRevenue = AWG100 OR ' +
+                'AnnualRevenue = AZN100 OR AnnualRevenue = BAM100 OR AnnualRevenue = BBD100 OR ' +
+                'AnnualRevenue = BDT100 OR AnnualRevenue = BGN100 OR AnnualRevenue = BHD100 OR ' +
+                'AnnualRevenue = BIF100 OR AnnualRevenue = BMD100 OR AnnualRevenue = BND100 OR ' +
+                'AnnualRevenue = BOB100 OR AnnualRevenue = BRL100 OR AnnualRevenue = BSD100 OR ' +
+                'AnnualRevenue = BTN100 OR AnnualRevenue = BWP100 OR AnnualRevenue = BYN100 OR ' +
+                'AnnualRevenue = BZD100 OR AnnualRevenue = CAD100 OR AnnualRevenue = CDF100 OR ' +
+                'AnnualRevenue = CHF100 OR AnnualRevenue = CLP100 OR AnnualRevenue = CNY100 OR ' +
+                'AnnualRevenue = COP100 OR AnnualRevenue = CRC100 OR AnnualRevenue = CSD100 OR ' +
+                'AnnualRevenue = CUP100 OR AnnualRevenue = CVE100 OR AnnualRevenue = CZK100 OR ' +
+                'AnnualRevenue = DJF100 OR AnnualRevenue = DKK100 OR AnnualRevenue = DOP100 OR ' +
+                'AnnualRevenue = DZD100 OR AnnualRevenue = EGP100 OR AnnualRevenue = ERN100 OR ' +
+                'AnnualRevenue = ETB100 OR AnnualRevenue = EUR100 OR AnnualRevenue = FJD100 OR ' +
+                'AnnualRevenue = FKP100 OR AnnualRevenue = GBP100 OR AnnualRevenue = GEL100 OR ' +
+                'AnnualRevenue = GHS100 OR AnnualRevenue = GIP100 OR AnnualRevenue = GMD100 OR ' +
+                'AnnualRevenue = GNF100 OR AnnualRevenue = GTQ100 OR AnnualRevenue = GYD100 OR ' +
+                'AnnualRevenue = HKD100 OR AnnualRevenue = HNL100 OR AnnualRevenue = HRK100 OR ' +
+                'AnnualRevenue = HTG100 OR AnnualRevenue = HUF100 OR AnnualRevenue = IDR100 OR ' +
+                'AnnualRevenue = ILS100 OR AnnualRevenue = INR100 OR AnnualRevenue = IQD100 OR ' +
+                'AnnualRevenue = IRR100 OR AnnualRevenue = ISK100 OR AnnualRevenue = JMD100 OR ' +
+                'AnnualRevenue = JOD100 OR AnnualRevenue = JPY100 OR AnnualRevenue = KES100 OR ' +
+                'AnnualRevenue = KGS100 OR AnnualRevenue = KHR100 OR AnnualRevenue = KMF100 OR ' +
+                'AnnualRevenue = KPW100 OR AnnualRevenue = KRW100 OR AnnualRevenue = KWD100 OR ' +
+                'AnnualRevenue = KYD100 OR AnnualRevenue = KZT100 OR AnnualRevenue = LAK100 OR ' +
+                'AnnualRevenue = LBP100 OR AnnualRevenue = LKR100 OR AnnualRevenue = LRD100 OR ' +
+                'AnnualRevenue = LYD100 OR AnnualRevenue = MAD100 OR AnnualRevenue = MDL100 OR ' +
+                'AnnualRevenue = MGA100 OR AnnualRevenue = MKD100 OR AnnualRevenue = MMK100 OR ' +
+                'AnnualRevenue = MOP100 OR AnnualRevenue = MRU100 OR AnnualRevenue = MUR100 OR ' +
+                'AnnualRevenue = MWK100 OR AnnualRevenue = MXN100 OR AnnualRevenue = MYR100 OR ' +
+                'AnnualRevenue = MZN100 OR AnnualRevenue = NAD100 OR AnnualRevenue = NGN100 OR ' +
+                'AnnualRevenue = NIO100 OR AnnualRevenue = NOK100 OR AnnualRevenue = NPR100 OR ' +
+                'AnnualRevenue = NZD100 OR AnnualRevenue = OMR100 OR AnnualRevenue = PAB100 OR ' +
+                'AnnualRevenue = PEN100 OR AnnualRevenue = PGK100 OR AnnualRevenue = PHP100 OR ' +
+                'AnnualRevenue = PKR100 OR AnnualRevenue = PLN100 OR AnnualRevenue = PYG100 OR ' +
+                'AnnualRevenue = QAR100 OR AnnualRevenue = RON100 OR AnnualRevenue = RSD100 OR ' +
+                'AnnualRevenue = RUB100 OR AnnualRevenue = RWF100 OR AnnualRevenue = SAR100 OR ' +
+                'AnnualRevenue = SBD100 OR AnnualRevenue = SCR100 OR AnnualRevenue = SDG100 OR ' +
+                'AnnualRevenue = SEK100 OR AnnualRevenue = SGD100 OR AnnualRevenue = SHP100 OR ' +
+                'AnnualRevenue = SLE100 OR AnnualRevenue = SLL100 OR AnnualRevenue = SOS100 OR ' +
+                'AnnualRevenue = SRD100 OR AnnualRevenue = STN100 OR AnnualRevenue = SYP100 OR ' +
+                'AnnualRevenue = SZL100 OR AnnualRevenue = THB100 OR AnnualRevenue = TJS100 OR ' +
+                'AnnualRevenue = TND100 OR AnnualRevenue = TOP100 OR AnnualRevenue = TTD100 OR ' +
+                'AnnualRevenue = TWD100 OR AnnualRevenue = TZS100 OR AnnualRevenue = UAH100 OR ' +
+                'AnnualRevenue = UGX100 OR AnnualRevenue = USD100 OR AnnualRevenue = UYU100 OR ' +
+                'AnnualRevenue = UZS100 OR AnnualRevenue = VES100 OR AnnualRevenue = VND100 OR ' +
+                'AnnualRevenue = VUV100 OR AnnualRevenue = WST100 OR AnnualRevenue = XAF100 OR ' +
+                'AnnualRevenue = XCD100 OR AnnualRevenue = XOF100 OR AnnualRevenue = XPF100 OR ' +
+                'AnnualRevenue = YER100 OR AnnualRevenue = ZAR100 OR AnnualRevenue = TRY100)',
             accountQuery.build()
         );
     }
