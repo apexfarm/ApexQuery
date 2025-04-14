@@ -1,7 +1,7 @@
-
 class QueryTest extends Query {
     public void test() {
-        Query.of(Account.SObjectType)
+        // prettier-ignore
+        Query q = Query.of(Account.SObjectType)
             .selectBy(selectBy()
                 .add(Account.Name, Account.AnnualRevenue, Account.BillingState)
                 .add('Contacts', Query.of(Contact.SObjectType).selectBy(Contact.Name))
@@ -21,6 +21,7 @@ class QueryTest extends Query {
             .orderBy(Account.AnnualRevenue).descending().nullsLast()
             .limitx(10)
             .forView();
+        q.run();
     }
 }
 
