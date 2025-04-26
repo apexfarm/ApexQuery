@@ -39,11 +39,19 @@ public virtual class Query implements Querable {
     }
 
     public interface Filter {
-        void buildSOQL(List<String> fragments, Map<String, Object> tmpVars);
+        void buildSOQL(List<String> fragments, TmpVars tmpVars);
     }
 
     public interface CompositeFilter extends Filter {
         CompositeFilter add(Filter filter);
+    }
+
+    public class Literal {
+        public String literal { get; set; }
+
+        private Literal(String literal) {
+            this.literal = literal;
+        }
     }
 
     public class GroupBy {
@@ -56,10 +64,20 @@ public virtual class Query implements Querable {
         }
     }
 
+    public class TmpVars {
+        Map<String, Object> tmpVars = new Map<String, Object>();
+
+        public String put(Object var) {
+            String tmpVar = 'tmpVar' + (this.tmpVars.size() + 1);
+            this.tmpVars.put(tmpVar, var);
+            return tmpVar;
+        }
+    }
+
     private String objectName { get; set; }
     private List<String> selectFields = new List<String>();
     private Map<String, Query> selectParent = new Map<String, Query>();
-    private Map<String, Query> selectChildren = new Map<String, Query>();
+    private Map<String, Query> selectChild = new Map<String, Query>();
 
     private Filter whereFilters;
     private Filter havingFilters;
@@ -132,7 +150,7 @@ public virtual class Query implements Querable {
     }
 
     public List<SObject> run() {
-        String soql = buildSOQL();
+        String soql = this.buildSOQL();
         return Database.query(soql);
     }
 
@@ -141,16 +159,46 @@ public virtual class Query implements Querable {
 
     public String buildSOQL() {
         List<String> fragments = new List<String>();
-        Map<String, Object> tmpVars = new Map<String, Object>();
+        TmpVars tmpVars = new TmpVars();
+        this.buildSOQL(fragments, tmpVars, this.objectName, 0);
+        return String.join(fragments, '');
+    }
+
+    public void buildSOQL(List<String> fragments, TmpVars tmpVars, String fromName, Integer level) {
         fragments.add('SELECT ');
-        if (this.selectFields.size() > 0) {
-            fragments.add(String.join(this.selectFields, ', '));
-        } else {
+        if (this.selectFields.isEmpty()) {
             fragments.add('Id');
+        } else {
+            Boolean isNotFirst = false;
+            for (String field : this.selectFields) {
+                if (isNotFirst) {
+                    fragments.add(', ');
+                } else {
+                    isNotFirst = true;
+                }
+                fragments.add(field);
+            }
+        }
+
+        if (!this.selectParent.isEmpty()) {
+            for (String relationshipName : this.selectParent.keySet()) {
+                Query parentQuery = this.selectParent.get(relationshipName);
+                parentQuery.buildSOQL_SelectParent(fragments, relationshipName, level);
+            }
+        }
+
+        if (level < 5 && !this.selectChild.isEmpty()) {
+            for (String relationshipName : this.selectChild.keySet()) {
+                Query childQuery = this.selectChild.get(relationshipName);
+                fragments.add(', ');
+                fragments.add('(');
+                childQuery.buildSOQL(fragments, tmpVars, relationshipName, level + 1);
+                fragments.add(')');
+            }
         }
 
         fragments.add(' FROM ');
-        fragments.add(this.objectName);
+        fragments.add(fromName);
 
         if (this.whereFilters != null) {
             fragments.add(' WHERE ');
@@ -162,6 +210,25 @@ public virtual class Query implements Querable {
             if (this.havingFilters != null) {
                 fragments.add(' HAVING ');
                 this.havingFilters.buildSOQL(fragments, tmpVars);
+            }
+        }
+
+        if (!this.orderBys.isEmpty()) {
+            fragments.add(' ORDER BY ');
+            Boolean isNotFirst = false;
+            for (OrderByField field : this.orderBys) {
+                if (isNotFirst) {
+                    fragments.add(', ');
+                } else {
+                    isNotFirst = true;
+                }
+                fragments.add(field.fieldOrFunc);
+                if (field.ascending == false) {
+                    fragments.add(' DESC');
+                }
+                if (field.nullsFist == false) {
+                    fragments.add(' NULLS LAST');
+                }
             }
         }
 
@@ -187,8 +254,33 @@ public virtual class Query implements Querable {
         } else if (this.forUpdate == true) {
             fragments.add(' FOR UPDATE');
         }
+    }
 
-        return String.join(fragments, '');
+    public void buildSOQL_SelectParent(List<String> fragments, String parentRelationshipName, Integer level) {
+        if (this.selectFields.isEmpty()) {
+            fragments.add(', ');
+            fragments.add(parentRelationshipName);
+            fragments.add('.');
+            fragments.add('Id');
+        } else {
+            for (String field : this.selectFields) {
+                fragments.add(', ');
+                fragments.add(parentRelationshipName);
+                fragments.add('.');
+                fragments.add(field);
+            }
+        }
+
+        if (level < 5 && !this.selectParent.isEmpty()) {
+            for (String relationshipName : this.selectParent.keySet()) {
+                Query parentQuery = this.selectParent.get(relationshipName);
+                parentQuery.buildSOQL_SelectParent(
+                    fragments,
+                    parentRelationshipName + '.' + relationshipName,
+                    level + 1
+                );
+            }
+        }
     }
 
     // #endregion
@@ -210,19 +302,20 @@ public virtual class Query implements Querable {
             return this;
         }
 
-        public virtual void buildSOQL(List<String> fragments, Map<String, Object> tmpVars) {
+        public virtual void buildSOQL(List<String> fragments, TmpVars tmpVars) {
             if (this.filters.isEmpty()) {
                 return;
             }
 
             fragments.add('(');
-            Integer index = 0;
+            Boolean isNotFirst = false;
             for (Filter filter : this.filters) {
-                if (index > 0) {
+                if (isNotFirst) {
                     fragments.add(this.operator);
+                } else {
+                    isNotFirst = true;
                 }
                 filter.buildSOQL(fragments, tmpVars);
-                index++;
             }
             fragments.add(')');
         }
@@ -233,7 +326,7 @@ public virtual class Query implements Querable {
             super('NOT', new List<Filter>{ filter });
         }
 
-        public override void buildSOQL(List<String> fragments, Map<String, Object> tmpVars) {
+        public override void buildSOQL(List<String> fragments, TmpVars tmpVars) {
             if (this.filters.isEmpty()) {
                 return;
             }
@@ -287,14 +380,15 @@ public virtual class Query implements Querable {
             this.value = value;
         }
 
-        public virtual void buildSOQL(List<String> fragments, Map<String, Object> tmpVars) {
+        public virtual void buildSOQL(List<String> fragments, TmpVars tmpVars) {
             fragments.add(this.fieldOrFunc);
             fragments.add(this.operator);
             if (value == null) {
                 fragments.add('NULL');
+            } else if (value instanceof Literal) {
+                fragments.add(((Literal) this.value).literal);
             } else {
-                String tmpVar = 'tmpVar' + (tmpVars.size() + 1);
-                tmpVars.put(tmpVar, value);
+                String tmpVar = tmpVars.put(this.value);
                 fragments.add(':');
                 fragments.add(tmpVar);
             }
@@ -306,20 +400,19 @@ public virtual class Query implements Querable {
             super(field, operator, values);
         }
 
-        public override void buildSOQL(List<String> fragments, Map<String, Object> tmpVars) {
+        public override void buildSOQL(List<String> fragments, TmpVars tmpVars) {
             fragments.add(this.fieldOrFunc);
             fragments.add(this.operator);
             fragments.add('(');
-            Boolean isFirst = true;
+            Boolean isNotFirst = false;
             for (string value : (List<String>) this.value) {
-                if (isFirst) {
-                    isFirst = false;
-                } else {
+                if (isNotFirst) {
                     fragments.add(', ');
+                } else {
+                    isNotFirst = true;
                 }
 
-                String tmpVar = 'tmpVar' + (tmpVars.size() + 1);
-                tmpVars.put(tmpVar, value);
+                String tmpVar = tmpVars.put(this.value);
                 fragments.add(':');
                 fragments.add(tmpVar);
             }
@@ -443,7 +536,7 @@ public virtual class Query implements Querable {
         Query selectFields(List<String> fields);
 
         Query selectParent(String relationshipName, Query query);
-        Query selectChildren(String relationshipName, Query query);
+        Query selectChild(String relationshipName, Query query);
     }
 
     public Query selectFields(String field) {
@@ -554,12 +647,12 @@ public virtual class Query implements Querable {
     }
 
     public Query selectParent(String relationshipName, Query query) {
-        this.selectParent.put(relationshipName, query);
+        this.selectParent.put(relationshipName.trim(), query);
         return this;
     }
 
-    public Query selectChildren(String relationshipName, Query query) {
-        this.selectChildren.put(relationshipName, query);
+    public Query selectChild(String relationshipName, Query query) {
+        this.selectChild.put(relationshipName.trim(), query);
         return this;
     }
     // #endregion
@@ -663,6 +756,10 @@ public virtual class Query implements Querable {
             this.nullsFist = false;
             return this;
         }
+    }
+
+    public static OrderByField orderBy(String fieldOrFunc) {
+        return new OrderByField(fieldOrFunc);
     }
 
     public Query orderBy(OrderByField field) {
@@ -933,176 +1030,176 @@ public virtual class Query implements Querable {
 
     // ====================
     // #region Date Literal
-    public static String YESTERDAY() {
-        return 'YESTERDAY';
+    public static Literal YESTERDAY() {
+        return new Literal('YESTERDAY');
     }
 
-    public static String TODAY() {
-        return 'TODAY';
+    public static Literal TODAY() {
+        return new Literal('TODAY');
     }
 
-    public static String TOMORROW() {
-        return 'TOMORROW';
+    public static Literal TOMORROW() {
+        return new Literal('TOMORROW');
     }
 
-    public static String LAST_WEEK() {
-        return 'LAST_WEEK';
+    public static Literal LAST_WEEK() {
+        return new Literal('LAST_WEEK');
     }
 
-    public static String THIS_WEEK() {
-        return 'THIS_WEEK';
+    public static Literal THIS_WEEK() {
+        return new Literal('THIS_WEEK');
     }
 
-    public static String NEXT_WEEK() {
-        return 'NEXT_WEEK';
+    public static Literal NEXT_WEEK() {
+        return new Literal('NEXT_WEEK');
     }
 
-    public static String LAST_MONTH() {
-        return 'LAST_MONTH';
+    public static Literal LAST_MONTH() {
+        return new Literal('LAST_MONTH');
     }
 
-    public static String THIS_MONTH() {
-        return 'THIS_MONTH';
+    public static Literal THIS_MONTH() {
+        return new Literal('THIS_MONTH');
     }
 
-    public static String NEXT_MONTH() {
-        return 'NEXT_MONTH';
+    public static Literal NEXT_MONTH() {
+        return new Literal('NEXT_MONTH');
     }
 
-    public static String LAST_90_DAYS() {
-        return 'LAST_90_DAYS';
+    public static Literal LAST_90_DAYS() {
+        return new Literal('LAST_90_DAYS');
     }
 
-    public static String NEXT_90_DAYS() {
-        return 'NEXT_90_DAYS';
+    public static Literal NEXT_90_DAYS() {
+        return new Literal('NEXT_90_DAYS');
     }
 
-    public static String THIS_QUARTER() {
-        return 'THIS_QUARTER';
+    public static Literal THIS_QUARTER() {
+        return new Literal('THIS_QUARTER');
     }
 
-    public static String LAST_QUARTER() {
-        return 'LAST_QUARTER';
+    public static Literal LAST_QUARTER() {
+        return new Literal('LAST_QUARTER');
     }
 
-    public static String NEXT_QUARTER() {
-        return 'NEXT_QUARTER';
+    public static Literal NEXT_QUARTER() {
+        return new Literal('NEXT_QUARTER');
     }
 
-    public static String THIS_YEAR() {
-        return 'THIS_YEAR';
+    public static Literal THIS_YEAR() {
+        return new Literal('THIS_YEAR');
     }
 
-    public static String LAST_YEAR() {
-        return 'LAST_YEAR';
+    public static Literal LAST_YEAR() {
+        return new Literal('LAST_YEAR');
     }
 
-    public static String NEXT_YEAR() {
-        return 'NEXT_YEAR';
+    public static Literal NEXT_YEAR() {
+        return new Literal('NEXT_YEAR');
     }
 
-    public static String THIS_FISCAL_QUARTER() {
-        return 'THIS_FISCAL_QUARTER';
+    public static Literal THIS_FISCAL_QUARTER() {
+        return new Literal('THIS_FISCAL_QUARTER');
     }
 
-    public static String LAST_FISCAL_QUARTER() {
-        return 'LAST_FISCAL_QUARTER';
+    public static Literal LAST_FISCAL_QUARTER() {
+        return new Literal('LAST_FISCAL_QUARTER');
     }
 
-    public static String NEXT_FISCAL_QUARTER() {
-        return 'NEXT_FISCAL_QUARTER';
+    public static Literal NEXT_FISCAL_QUARTER() {
+        return new Literal('NEXT_FISCAL_QUARTER');
     }
 
-    public static String THIS_FISCAL_YEAR() {
-        return 'THIS_FISCAL_YEAR';
+    public static Literal THIS_FISCAL_YEAR() {
+        return new Literal('THIS_FISCAL_YEAR');
     }
 
-    public static String LAST_FISCAL_YEAR() {
-        return 'LAST_FISCAL_YEAR';
+    public static Literal LAST_FISCAL_YEAR() {
+        return new Literal('LAST_FISCAL_YEAR');
     }
 
-    public static String NEXT_FISCAL_YEAR() {
-        return 'NEXT_FISCAL_YEAR';
+    public static Literal NEXT_FISCAL_YEAR() {
+        return new Literal('NEXT_FISCAL_YEAR');
     }
 
-    public static String LAST_N_DAYS(Integer n) {
-        return 'LAST_N_DAYS:' + n;
+    public static Literal LAST_N_DAYS(Integer n) {
+        return new Literal('LAST_N_DAYS:' + n);
     }
 
-    public static String NEXT_N_DAYS(Integer n) {
-        return 'NEXT_N_DAYS:' + n;
+    public static Literal NEXT_N_DAYS(Integer n) {
+        return new Literal('NEXT_N_DAYS:' + n);
     }
 
-    public static String N_DAYS_AGO(Integer n) {
-        return 'N_DAYS_AGO:' + n;
+    public static Literal N_DAYS_AGO(Integer n) {
+        return new Literal('N_DAYS_AGO:' + n);
     }
 
-    public static String NEXT_N_WEEKS(Integer n) {
-        return 'NEXT_N_WEEKS:' + n;
+    public static Literal NEXT_N_WEEKS(Integer n) {
+        return new Literal('NEXT_N_WEEKS:' + n);
     }
 
-    public static String LAST_N_WEEKS(Integer n) {
-        return 'LAST_N_WEEKS:' + n;
+    public static Literal LAST_N_WEEKS(Integer n) {
+        return new Literal('LAST_N_WEEKS:' + n);
     }
 
-    public static String N_WEEKS_AGO(Integer n) {
-        return 'N_WEEKS_AGO:' + n;
+    public static Literal N_WEEKS_AGO(Integer n) {
+        return new Literal('N_WEEKS_AGO:' + n);
     }
 
-    public static String NEXT_N_MONTHS(Integer n) {
-        return 'NEXT_N_MONTHS:' + n;
+    public static Literal NEXT_N_MONTHS(Integer n) {
+        return new Literal('NEXT_N_MONTHS:' + n);
     }
 
-    public static String LAST_N_MONTHS(Integer n) {
-        return 'LAST_N_MONTHS:' + n;
+    public static Literal LAST_N_MONTHS(Integer n) {
+        return new Literal('LAST_N_MONTHS:' + n);
     }
 
-    public static String N_MONTHS_AGO(Integer n) {
-        return 'N_MONTHS_AGO:' + n;
+    public static Literal N_MONTHS_AGO(Integer n) {
+        return new Literal('N_MONTHS_AGO:' + n);
     }
 
-    public static String NEXT_N_QUARTERS(Integer n) {
-        return 'NEXT_N_QUARTERS:' + n;
+    public static Literal NEXT_N_QUARTERS(Integer n) {
+        return new Literal('NEXT_N_QUARTERS:' + n);
     }
 
-    public static String LAST_N_QUARTERS(Integer n) {
-        return 'LAST_N_QUARTERS:' + n;
+    public static Literal LAST_N_QUARTERS(Integer n) {
+        return new Literal('LAST_N_QUARTERS:' + n);
     }
 
-    public static String N_QUARTERS_AGO(Integer n) {
-        return 'N_QUARTERS_AGO:' + n;
+    public static Literal N_QUARTERS_AGO(Integer n) {
+        return new Literal('N_QUARTERS_AGO:' + n);
     }
 
-    public static String NEXT_N_YEARS(Integer n) {
-        return 'NEXT_N_YEARS:' + n;
+    public static Literal NEXT_N_YEARS(Integer n) {
+        return new Literal('NEXT_N_YEARS:' + n);
     }
 
-    public static String LAST_N_YEARS(Integer n) {
-        return 'LAST_N_YEARS:' + n;
+    public static Literal LAST_N_YEARS(Integer n) {
+        return new Literal('LAST_N_YEARS:' + n);
     }
 
-    public static String N_YEARS_AGO(Integer n) {
-        return 'N_YEARS_AGO:' + n;
+    public static Literal N_YEARS_AGO(Integer n) {
+        return new Literal('N_YEARS_AGO:' + n);
     }
 
-    public static String NEXT_N_FISCAL_QUARTERS(Integer n) {
-        return 'NEXT_N_FISCAL_QUARTERS:' + n;
+    public static Literal NEXT_N_FISCAL_QUARTERS(Integer n) {
+        return new Literal('NEXT_N_FISCAL_QUARTERS:' + n);
     }
 
-    public static String N_FISCAL_QUARTERS_AGO(Integer n) {
-        return 'N_FISCAL_QUARTERS_AGO:' + n;
+    public static Literal N_FISCAL_QUARTERS_AGO(Integer n) {
+        return new Literal('N_FISCAL_QUARTERS_AGO:' + n);
     }
 
-    public static String NEXT_N_FISCAL_YEARS(Integer n) {
-        return 'NEXT_N_FISCAL_YEARS:' + n;
+    public static Literal NEXT_N_FISCAL_YEARS(Integer n) {
+        return new Literal('NEXT_N_FISCAL_YEARS:' + n);
     }
 
-    public static String LAST_N_FISCAL_YEARS(Integer n) {
-        return 'LAST_N_FISCAL_YEARS:' + n;
+    public static Literal LAST_N_FISCAL_YEARS(Integer n) {
+        return new Literal('LAST_N_FISCAL_YEARS:' + n);
     }
 
-    public static String N_FISCAL_YEARS_AGO(Integer n) {
-        return 'N_FISCAL_YEARS_AGO:' + n;
+    public static Literal N_FISCAL_YEARS_AGO(Integer n) {
+        return new Literal('N_FISCAL_YEARS_AGO:' + n);
     }
 
     // #endregion
@@ -1110,609 +1207,609 @@ public virtual class Query implements Querable {
 
     // ========================
     // #region Currency Literal
-    public static String CURRENCY(String code, Decimal value) {
-        return code + value;
+    public static Literal CURRENCY(String code, Decimal value) {
+        return new Literal(code + value);
     }
 
-    public static String AED(Decimal value) {
-        return 'AED' + value;
+    public static Literal AED(Decimal value) {
+        return new Literal('AED' + value);
     }
 
-    public static String AFN(Decimal value) {
-        return 'AFN' + value;
+    public static Literal AFN(Decimal value) {
+        return new Literal('AFN' + value);
     }
 
-    public static String ALL(Decimal value) {
-        return 'ALL' + value;
+    public static Literal ALL(Decimal value) {
+        return new Literal('ALL' + value);
     }
 
-    public static String AMD(Decimal value) {
-        return 'AMD' + value;
+    public static Literal AMD(Decimal value) {
+        return new Literal('AMD' + value);
     }
 
-    public static String ANG(Decimal value) {
-        return 'ANG' + value;
+    public static Literal ANG(Decimal value) {
+        return new Literal('ANG' + value);
     }
 
-    public static String AOA(Decimal value) {
-        return 'AOA' + value;
+    public static Literal AOA(Decimal value) {
+        return new Literal('AOA' + value);
     }
 
-    public static String ARS(Decimal value) {
-        return 'ARS' + value;
+    public static Literal ARS(Decimal value) {
+        return new Literal('ARS' + value);
     }
 
-    public static String AUD(Decimal value) {
-        return 'AUD' + value;
+    public static Literal AUD(Decimal value) {
+        return new Literal('AUD' + value);
     }
 
-    public static String AWG(Decimal value) {
-        return 'AWG' + value;
+    public static Literal AWG(Decimal value) {
+        return new Literal('AWG' + value);
     }
 
-    public static String AZN(Decimal value) {
-        return 'AZN' + value;
+    public static Literal AZN(Decimal value) {
+        return new Literal('AZN' + value);
     }
 
-    public static String BAM(Decimal value) {
-        return 'BAM' + value;
+    public static Literal BAM(Decimal value) {
+        return new Literal('BAM' + value);
     }
 
-    public static String BBD(Decimal value) {
-        return 'BBD' + value;
+    public static Literal BBD(Decimal value) {
+        return new Literal('BBD' + value);
     }
 
-    public static String BDT(Decimal value) {
-        return 'BDT' + value;
+    public static Literal BDT(Decimal value) {
+        return new Literal('BDT' + value);
     }
 
-    public static String BGN(Decimal value) {
-        return 'BGN' + value;
+    public static Literal BGN(Decimal value) {
+        return new Literal('BGN' + value);
     }
 
-    public static String BHD(Decimal value) {
-        return 'BHD' + value;
+    public static Literal BHD(Decimal value) {
+        return new Literal('BHD' + value);
     }
 
-    public static String BIF(Decimal value) {
-        return 'BIF' + value;
+    public static Literal BIF(Decimal value) {
+        return new Literal('BIF' + value);
     }
 
-    public static String BMD(Decimal value) {
-        return 'BMD' + value;
+    public static Literal BMD(Decimal value) {
+        return new Literal('BMD' + value);
     }
 
-    public static String BND(Decimal value) {
-        return 'BND' + value;
+    public static Literal BND(Decimal value) {
+        return new Literal('BND' + value);
     }
 
-    public static String BOB(Decimal value) {
-        return 'BOB' + value;
+    public static Literal BOB(Decimal value) {
+        return new Literal('BOB' + value);
     }
 
-    public static String BRL(Decimal value) {
-        return 'BRL' + value;
+    public static Literal BRL(Decimal value) {
+        return new Literal('BRL' + value);
     }
 
-    public static String BSD(Decimal value) {
-        return 'BSD' + value;
+    public static Literal BSD(Decimal value) {
+        return new Literal('BSD' + value);
     }
 
-    public static String BTN(Decimal value) {
-        return 'BTN' + value;
+    public static Literal BTN(Decimal value) {
+        return new Literal('BTN' + value);
     }
 
-    public static String BWP(Decimal value) {
-        return 'BWP' + value;
+    public static Literal BWP(Decimal value) {
+        return new Literal('BWP' + value);
     }
 
-    public static String BYN(Decimal value) {
-        return 'BYN' + value;
+    public static Literal BYN(Decimal value) {
+        return new Literal('BYN' + value);
     }
 
-    public static String BZD(Decimal value) {
-        return 'BZD' + value;
+    public static Literal BZD(Decimal value) {
+        return new Literal('BZD' + value);
     }
 
-    public static String CAD(Decimal value) {
-        return 'CAD' + value;
+    public static Literal CAD(Decimal value) {
+        return new Literal('CAD' + value);
     }
 
-    public static String CDF(Decimal value) {
-        return 'CDF' + value;
+    public static Literal CDF(Decimal value) {
+        return new Literal('CDF' + value);
     }
 
-    public static String CHF(Decimal value) {
-        return 'CHF' + value;
+    public static Literal CHF(Decimal value) {
+        return new Literal('CHF' + value);
     }
 
-    public static String CLP(Decimal value) {
-        return 'CLP' + value;
+    public static Literal CLP(Decimal value) {
+        return new Literal('CLP' + value);
     }
 
-    public static String CNY(Decimal value) {
-        return 'CNY' + value;
+    public static Literal CNY(Decimal value) {
+        return new Literal('CNY' + value);
     }
 
-    public static String COP(Decimal value) {
-        return 'COP' + value;
+    public static Literal COP(Decimal value) {
+        return new Literal('COP' + value);
     }
 
-    public static String CRC(Decimal value) {
-        return 'CRC' + value;
+    public static Literal CRC(Decimal value) {
+        return new Literal('CRC' + value);
     }
 
-    public static String CSD(Decimal value) {
-        return 'CSD' + value;
+    public static Literal CSD(Decimal value) {
+        return new Literal('CSD' + value);
     }
 
-    public static String CUP(Decimal value) {
-        return 'CUP' + value;
+    public static Literal CUP(Decimal value) {
+        return new Literal('CUP' + value);
     }
 
-    public static String CVE(Decimal value) {
-        return 'CVE' + value;
+    public static Literal CVE(Decimal value) {
+        return new Literal('CVE' + value);
     }
 
-    public static String CZK(Decimal value) {
-        return 'CZK' + value;
+    public static Literal CZK(Decimal value) {
+        return new Literal('CZK' + value);
     }
 
-    public static String DJF(Decimal value) {
-        return 'DJF' + value;
+    public static Literal DJF(Decimal value) {
+        return new Literal('DJF' + value);
     }
 
-    public static String DKK(Decimal value) {
-        return 'DKK' + value;
+    public static Literal DKK(Decimal value) {
+        return new Literal('DKK' + value);
     }
 
-    public static String DOP(Decimal value) {
-        return 'DOP' + value;
+    public static Literal DOP(Decimal value) {
+        return new Literal('DOP' + value);
     }
 
-    public static String DZD(Decimal value) {
-        return 'DZD' + value;
+    public static Literal DZD(Decimal value) {
+        return new Literal('DZD' + value);
     }
 
-    public static String EGP(Decimal value) {
-        return 'EGP' + value;
+    public static Literal EGP(Decimal value) {
+        return new Literal('EGP' + value);
     }
 
-    public static String ERN(Decimal value) {
-        return 'ERN' + value;
+    public static Literal ERN(Decimal value) {
+        return new Literal('ERN' + value);
     }
 
-    public static String ETB(Decimal value) {
-        return 'ETB' + value;
+    public static Literal ETB(Decimal value) {
+        return new Literal('ETB' + value);
     }
 
-    public static String EUR(Decimal value) {
-        return 'EUR' + value;
+    public static Literal EUR(Decimal value) {
+        return new Literal('EUR' + value);
     }
 
-    public static String FJD(Decimal value) {
-        return 'FJD' + value;
+    public static Literal FJD(Decimal value) {
+        return new Literal('FJD' + value);
     }
 
-    public static String FKP(Decimal value) {
-        return 'FKP' + value;
+    public static Literal FKP(Decimal value) {
+        return new Literal('FKP' + value);
     }
 
-    public static String GBP(Decimal value) {
-        return 'GBP' + value;
+    public static Literal GBP(Decimal value) {
+        return new Literal('GBP' + value);
     }
 
-    public static String GEL(Decimal value) {
-        return 'GEL' + value;
+    public static Literal GEL(Decimal value) {
+        return new Literal('GEL' + value);
     }
 
-    public static String GHS(Decimal value) {
-        return 'GHS' + value;
+    public static Literal GHS(Decimal value) {
+        return new Literal('GHS' + value);
     }
 
-    public static String GIP(Decimal value) {
-        return 'GIP' + value;
+    public static Literal GIP(Decimal value) {
+        return new Literal('GIP' + value);
     }
 
-    public static String GMD(Decimal value) {
-        return 'GMD' + value;
+    public static Literal GMD(Decimal value) {
+        return new Literal('GMD' + value);
     }
 
-    public static String GNF(Decimal value) {
-        return 'GNF' + value;
+    public static Literal GNF(Decimal value) {
+        return new Literal('GNF' + value);
     }
 
-    public static String GTQ(Decimal value) {
-        return 'GTQ' + value;
+    public static Literal GTQ(Decimal value) {
+        return new Literal('GTQ' + value);
     }
 
-    public static String GYD(Decimal value) {
-        return 'GYD' + value;
+    public static Literal GYD(Decimal value) {
+        return new Literal('GYD' + value);
     }
 
-    public static String HKD(Decimal value) {
-        return 'HKD' + value;
+    public static Literal HKD(Decimal value) {
+        return new Literal('HKD' + value);
     }
 
-    public static String HNL(Decimal value) {
-        return 'HNL' + value;
+    public static Literal HNL(Decimal value) {
+        return new Literal('HNL' + value);
     }
 
-    public static String HRK(Decimal value) {
-        return 'HRK' + value;
+    public static Literal HRK(Decimal value) {
+        return new Literal('HRK' + value);
     }
 
-    public static String HTG(Decimal value) {
-        return 'HTG' + value;
+    public static Literal HTG(Decimal value) {
+        return new Literal('HTG' + value);
     }
 
-    public static String HUF(Decimal value) {
-        return 'HUF' + value;
+    public static Literal HUF(Decimal value) {
+        return new Literal('HUF' + value);
     }
 
-    public static String IDR(Decimal value) {
-        return 'IDR' + value;
+    public static Literal IDR(Decimal value) {
+        return new Literal('IDR' + value);
     }
 
-    public static String ILS(Decimal value) {
-        return 'ILS' + value;
+    public static Literal ILS(Decimal value) {
+        return new Literal('ILS' + value);
     }
 
-    public static String INR(Decimal value) {
-        return 'INR' + value;
+    public static Literal INR(Decimal value) {
+        return new Literal('INR' + value);
     }
 
-    public static String IQD(Decimal value) {
-        return 'IQD' + value;
+    public static Literal IQD(Decimal value) {
+        return new Literal('IQD' + value);
     }
 
-    public static String IRR(Decimal value) {
-        return 'IRR' + value;
+    public static Literal IRR(Decimal value) {
+        return new Literal('IRR' + value);
     }
 
-    public static String ISK(Decimal value) {
-        return 'ISK' + value;
+    public static Literal ISK(Decimal value) {
+        return new Literal('ISK' + value);
     }
 
-    public static String JMD(Decimal value) {
-        return 'JMD' + value;
+    public static Literal JMD(Decimal value) {
+        return new Literal('JMD' + value);
     }
 
-    public static String JOD(Decimal value) {
-        return 'JOD' + value;
+    public static Literal JOD(Decimal value) {
+        return new Literal('JOD' + value);
     }
 
-    public static String JPY(Decimal value) {
-        return 'JPY' + value;
+    public static Literal JPY(Decimal value) {
+        return new Literal('JPY' + value);
     }
 
-    public static String KES(Decimal value) {
-        return 'KES' + value;
+    public static Literal KES(Decimal value) {
+        return new Literal('KES' + value);
     }
 
-    public static String KGS(Decimal value) {
-        return 'KGS' + value;
+    public static Literal KGS(Decimal value) {
+        return new Literal('KGS' + value);
     }
 
-    public static String KHR(Decimal value) {
-        return 'KHR' + value;
+    public static Literal KHR(Decimal value) {
+        return new Literal('KHR' + value);
     }
 
-    public static String KMF(Decimal value) {
-        return 'KMF' + value;
+    public static Literal KMF(Decimal value) {
+        return new Literal('KMF' + value);
     }
 
-    public static String KPW(Decimal value) {
-        return 'KPW' + value;
+    public static Literal KPW(Decimal value) {
+        return new Literal('KPW' + value);
     }
 
-    public static String KRW(Decimal value) {
-        return 'KRW' + value;
+    public static Literal KRW(Decimal value) {
+        return new Literal('KRW' + value);
     }
 
-    public static String KWD(Decimal value) {
-        return 'KWD' + value;
+    public static Literal KWD(Decimal value) {
+        return new Literal('KWD' + value);
     }
 
-    public static String KYD(Decimal value) {
-        return 'KYD' + value;
+    public static Literal KYD(Decimal value) {
+        return new Literal('KYD' + value);
     }
 
-    public static String KZT(Decimal value) {
-        return 'KZT' + value;
+    public static Literal KZT(Decimal value) {
+        return new Literal('KZT' + value);
     }
 
-    public static String LAK(Decimal value) {
-        return 'LAK' + value;
+    public static Literal LAK(Decimal value) {
+        return new Literal('LAK' + value);
     }
 
-    public static String LBP(Decimal value) {
-        return 'LBP' + value;
+    public static Literal LBP(Decimal value) {
+        return new Literal('LBP' + value);
     }
 
-    public static String LKR(Decimal value) {
-        return 'LKR' + value;
+    public static Literal LKR(Decimal value) {
+        return new Literal('LKR' + value);
     }
 
-    public static String LRD(Decimal value) {
-        return 'LRD' + value;
+    public static Literal LRD(Decimal value) {
+        return new Literal('LRD' + value);
     }
 
-    public static String LYD(Decimal value) {
-        return 'LYD' + value;
+    public static Literal LYD(Decimal value) {
+        return new Literal('LYD' + value);
     }
 
-    public static String MAD(Decimal value) {
-        return 'MAD' + value;
+    public static Literal MAD(Decimal value) {
+        return new Literal('MAD' + value);
     }
 
-    public static String MDL(Decimal value) {
-        return 'MDL' + value;
+    public static Literal MDL(Decimal value) {
+        return new Literal('MDL' + value);
     }
 
-    public static String MGA(Decimal value) {
-        return 'MGA' + value;
+    public static Literal MGA(Decimal value) {
+        return new Literal('MGA' + value);
     }
 
-    public static String MKD(Decimal value) {
-        return 'MKD' + value;
+    public static Literal MKD(Decimal value) {
+        return new Literal('MKD' + value);
     }
 
-    public static String MMK(Decimal value) {
-        return 'MMK' + value;
+    public static Literal MMK(Decimal value) {
+        return new Literal('MMK' + value);
     }
 
-    public static String MOP(Decimal value) {
-        return 'MOP' + value;
+    public static Literal MOP(Decimal value) {
+        return new Literal('MOP' + value);
     }
 
-    public static String MRU(Decimal value) {
-        return 'MRU' + value;
+    public static Literal MRU(Decimal value) {
+        return new Literal('MRU' + value);
     }
 
-    public static String MUR(Decimal value) {
-        return 'MUR' + value;
+    public static Literal MUR(Decimal value) {
+        return new Literal('MUR' + value);
     }
 
-    public static String MWK(Decimal value) {
-        return 'MWK' + value;
+    public static Literal MWK(Decimal value) {
+        return new Literal('MWK' + value);
     }
 
-    public static String MXN(Decimal value) {
-        return 'MXN' + value;
+    public static Literal MXN(Decimal value) {
+        return new Literal('MXN' + value);
     }
 
-    public static String MYR(Decimal value) {
-        return 'MYR' + value;
+    public static Literal MYR(Decimal value) {
+        return new Literal('MYR' + value);
     }
 
-    public static String MZN(Decimal value) {
-        return 'MZN' + value;
+    public static Literal MZN(Decimal value) {
+        return new Literal('MZN' + value);
     }
 
-    public static String NAD(Decimal value) {
-        return 'NAD' + value;
+    public static Literal NAD(Decimal value) {
+        return new Literal('NAD' + value);
     }
 
-    public static String NGN(Decimal value) {
-        return 'NGN' + value;
+    public static Literal NGN(Decimal value) {
+        return new Literal('NGN' + value);
     }
 
-    public static String NIO(Decimal value) {
-        return 'NIO' + value;
+    public static Literal NIO(Decimal value) {
+        return new Literal('NIO' + value);
     }
 
-    public static String NOK(Decimal value) {
-        return 'NOK' + value;
+    public static Literal NOK(Decimal value) {
+        return new Literal('NOK' + value);
     }
 
-    public static String NPR(Decimal value) {
-        return 'NPR' + value;
+    public static Literal NPR(Decimal value) {
+        return new Literal('NPR' + value);
     }
 
-    public static String NZD(Decimal value) {
-        return 'NZD' + value;
+    public static Literal NZD(Decimal value) {
+        return new Literal('NZD' + value);
     }
 
-    public static String OMR(Decimal value) {
-        return 'OMR' + value;
+    public static Literal OMR(Decimal value) {
+        return new Literal('OMR' + value);
     }
 
-    public static String PAB(Decimal value) {
-        return 'PAB' + value;
+    public static Literal PAB(Decimal value) {
+        return new Literal('PAB' + value);
     }
 
-    public static String PEN(Decimal value) {
-        return 'PEN' + value;
+    public static Literal PEN(Decimal value) {
+        return new Literal('PEN' + value);
     }
 
-    public static String PGK(Decimal value) {
-        return 'PGK' + value;
+    public static Literal PGK(Decimal value) {
+        return new Literal('PGK' + value);
     }
 
-    public static String PHP(Decimal value) {
-        return 'PHP' + value;
+    public static Literal PHP(Decimal value) {
+        return new Literal('PHP' + value);
     }
 
-    public static String PKR(Decimal value) {
-        return 'PKR' + value;
+    public static Literal PKR(Decimal value) {
+        return new Literal('PKR' + value);
     }
 
-    public static String PLN(Decimal value) {
-        return 'PLN' + value;
+    public static Literal PLN(Decimal value) {
+        return new Literal('PLN' + value);
     }
 
-    public static String PYG(Decimal value) {
-        return 'PYG' + value;
+    public static Literal PYG(Decimal value) {
+        return new Literal('PYG' + value);
     }
 
-    public static String QAR(Decimal value) {
-        return 'QAR' + value;
+    public static Literal QAR(Decimal value) {
+        return new Literal('QAR' + value);
     }
 
-    public static String RON(Decimal value) {
-        return 'RON' + value;
+    public static Literal RON(Decimal value) {
+        return new Literal('RON' + value);
     }
 
-    public static String RSD(Decimal value) {
-        return 'RSD' + value;
+    public static Literal RSD(Decimal value) {
+        return new Literal('RSD' + value);
     }
 
-    public static String RUB(Decimal value) {
-        return 'RUB' + value;
+    public static Literal RUB(Decimal value) {
+        return new Literal('RUB' + value);
     }
 
-    public static String RWF(Decimal value) {
-        return 'RWF' + value;
+    public static Literal RWF(Decimal value) {
+        return new Literal('RWF' + value);
     }
 
-    public static String SAR(Decimal value) {
-        return 'SAR' + value;
+    public static Literal SAR(Decimal value) {
+        return new Literal('SAR' + value);
     }
 
-    public static String SBD(Decimal value) {
-        return 'SBD' + value;
+    public static Literal SBD(Decimal value) {
+        return new Literal('SBD' + value);
     }
 
-    public static String SCR(Decimal value) {
-        return 'SCR' + value;
+    public static Literal SCR(Decimal value) {
+        return new Literal('SCR' + value);
     }
 
-    public static String SDG(Decimal value) {
-        return 'SDG' + value;
+    public static Literal SDG(Decimal value) {
+        return new Literal('SDG' + value);
     }
 
-    public static String SEK(Decimal value) {
-        return 'SEK' + value;
+    public static Literal SEK(Decimal value) {
+        return new Literal('SEK' + value);
     }
 
-    public static String SGD(Decimal value) {
-        return 'SGD' + value;
+    public static Literal SGD(Decimal value) {
+        return new Literal('SGD' + value);
     }
 
-    public static String SHP(Decimal value) {
-        return 'SHP' + value;
+    public static Literal SHP(Decimal value) {
+        return new Literal('SHP' + value);
     }
 
-    public static String SLE(Decimal value) {
-        return 'SLE' + value;
+    public static Literal SLE(Decimal value) {
+        return new Literal('SLE' + value);
     }
 
-    public static String SLL(Decimal value) {
-        return 'SLL' + value;
+    public static Literal SLL(Decimal value) {
+        return new Literal('SLL' + value);
     }
 
-    public static String SOS(Decimal value) {
-        return 'SOS' + value;
+    public static Literal SOS(Decimal value) {
+        return new Literal('SOS' + value);
     }
 
-    public static String SRD(Decimal value) {
-        return 'SRD' + value;
+    public static Literal SRD(Decimal value) {
+        return new Literal('SRD' + value);
     }
 
-    public static String STN(Decimal value) {
-        return 'STN' + value;
+    public static Literal STN(Decimal value) {
+        return new Literal('STN' + value);
     }
 
-    public static String SYP(Decimal value) {
-        return 'SYP' + value;
+    public static Literal SYP(Decimal value) {
+        return new Literal('SYP' + value);
     }
 
-    public static String SZL(Decimal value) {
-        return 'SZL' + value;
+    public static Literal SZL(Decimal value) {
+        return new Literal('SZL' + value);
     }
 
-    public static String THB(Decimal value) {
-        return 'THB' + value;
+    public static Literal THB(Decimal value) {
+        return new Literal('THB' + value);
     }
 
-    public static String TJS(Decimal value) {
-        return 'TJS' + value;
+    public static Literal TJS(Decimal value) {
+        return new Literal('TJS' + value);
     }
 
-    public static String TND(Decimal value) {
-        return 'TND' + value;
+    public static Literal TND(Decimal value) {
+        return new Literal('TND' + value);
     }
 
-    public static String TOP(Decimal value) {
-        return 'TOP' + value;
+    public static Literal TOP(Decimal value) {
+        return new Literal('TOP' + value);
     }
 
     // !TRY is a keywork
-    // public static String TRY(Decimal value) {
-    //     return 'TRY' + value;
+    // public static Literal TRY(Decimal value) {
+    // new Literal(    return 'TRY' + value);
     // }
 
-    public static String TTD(Decimal value) {
-        return 'TTD' + value;
+    public static Literal TTD(Decimal value) {
+        return new Literal('TTD' + value);
     }
 
-    public static String TWD(Decimal value) {
-        return 'TWD' + value;
+    public static Literal TWD(Decimal value) {
+        return new Literal('TWD' + value);
     }
 
-    public static String TZS(Decimal value) {
-        return 'TZS' + value;
+    public static Literal TZS(Decimal value) {
+        return new Literal('TZS' + value);
     }
 
-    public static String UAH(Decimal value) {
-        return 'UAH' + value;
+    public static Literal UAH(Decimal value) {
+        return new Literal('UAH' + value);
     }
 
-    public static String UGX(Decimal value) {
-        return 'UGX' + value;
+    public static Literal UGX(Decimal value) {
+        return new Literal('UGX' + value);
     }
 
-    public static String USD(Decimal value) {
-        return 'USD' + value;
+    public static Literal USD(Decimal value) {
+        return new Literal('USD' + value);
     }
 
-    public static String UYU(Decimal value) {
-        return 'UYU' + value;
+    public static Literal UYU(Decimal value) {
+        return new Literal('UYU' + value);
     }
 
-    public static String UZS(Decimal value) {
-        return 'UZS' + value;
+    public static Literal UZS(Decimal value) {
+        return new Literal('UZS' + value);
     }
 
-    public static String VES(Decimal value) {
-        return 'VES' + value;
+    public static Literal VES(Decimal value) {
+        return new Literal('VES' + value);
     }
 
-    public static String VND(Decimal value) {
-        return 'VND' + value;
+    public static Literal VND(Decimal value) {
+        return new Literal('VND' + value);
     }
 
-    public static String VUV(Decimal value) {
-        return 'VUV' + value;
+    public static Literal VUV(Decimal value) {
+        return new Literal('VUV' + value);
     }
 
-    public static String WST(Decimal value) {
-        return 'WST' + value;
+    public static Literal WST(Decimal value) {
+        return new Literal('WST' + value);
     }
 
-    public static String XAF(Decimal value) {
-        return 'XAF' + value;
+    public static Literal XAF(Decimal value) {
+        return new Literal('XAF' + value);
     }
 
-    public static String XCD(Decimal value) {
-        return 'XCD' + value;
+    public static Literal XCD(Decimal value) {
+        return new Literal('XCD' + value);
     }
 
-    public static String XOF(Decimal value) {
-        return 'XOF' + value;
+    public static Literal XOF(Decimal value) {
+        return new Literal('XOF' + value);
     }
 
-    public static String XPF(Decimal value) {
-        return 'XPF' + value;
+    public static Literal XPF(Decimal value) {
+        return new Literal('XPF' + value);
     }
 
-    public static String YER(Decimal value) {
-        return 'YER' + value;
+    public static Literal YER(Decimal value) {
+        return new Literal('YER' + value);
     }
 
-    public static String ZAR(Decimal value) {
-        return 'ZAR' + value;
+    public static Literal ZAR(Decimal value) {
+        return new Literal('ZAR' + value);
     }
 
     // #endregion
