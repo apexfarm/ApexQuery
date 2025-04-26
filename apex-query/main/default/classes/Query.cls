@@ -39,7 +39,7 @@ public virtual class Query implements Querable {
     }
 
     public interface Filter {
-        void buildSOQL(List<String> fragments, TmpVars tmpVars);
+        void buildFilter(List<String> fragments, TmpVars tmpVars);
     }
 
     public interface CompositeFilter extends Filter {
@@ -66,11 +66,13 @@ public virtual class Query implements Querable {
 
     public class TmpVars {
         Map<String, Object> tmpVars = new Map<String, Object>();
+        Integer tmpVarCount = 0;
 
         public String put(Object var) {
-            String tmpVar = 'tmpVar' + (this.tmpVars.size() + 1);
+            tmpVarCount++;
+            String tmpVar = 'tmpVar' + tmpVarCount;
             this.tmpVars.put(tmpVar, var);
-            return tmpVar;
+            return ':' + tmpVar;
         }
     }
 
@@ -202,14 +204,14 @@ public virtual class Query implements Querable {
 
         if (this.whereFilters != null) {
             fragments.add(' WHERE ');
-            this.whereFilters.buildSOQL(fragments, tmpVars);
+            this.whereFilters.buildFilter(fragments, tmpVars);
         }
 
         if (!this.groupBy.isEmpty()) {
             fragments.add(' GROUP BY ');
             if (this.havingFilters != null) {
                 fragments.add(' HAVING ');
-                this.havingFilters.buildSOQL(fragments, tmpVars);
+                this.havingFilters.buildFilter(fragments, tmpVars);
             }
         }
 
@@ -302,7 +304,7 @@ public virtual class Query implements Querable {
             return this;
         }
 
-        public virtual void buildSOQL(List<String> fragments, TmpVars tmpVars) {
+        public virtual void buildFilter(List<String> fragments, TmpVars tmpVars) {
             if (this.filters.isEmpty()) {
                 return;
             }
@@ -315,7 +317,7 @@ public virtual class Query implements Querable {
                 } else {
                     isNotFirst = true;
                 }
-                filter.buildSOQL(fragments, tmpVars);
+                filter.buildFilter(fragments, tmpVars);
             }
             fragments.add(')');
         }
@@ -326,7 +328,7 @@ public virtual class Query implements Querable {
             super('NOT', new List<Filter>{ filter });
         }
 
-        public override void buildSOQL(List<String> fragments, TmpVars tmpVars) {
+        public override void buildFilter(List<String> fragments, TmpVars tmpVars) {
             if (this.filters.isEmpty()) {
                 return;
             }
@@ -334,10 +336,10 @@ public virtual class Query implements Querable {
             Filter filter = this.filters[0];
             if (filter instanceof CompositeFilter) {
                 fragments.add('NOT');
-                filter.buildSOQL(fragments, tmpVars);
+                filter.buildFilter(fragments, tmpVars);
             } else {
                 fragments.add('NOT(');
-                filter.buildSOQL(fragments, tmpVars);
+                filter.buildFilter(fragments, tmpVars);
                 fragments.add(')');
             }
         }
@@ -380,7 +382,7 @@ public virtual class Query implements Querable {
             this.value = value;
         }
 
-        public virtual void buildSOQL(List<String> fragments, TmpVars tmpVars) {
+        public virtual void buildFilter(List<String> fragments, TmpVars tmpVars) {
             fragments.add(this.fieldOrFunc);
             fragments.add(this.operator);
             if (value == null) {
@@ -388,9 +390,7 @@ public virtual class Query implements Querable {
             } else if (value instanceof Literal) {
                 fragments.add(((Literal) this.value).literal);
             } else {
-                String tmpVar = tmpVars.put(this.value);
-                fragments.add(':');
-                fragments.add(tmpVar);
+                fragments.add(tmpVars.put(this.value));
             }
         }
     }
@@ -400,7 +400,7 @@ public virtual class Query implements Querable {
             super(field, operator, values);
         }
 
-        public override void buildSOQL(List<String> fragments, TmpVars tmpVars) {
+        public override void buildFilter(List<String> fragments, TmpVars tmpVars) {
             fragments.add(this.fieldOrFunc);
             fragments.add(this.operator);
             fragments.add('(');
@@ -412,9 +412,7 @@ public virtual class Query implements Querable {
                     isNotFirst = true;
                 }
 
-                String tmpVar = tmpVars.put(this.value);
-                fragments.add(':');
-                fragments.add(tmpVar);
+                fragments.add(tmpVars.put(this.value));
             }
             fragments.add(')');
         }
