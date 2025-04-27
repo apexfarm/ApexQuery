@@ -1,0 +1,990 @@
+@isTest
+public with sharing class QueryTest extends Query {
+    @isTest
+    static void testFrom() {
+        Query accountQuery = Query.of('Account');
+        Assert.areEqual('SELECT Id FROM Account', accountQuery.build());
+        Query contactQuery = Query.of('Contact');
+        Assert.areEqual('SELECT Id FROM Contact', contactQuery.build());
+    }
+
+    @isTest
+    static void testMisc() {
+        Query accountQuery;
+
+        accountQuery = Query.of('Account').updateTracking();
+        Assert.areEqual('SELECT Id FROM Account UPDATE TRACKING', accountQuery.build());
+
+        accountQuery = Query.of('Account').updateViewstat();
+        Assert.areEqual('SELECT Id FROM Account UPDATE VIEWSTAT', accountQuery.build());
+
+        accountQuery = Query.of('Account').forView();
+        Assert.areEqual('SELECT Id FROM Account FOR VIEW', accountQuery.build());
+
+        accountQuery = Query.of('Account').forReference();
+        Assert.areEqual('SELECT Id FROM Account FOR REFERENCE', accountQuery.build());
+
+        accountQuery = Query.of('Account').forUpdate();
+        Assert.areEqual('SELECT Id FROM Account FOR UPDATE', accountQuery.build());
+
+        accountQuery = Query.of('Account').limitx(3).offset(3);
+        Assert.areEqual('SELECT Id FROM Account LIMIT 3 OFFSET 3', accountQuery.build());
+    }
+
+    @isTest // prettier-ignore
+    static void testSelect_Fields() {
+        Query accountQuery = Query.of('Account').selectFields('Name1');
+        Assert.areEqual('SELECT Name1 FROM Account', accountQuery.build());
+
+        accountQuery = Query.of('Account').selectFields('Name1', 'Name2');
+        Assert.areEqual('SELECT Name1, Name2 FROM Account', accountQuery.build());
+
+        accountQuery = Query.of('Account').selectFields('Name1', 'Name2', 'Name3');
+        Assert.areEqual('SELECT Name1, Name2, Name3 FROM Account', accountQuery.build());
+
+        accountQuery = Query.of('Account').selectFields('Name1', 'Name2', 'Name3', 'Name4');
+        Assert.areEqual('SELECT Name1, Name2, Name3, Name4 FROM Account', accountQuery.build());
+
+        accountQuery = Query.of('Account').selectFields('Name1', 'Name2', 'Name3', 'Name4', 'Name5');
+        Assert.areEqual('SELECT Name1, Name2, Name3, Name4, Name5 FROM Account', accountQuery.build());
+
+        accountQuery = Query.of('Account').selectFields('Name1', 'Name2', 'Name3', 'Name4', 'Name5', 'Name6');
+        Assert.areEqual('SELECT Name1, Name2, Name3, Name4, Name5, Name6 FROM Account', accountQuery.build());
+
+        accountQuery = Query.of('Account').selectFields('Name1', 'Name2', 'Name3', 'Name4', 'Name5', 'Name6', 'Name7');
+        Assert.areEqual('SELECT Name1, Name2, Name3, Name4, Name5, Name6, Name7 FROM Account', accountQuery.build());
+
+        accountQuery = Query.of('Account').selectFields('Name1', 'Name2', 'Name3', 'Name4', 'Name5', 'Name6', 'Name7', 'Name8');
+        Assert.areEqual('SELECT Name1, Name2, Name3, Name4, Name5, Name6, Name7, Name8 FROM Account', accountQuery.build());
+
+        accountQuery = Query.of('Account').selectFields('Name1', 'Name2', 'Name3', 'Name4', 'Name5', 'Name6', 'Name7', 'Name8', 'Name9');
+        Assert.areEqual('SELECT Name1, Name2, Name3, Name4, Name5, Name6, Name7, Name8, Name9 FROM Account', accountQuery.build());
+
+        accountQuery = Query.of('Account').selectFields('Name1', 'Name2', 'Name3', 'Name4', 'Name5', 'Name6', 'Name7', 'Name8', 'Name9', 'Name10');
+        Assert.areEqual('SELECT Name1, Name2, Name3, Name4, Name5, Name6, Name7, Name8, Name9, Name10 FROM Account', accountQuery.build());
+
+        accountQuery = Query.of('Account').selectFields(new List<String> { 'Name1', 'Name2', 'Name3' });
+        Assert.areEqual('SELECT Name1, Name2, Name3 FROM Account', accountQuery.build());
+
+        accountQuery = Query.of('Account')
+            .selectFields(new List<String> { 'Name1', 'Name2', 'Name3' })
+            .selectFields(new List<String> { 'Name4', 'Name5', 'Name6' });
+        Assert.areEqual('SELECT Name1, Name2, Name3, Name4, Name5, Name6 FROM Account', accountQuery.build());
+    }
+
+    @isTest // prettier-ignore
+    static void testSelect_Functions() {
+        Query accountQuery;
+
+        accountQuery = Query.of('Account').selectFields(TO_LABEL('AccountSource'));
+        Assert.areEqual('SELECT toLabel(AccountSource) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of('Account').selectFields(CONVERT_CURRENCY('AnnualRevenue'));
+        Assert.areEqual('SELECT convertCurrency(AnnualRevenue) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of('Account').selectFields(FORMAT('AnnualRevenue'));
+        Assert.areEqual('SELECT FORMAT(AnnualRevenue) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of('Account').selectFields(FORMAT(CONVERT_CURRENCY('AnnualRevenue')));
+        Assert.areEqual('SELECT FORMAT(convertCurrency(AnnualRevenue)) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of('Account')
+            .whereBy(lt(DISTANCE('ShippingAddress', Location.newInstance(37.775000, -122.41800), 'mi'), 20));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE DISTANCE(ShippingAddress, GEOLOCATION(37.775, -122.418), \'mi\') < :tmpVar1',
+            accountQuery.build()
+        );
+
+        // with alias
+        accountQuery = Query.of('Account').selectFields(TO_LABEL('AccountSource', 'alias'));
+        Assert.areEqual('SELECT toLabel(AccountSource) AS alias FROM Account', accountQuery.build());
+
+        accountQuery = Query.of('Account').selectFields(CONVERT_CURRENCY('AnnualRevenue', 'alias'));
+        Assert.areEqual('SELECT convertCurrency(AnnualRevenue) AS alias FROM Account', accountQuery.build());
+
+        accountQuery = Query.of('Account').selectFields(FORMAT('AnnualRevenue', 'alias'));
+        Assert.areEqual('SELECT FORMAT(AnnualRevenue) AS alias FROM Account', accountQuery.build());
+
+        accountQuery = Query.of('Account').selectFields(FORMAT(CONVERT_CURRENCY('AnnualRevenue'), 'alias'));
+        Assert.areEqual('SELECT FORMAT(convertCurrency(AnnualRevenue)) AS alias FROM Account', accountQuery.build());
+    }
+
+    @isTest
+    static void testSelect_Parent() {
+        Query grandGrandParentAccountQuery = Query.of('Account');
+
+        Query grandParentAccountQuery = Query.of('Account')
+            .selectFields('Name', FORMAT(CONVERT_CURRENCY('AnnualRevenue'), 'alias'), TO_LABEL('Industry'))
+            .selectParent('Parent', grandGrandParentAccountQuery);
+
+        Query parentAccountQuery = Query.of('Account')
+            .selectFields('Name', FORMAT(CONVERT_CURRENCY('AnnualRevenue')), TO_LABEL('Industry'))
+            .selectParent('Parent', grandParentAccountQuery);
+
+        Query accountQuery = Query.of('Account')
+            .selectFields('Name', FORMAT(CONVERT_CURRENCY('AnnualRevenue')), TO_LABEL('Industry'))
+            .selectParent('Parent', parentAccountQuery);
+        Assert.areEqual(
+            'SELECT Name, FORMAT(convertCurrency(AnnualRevenue)), toLabel(Industry), ' +
+                'Parent.Name, FORMAT(convertCurrency(Parent.AnnualRevenue)), toLabel(Parent.Industry), ' +
+                'Parent.Parent.Name, FORMAT(convertCurrency(Parent.Parent.AnnualRevenue)) AS alias, toLabel(Parent.Parent.Industry), ' +
+                'Parent.Parent.Parent.Id FROM Account',
+            accountQuery.build()
+        );
+    }
+
+    @isTest
+    static void testSelect_Child() {
+        Query parentAccountQuery = Query.of('Account')
+            .selectFields('Name', FORMAT(CONVERT_CURRENCY('AnnualRevenue')), TO_LABEL('Industry'));
+        Query opprotunityQuery = Query.of('Opportunity').selectParent('Account', parentAccountQuery);
+        Query contactQuery = Query.of('Contact').selectChild('Opportunities', opprotunityQuery);
+
+        Query accountQuery = Query.of('Account')
+            .selectParent('Parent', parentAccountQuery)
+            .selectChild('Contacts', contactQuery);
+        Assert.areEqual(
+            'SELECT Id, ' +
+                'Parent.Name, FORMAT(convertCurrency(Parent.AnnualRevenue)), toLabel(Parent.Industry), ' +
+                '(SELECT Id, (SELECT Id, ' +
+                'Account.Name, FORMAT(convertCurrency(Account.AnnualRevenue)), toLabel(Account.Industry) ' +
+                'FROM Opportunities) FROM Contacts) FROM Account',
+            accountQuery.build()
+        );
+    }
+
+    @isTest
+    static void testLogical_And() {
+        Query.Filter filter = andx()
+            .add(eq('BillingCountry', 'China'))
+            .add(eq('BillingCountry', 'China'))
+            .add(eq('BillingCountry', 'China'));
+        Query accountQuery = Query.of('Account').whereBy(filter);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE (BillingCountry = :tmpVar1 ' +
+                'AND BillingCountry = :tmpVar2 ' +
+                'AND BillingCountry = :tmpVar3)',
+            accountQuery.build()
+        );
+
+        filter = andx(
+            new List<Filter>{
+                eq('BillingCountry', 'China'),
+                eq('BillingCountry', 'China'),
+                eq('BillingCountry', 'China')
+            }
+        );
+        accountQuery = Query.of('Account').whereBy(filter);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE (BillingCountry = :tmpVar1 ' +
+                'AND BillingCountry = :tmpVar2 ' +
+                'AND BillingCountry = :tmpVar3)',
+            accountQuery.build()
+        );
+
+        accountQuery = Query.of('Account').whereBy(andx());
+        Assert.areEqual('SELECT Id FROM Account WHERE ', accountQuery.build());
+    }
+
+    @isTest
+    static void testLogical_Or() {
+        Query.Filter filter = orx()
+            .add(eq('BillingCountry', 'China'))
+            .add(eq('BillingCountry', 'China'))
+            .add(eq('BillingCountry', 'China'));
+        Query accountQuery = Query.of('Account').whereBy(filter);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE (BillingCountry = :tmpVar1 ' +
+                'OR BillingCountry = :tmpVar2 ' +
+                'OR BillingCountry = :tmpVar3)',
+            accountQuery.build()
+        );
+
+        filter = orx(
+            new List<Filter>{
+                eq('BillingCountry', 'China'),
+                eq('BillingCountry', 'China'),
+                eq('BillingCountry', 'China')
+            }
+        );
+        accountQuery = Query.of('Account').whereBy(filter);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE (BillingCountry = :tmpVar1 ' +
+                'OR BillingCountry = :tmpVar2 ' +
+                'OR BillingCountry = :tmpVar3)',
+            accountQuery.build()
+        );
+
+        accountQuery = Query.of('Account').whereBy(orx());
+        Assert.areEqual('SELECT Id FROM Account WHERE ', accountQuery.build());
+    }
+
+    @isTest
+    static void testLogical_Not() {
+        Query.Filter filter = notx(eq('BillingCountry', 'China'));
+        Query accountQuery = Query.of('Account').whereBy(filter);
+        Assert.areEqual('SELECT Id FROM Account WHERE NOT(BillingCountry = :tmpVar1)', accountQuery.build());
+
+        filter = notx(
+            andx().add(eq('BillingCountry', 'China')).add(eq('BillingState', 'Shanghai')).add(eq('AnnualRevenue', 1500))
+        );
+        accountQuery = Query.of('Account').whereBy(filter);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE NOT(BillingCountry = :tmpVar1 ' +
+                'AND BillingState = :tmpVar2 ' +
+                'AND AnnualRevenue = :tmpVar3)',
+            accountQuery.build()
+        );
+    }
+
+    // ==================
+    // #region Comparison
+
+    @isTest // prettier-ignore
+    static void testComparison_EQ() {
+        // param1 are Strings
+        Query.Filter filter = eq('BillingCountry', 'China');
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry = :tmpVar1',
+            Query.of('Account').whereBy(filter).build()
+        );
+
+        filter = eq('BillingCountry', true);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry = :tmpVar1',
+            Query.of('Account').whereBy(filter).build()
+        );
+
+        filter = eq('BillingCountry', 123.456);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry = :tmpVar1',
+            Query.of('Account').whereBy(filter).build()
+        );
+
+        filter = eq('BillingCountry', Datetime.newInstance(2023, 1, 1, 12, 12, 12));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry = :tmpVar1',
+            Query.of('Account').whereBy(filter).build()
+        );
+
+        filter = eq('BillingCountry', Date.newInstance(2023, 1, 1));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry = :tmpVar1',
+            Query.of('Account').whereBy(filter).build()
+        );
+
+        filter = eq('BillingCountry', Time.newInstance(12, 12, 12, 12));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry = :tmpVar1',
+            Query.of('Account').whereBy(filter).build()
+        );
+
+        filter = eq('BillingCountry', LAST_N_DAYS(2));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry = LAST_N_DAYS:2',
+            Query.of('Account').whereBy(filter).build()
+        );
+
+        filter = eq('BillingCountry', CURRENCY('CNY', 2000));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry = CNY2000',
+            Query.of('Account').whereBy(filter).build()
+        );
+
+        filter = eqNull('BillingCountry');
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry = NULL',
+            Query.of('Account').whereBy(filter).build()
+        );
+
+        // param1 are AggregateFunction
+        filter = eq(MAX('BillingCountry'), 'China');
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) = :tmpVar1',
+            Query.of('Account').havingBy(filter).build()
+        );
+
+        filter = eq(MAX('BillingCountry'), true);
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) = :tmpVar1',
+            Query.of('Account').havingBy(filter).build()
+        );
+
+        filter = eq(MAX('BillingCountry'), 123.456);
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) = :tmpVar1',
+            Query.of('Account').havingBy(filter).build()
+        );
+
+        filter = eq(MAX('BillingCountry'), Datetime.newInstance(2023, 1, 1, 12, 12, 12));
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) = :tmpVar1',
+            Query.of('Account').havingBy(filter).build()
+        );
+
+        filter = eq(MAX('BillingCountry'), Date.newInstance(2023, 1, 1));
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) = :tmpVar1',
+            Query.of('Account').havingBy(filter).build()
+        );
+
+        filter = eq(MAX('BillingCountry'), Time.newInstance(12, 12, 12, 12));
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) = :tmpVar1',
+            Query.of('Account').havingBy(filter).build()
+        );
+
+        filter = eq(MAX('BillingCountry'), LAST_N_DAYS(2));
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) = LAST_N_DAYS:2',
+            Query.of('Account').havingBy(filter).build()
+        );
+
+        filter = eq(MAX('BillingCountry'), CURRENCY('CNY', 2000));
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) = CNY2000',
+            Query.of('Account').havingBy(filter).build()
+        );
+
+        filter = eqNull(MAX('BillingCountry'));
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) = NULL',
+            Query.of('Account').havingBy(filter).build()
+        );
+
+        // param1 are others
+        filter = eq(DISTANCE('ShippingAddress', Location.newInstance(37.775001, -122.41801), 'km'), 12.3);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE DISTANCE(ShippingAddress, GEOLOCATION(37.775001, -122.41801), \'km\') = :tmpVar1',
+            Query.of('Account').whereBy(filter).build()
+        );
+
+        filter = eq(CALENDAR_MONTH('CreatedDate'), 2);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE CALENDAR_MONTH(CreatedDate) = :tmpVar1',
+            Query.of('Account').whereBy(filter).build()
+        );
+
+        filter = eq('toLabel(AccountSource)', 'Advertisement');
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE toLabel(AccountSource) = :tmpVar1',
+            Query.of('Account').whereBy(filter).build()
+        );
+    }
+
+    @isTest // prettier-ignore
+    static void testComparison_BETWEEN() {
+        // param1 are Strings
+        Query.Filter filter = between('BillingCountry', 'China', 'China');
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE (BillingCountry >= :tmpVar1 AND BillingCountry <= :tmpVar2)',
+            Query.of('Account').whereBy(filter).build()
+        );
+
+        filter = between('BillingCountry', 123.456, 123.456);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE (BillingCountry >= :tmpVar1 AND BillingCountry <= :tmpVar2)',
+            Query.of('Account').whereBy(filter).build()
+        );
+
+        filter = between(
+            'BillingCountry',
+            Datetime.newInstance(2023, 1, 1, 12, 12, 12),
+            Datetime.newInstance(2023, 1, 1, 12, 12, 12)
+        );
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE (BillingCountry >= :tmpVar1 AND BillingCountry <= :tmpVar2)',
+            Query.of('Account').whereBy(filter).build()
+        );
+
+        filter = between('BillingCountry', Date.newInstance(2023, 1, 1), Date.newInstance(2023, 1, 1));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE (BillingCountry >= :tmpVar1 AND BillingCountry <= :tmpVar2)',
+            Query.of('Account').whereBy(filter).build()
+        );
+
+        filter = between('BillingCountry', Time.newInstance(12, 12, 12, 12), Time.newInstance(12, 12, 12, 12));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE (BillingCountry >= :tmpVar1 AND BillingCountry <= :tmpVar2)',
+            Query.of('Account').whereBy(filter).build()
+        );
+
+        filter = between('BillingCountry', LAST_N_DAYS(2), LAST_N_DAYS(2));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE (BillingCountry >= LAST_N_DAYS:2 AND BillingCountry <= LAST_N_DAYS:2)',
+            Query.of('Account').whereBy(filter).build()
+        );
+
+        filter = between('BillingCountry', CURRENCY('CNY', 2000), CURRENCY('CNY', 2000));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE (BillingCountry >= CNY2000 AND BillingCountry <= CNY2000)',
+            Query.of('Account').whereBy(filter).build()
+        );
+
+        // param1 are AggregateFunction
+        filter = between(MAX('BillingCountry'), 'China', 'China');
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING (MAX(BillingCountry) >= :tmpVar1 AND MAX(BillingCountry) <= :tmpVar2)',
+            Query.of('Account').havingBy(filter).build()
+        );
+
+        filter = between(MAX('BillingCountry'), 123.456, 123.456);
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING (MAX(BillingCountry) >= :tmpVar1 AND MAX(BillingCountry) <= :tmpVar2)',
+            Query.of('Account').havingBy(filter).build()
+        );
+
+        filter = between(
+            MAX('BillingCountry'),
+            Datetime.newInstance(2023, 1, 1, 12, 12, 12),
+            Datetime.newInstance(2023, 1, 1, 12, 12, 12)
+        );
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING (MAX(BillingCountry) >= :tmpVar1 AND MAX(BillingCountry) <= :tmpVar2)',
+            Query.of('Account').havingBy(filter).build()
+        );
+
+        filter = between(MAX('BillingCountry'), Date.newInstance(2023, 1, 1), Date.newInstance(2023, 1, 1));
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING (MAX(BillingCountry) >= :tmpVar1 AND MAX(BillingCountry) <= :tmpVar2)',
+            Query.of('Account').havingBy(filter).build()
+        );
+
+        filter = between(
+            MAX('BillingCountry'),
+            Time.newInstance(12, 12, 12, 12),
+            Time.newInstance(12, 12, 12, 12)
+        );
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING (MAX(BillingCountry) >= :tmpVar1 AND MAX(BillingCountry) <= :tmpVar2)',
+            Query.of('Account').havingBy(filter).build()
+        );
+
+        filter = between(MAX('BillingCountry'), LAST_N_DAYS(2), LAST_N_DAYS(2));
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING (MAX(BillingCountry) >= LAST_N_DAYS:2 AND MAX(BillingCountry) <= LAST_N_DAYS:2)',
+            Query.of('Account').havingBy(filter).build()
+        );
+
+        filter = between(MAX('BillingCountry'), CURRENCY('CNY', 2000), CURRENCY('CNY', 2000));
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING (MAX(BillingCountry) >= CNY2000 AND MAX(BillingCountry) <= CNY2000)',
+            Query.of('Account').havingBy(filter).build()
+        );
+
+        // param1 are others
+        filter = between(
+            DISTANCE('ShippingAddress', Location.newInstance(37.775001, -122.41801), 'km'),
+            12.3,
+            12.3
+        );
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE (DISTANCE(ShippingAddress, GEOLOCATION(37.775001, -122.41801), \'km\') >= :tmpVar1 AND DISTANCE(ShippingAddress, GEOLOCATION(37.775001, -122.41801), \'km\') <= :tmpVar2)',
+            Query.of('Account').whereBy(filter).build()
+        );
+
+        filter = between(CALENDAR_MONTH('CreatedDate'), 2, 2);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE (CALENDAR_MONTH(CreatedDate) >= :tmpVar1 AND CALENDAR_MONTH(CreatedDate) <= :tmpVar2)',
+            Query.of('Account').whereBy(filter).build()
+        );
+
+        filter = between('toLabel(AccountSource)', 'Advertisement', 'Advertisement');
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE (toLabel(AccountSource) >= :tmpVar1 AND toLabel(AccountSource) <= :tmpVar2)',
+            Query.of('Account').whereBy(filter).build()
+        );
+    }
+
+    @isTest // prettier-ignore
+    static void testComparison_LIKE() {
+        Query.Filter filter;
+        filter = likex('BillingCountry', '%China%');
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry LIKE :tmpVar1',
+            Query.of('Account').whereBy(filter).build()
+        );
+
+        filter = likex('BillingCountry', '%China%');
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry LIKE :tmpVar1',
+            Query.of('Account').whereBy(filter).build()
+        );
+
+        filter = likex(MAX('BillingCountry'), '%China%');
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING MAX(BillingCountry) LIKE :tmpVar1',
+            Query.of('Account').havingBy(filter).build()
+        );
+
+        filter = likex('toLabel(BillingCountry)', '%China%');
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE toLabel(BillingCountry) LIKE :tmpVar1',
+            Query.of('Account').whereBy(filter).build()
+        );
+
+        filter = nlike('BillingCountry', '%China%');
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE (NOT BillingCountry LIKE :tmpVar1)',
+            Query.of('Account').whereBy(filter).build()
+        );
+
+        filter = nlike('BillingCountry', '%China%');
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE (NOT BillingCountry LIKE :tmpVar1)',
+            Query.of('Account').whereBy(filter).build()
+        );
+
+        filter = nlike(MAX('BillingCountry'), '%China%');
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING (NOT MAX(BillingCountry) LIKE :tmpVar1)',
+            Query.of('Account').havingBy(filter).build()
+        );
+
+        filter = nlike('toLabel(BillingCountry)', '%China%');
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE (NOT toLabel(BillingCountry) LIKE :tmpVar1)',
+            Query.of('Account').whereBy(filter).build()
+        );
+    }
+
+    @isTest // prettier-ignore
+    static void testComparison_INCLUDES() {
+        Query.Filter filter;
+        filter = includes('BillingCountry', new List<String>{ 'AAA', 'BBB', 'CCC', 'DDD', 'EEE' });
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry INCLUDES (:tmpVar1, :tmpVar2, :tmpVar3, :tmpVar4, :tmpVar5)',
+            Query.of('Account').whereBy(filter).build()
+        );
+
+        filter = includes('BillingCountry', new List<String>{ 'AAA', 'BBB', 'CCC', 'DDD', 'EEE' });
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry INCLUDES (:tmpVar1, :tmpVar2, :tmpVar3, :tmpVar4, :tmpVar5)',
+            Query.of('Account').whereBy(filter).build()
+        );
+
+        filter = excludes('BillingCountry', new List<String>{ 'AAA', 'BBB', 'CCC', 'DDD', 'EEE' });
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry EXCLUDES (:tmpVar1, :tmpVar2, :tmpVar3, :tmpVar4, :tmpVar5)',
+            Query.of('Account').whereBy(filter).build()
+        );
+
+        filter = excludes('BillingCountry', new List<String>{ 'AAA', 'BBB', 'CCC', 'DDD', 'EEE' });
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry EXCLUDES (:tmpVar1, :tmpVar2, :tmpVar3, :tmpVar4, :tmpVar5)',
+            Query.of('Account').whereBy(filter).build()
+        );
+    }
+
+    @isTest // prettier-ignore
+    static void testComparison_INX() {
+        // String
+        Query.Filter filter = inx('BillingCountry', new List<String>{ 'AAA', 'BBB', null });
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry IN :tmpVar1',
+            Query.of('Account').whereBy(filter).build()
+        );
+
+        filter = inx('BillingCountry', new List<Boolean>{ true, false, null });
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry IN :tmpVar1',
+            Query.of('Account').whereBy(filter).build()
+        );
+
+        filter = inx('BillingCountry', new List<Decimal>{ 123.456, 789, null });
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry IN :tmpVar1',
+            Query.of('Account').whereBy(filter).build()
+        );
+
+        filter = inx(
+            'BillingCountry',
+            new List<Datetime>{
+                Datetime.newInstance(2023, 1, 1, 12, 12, 12),
+                Datetime.newInstance(2023, 2, 2, 12, 12, 12),
+                null
+            }
+        );
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry IN :tmpVar1',
+            Query.of('Account').whereBy(filter).build()
+        );
+
+        filter = inx(
+            'BillingCountry',
+            new List<Date>{ Date.newInstance(2023, 1, 1), Date.newInstance(2023, 2, 2), null }
+        );
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry IN :tmpVar1',
+            Query.of('Account').whereBy(filter).build()
+        );
+
+        filter = inx(
+            'BillingCountry',
+            new List<Time>{ Time.newInstance(12, 0, 0, 0), Time.newInstance(11, 0, 0, 0), null }
+        );
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE BillingCountry IN :tmpVar1',
+            Query.of('Account').whereBy(filter).build()
+        );
+
+        // filter = inx('BillingCountry', new List<DateLiteral>{ YESTERDAY(), TODAY(), null });
+        // Assert.areEqual(
+        //     'SELECT Id FROM Account WHERE BillingCountry IN :tmpVar1',
+        //     Query.of('Account').whereBy(filter).build()
+        // );
+
+        // filter = inx('BillingCountry', new List<CurrencyLiteral>{ CURRENCY('CNY', 2000), USD(3000), null });
+        // Assert.areEqual(
+        //     'SELECT Id FROM Account WHERE BillingCountry IN :tmpVar1',
+        //     Query.of('Account').whereBy(filter).build()
+        // );
+
+        Query contactQuery = Query.of('Contact').selectFields('AccountId');
+        filter = inx('Id', contactQuery);
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE Id IN (SELECT AccountId FROM Contact)',
+            Query.of('Account').whereBy(filter).build()
+        );
+    }
+    // #endregion
+    // ==================
+
+    // ================
+    // #region Group By
+
+    @isTest // prettier-ignore
+    static void testGroupBy_Measure() {
+        Query accountQuery;
+        accountQuery = Query.of('Account').selectFields(COUNT('Name'), COUNT('Name', 'alias'));
+        Assert.areEqual('SELECT COUNT(Name), COUNT(Name) alias FROM Account', accountQuery.build());
+
+        accountQuery = Query.of('Account').selectFields(COUNT_DISTINCT('Name'), COUNT_DISTINCT('Name', 'alias'));
+        Assert.areEqual('SELECT COUNT_DISTINCT(Name), COUNT_DISTINCT(Name) alias FROM Account', accountQuery.build());
+
+        accountQuery = Query.of('Account').selectFields(SUM('Name'), SUM('Name', 'alias'));
+        Assert.areEqual('SELECT SUM(Name), SUM(Name) alias FROM Account', accountQuery.build());
+
+        accountQuery = Query.of('Account').selectFields(AVG('Name'), AVG('Name', 'alias'));
+        Assert.areEqual('SELECT AVG(Name), AVG(Name) alias FROM Account', accountQuery.build());
+
+        accountQuery = Query.of('Account').selectFields(MAX('Name'), MAX('Name', 'alias'));
+        Assert.areEqual('SELECT MAX(Name), MAX(Name) alias FROM Account', accountQuery.build());
+
+        accountQuery = Query.of('Account').selectFields(MIN('Name'), MIN('Name', 'alias'));
+        Assert.areEqual('SELECT MIN(Name), MIN(Name) alias FROM Account', accountQuery.build());
+    }
+
+    @isTest // prettier-ignore
+    static void testGroupBy_Dimention() {
+        Query accountQuery;
+
+        accountQuery = Query.of('Account').selectFields(GROUPING('Name'), GROUPING('Name', 'alias'));
+        Assert.areEqual('SELECT GROUPING(Name), GROUPING(Name) alias FROM Account', accountQuery.build());
+
+        accountQuery = Query.of('Account').selectFields(CALENDAR_MONTH('CreatedDate'));
+        Assert.areEqual('SELECT CALENDAR_MONTH(CreatedDate) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of('Account').selectFields(CALENDAR_QUARTER('CreatedDate'));
+        Assert.areEqual('SELECT CALENDAR_QUARTER(CreatedDate) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of('Account').selectFields(CALENDAR_YEAR('CreatedDate'));
+        Assert.areEqual('SELECT CALENDAR_YEAR(CreatedDate) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of('Account').selectFields(DAY_IN_MONTH('CreatedDate'));
+        Assert.areEqual('SELECT DAY_IN_MONTH(CreatedDate) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of('Account').selectFields(DAY_IN_WEEK('CreatedDate'));
+        Assert.areEqual('SELECT DAY_IN_WEEK(CreatedDate) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of('Account').selectFields(DAY_IN_YEAR('CreatedDate'));
+        Assert.areEqual('SELECT DAY_IN_YEAR(CreatedDate) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of('Account').selectFields(DAY_ONLY('CreatedDate'));
+        Assert.areEqual('SELECT DAY_ONLY(CreatedDate) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of('Account').selectFields(FISCAL_MONTH('CreatedDate'));
+        Assert.areEqual('SELECT FISCAL_MONTH(CreatedDate) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of('Account').selectFields(FISCAL_QUARTER('CreatedDate'));
+        Assert.areEqual('SELECT FISCAL_QUARTER(CreatedDate) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of('Account').selectFields(FISCAL_YEAR('CreatedDate'));
+        Assert.areEqual('SELECT FISCAL_YEAR(CreatedDate) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of('Account').selectFields(HOUR_IN_DAY('CreatedDate'));
+        Assert.areEqual('SELECT HOUR_IN_DAY(CreatedDate) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of('Account').selectFields(WEEK_IN_MONTH('CreatedDate'));
+        Assert.areEqual('SELECT WEEK_IN_MONTH(CreatedDate) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of('Account').selectFields(WEEK_IN_YEAR('CreatedDate'));
+        Assert.areEqual('SELECT WEEK_IN_YEAR(CreatedDate) FROM Account', accountQuery.build());
+
+
+        // CONVERT_TIMEZONE
+        accountQuery = Query.of('Account').selectFields(CALENDAR_MONTH(CONVERT_TIMEZONE('CreatedDate')));
+        Assert.areEqual('SELECT CALENDAR_MONTH(convertTimezone(CreatedDate)) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of('Account').selectFields(CALENDAR_QUARTER(CONVERT_TIMEZONE('CreatedDate')));
+        Assert.areEqual('SELECT CALENDAR_QUARTER(convertTimezone(CreatedDate)) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of('Account').selectFields(CALENDAR_YEAR(CONVERT_TIMEZONE('CreatedDate')));
+        Assert.areEqual('SELECT CALENDAR_YEAR(convertTimezone(CreatedDate)) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of('Account').selectFields(DAY_IN_MONTH(CONVERT_TIMEZONE('CreatedDate')));
+        Assert.areEqual('SELECT DAY_IN_MONTH(convertTimezone(CreatedDate)) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of('Account').selectFields(DAY_IN_WEEK(CONVERT_TIMEZONE('CreatedDate')));
+        Assert.areEqual('SELECT DAY_IN_WEEK(convertTimezone(CreatedDate)) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of('Account').selectFields(DAY_IN_YEAR(CONVERT_TIMEZONE('CreatedDate')));
+        Assert.areEqual('SELECT DAY_IN_YEAR(convertTimezone(CreatedDate)) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of('Account').selectFields(DAY_ONLY(CONVERT_TIMEZONE('CreatedDate')));
+        Assert.areEqual('SELECT DAY_ONLY(convertTimezone(CreatedDate)) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of('Account').selectFields(FISCAL_MONTH(CONVERT_TIMEZONE('CreatedDate')));
+        Assert.areEqual('SELECT FISCAL_MONTH(convertTimezone(CreatedDate)) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of('Account').selectFields(FISCAL_QUARTER(CONVERT_TIMEZONE('CreatedDate')));
+        Assert.areEqual('SELECT FISCAL_QUARTER(convertTimezone(CreatedDate)) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of('Account').selectFields(FISCAL_YEAR(CONVERT_TIMEZONE('CreatedDate')));
+        Assert.areEqual('SELECT FISCAL_YEAR(convertTimezone(CreatedDate)) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of('Account').selectFields(HOUR_IN_DAY(CONVERT_TIMEZONE('CreatedDate')));
+        Assert.areEqual('SELECT HOUR_IN_DAY(convertTimezone(CreatedDate)) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of('Account').selectFields(WEEK_IN_MONTH(CONVERT_TIMEZONE('CreatedDate')));
+        Assert.areEqual('SELECT WEEK_IN_MONTH(convertTimezone(CreatedDate)) FROM Account', accountQuery.build());
+
+        accountQuery = Query.of('Account').selectFields(WEEK_IN_YEAR(CONVERT_TIMEZONE('CreatedDate')));
+        Assert.areEqual('SELECT WEEK_IN_YEAR(convertTimezone(CreatedDate)) FROM Account', accountQuery.build());
+    }
+
+    @isTest // prettier-ignore
+    static void testGroupBy() {
+        // String
+        Query accountQuery = Query.of('Account').groupBy('Name');
+        Assert.areEqual('SELECT Id FROM Account GROUP BY Name', accountQuery.build());
+
+        accountQuery = Query.of('Account').groupBy('Name', 'Name');
+        Assert.areEqual('SELECT Id FROM Account GROUP BY Name, Name', accountQuery.build());
+
+        accountQuery = Query.of('Account').groupBy('Name', 'Name', 'Name');
+        Assert.areEqual('SELECT Id FROM Account GROUP BY Name, Name, Name', accountQuery.build());
+
+        accountQuery = Query.of('Account').groupBy('Name', 'Name', 'Name', 'Name');
+        Assert.areEqual('SELECT Id FROM Account GROUP BY Name, Name, Name, Name', accountQuery.build());
+
+        accountQuery = Query.of('Account').groupBy('Name', 'Name', 'Name', 'Name', 'Name');
+        Assert.areEqual('SELECT Id FROM Account GROUP BY Name, Name, Name, Name, Name', accountQuery.build());
+
+        accountQuery = Query.of('Account').groupBy('Name', 'Name', 'Name', 'Name', 'Name', 'Name');
+        Assert.areEqual('SELECT Id FROM Account GROUP BY Name, Name, Name, Name, Name, Name', accountQuery.build());
+
+        accountQuery = Query.of('Account').groupBy('Name', 'Name', 'Name', 'Name', 'Name', 'Name', 'Name');
+        Assert.areEqual('SELECT Id FROM Account GROUP BY Name, Name, Name, Name, Name, Name, Name', accountQuery.build());
+
+        accountQuery = Query.of('Account').groupBy('Name', 'Name', 'Name', 'Name', 'Name', 'Name', 'Name', 'Name');
+        Assert.areEqual('SELECT Id FROM Account GROUP BY Name, Name, Name, Name, Name, Name, Name, Name', accountQuery.build());
+
+        accountQuery = Query.of('Account').groupBy('Name', 'Name', 'Name', 'Name', 'Name', 'Name', 'Name', 'Name', 'Name');
+        Assert.areEqual('SELECT Id FROM Account GROUP BY Name, Name, Name, Name, Name, Name, Name, Name, Name', accountQuery.build());
+
+        accountQuery = Query.of('Account').groupBy('Name', 'Name', 'Name', 'Name', 'Name', 'Name', 'Name', 'Name', 'Name', 'Name');
+        Assert.areEqual('SELECT Id FROM Account GROUP BY Name, Name, Name, Name, Name, Name, Name, Name, Name, Name', accountQuery.build());
+
+        accountQuery = Query.of('Account')
+            .groupBy(new List<String>{ 'Name', 'Name', CALENDAR_MONTH('CreatedDate') });
+        Assert.areEqual(
+            'SELECT Id FROM Account GROUP BY Name, Name, CALENDAR_MONTH(CreatedDate)',
+            accountQuery.build()
+        );
+
+        // Function
+        accountQuery = Query.of('Account').groupBy(CALENDAR_MONTH('CreatedDate'));
+        Assert.areEqual('SELECT Id FROM Account GROUP BY CALENDAR_MONTH(CreatedDate)', accountQuery.build());
+
+        accountQuery = Query.of('Account').groupBy(CALENDAR_MONTH(CONVERT_TIMEZONE('CreatedDate')));
+        Assert.areEqual('SELECT Id FROM Account GROUP BY CALENDAR_MONTH(convertTimezone(CreatedDate))', accountQuery.build());
+    }
+
+    @isTest // prettier-ignore
+    static void testGroupBy_Options() {
+        // String
+        Query accountQuery = Query.of('Account').groupBy('Name', CALENDAR_MONTH('CreatedDate')).rollup();
+        Assert.areEqual('SELECT Id FROM Account GROUP BY ROLLUP(Name, CALENDAR_MONTH(CreatedDate))', accountQuery.build());
+
+        accountQuery = Query.of('Account').groupBy('Name', CALENDAR_MONTH('CreatedDate')).cube();
+        Assert.areEqual('SELECT Id FROM Account GROUP BY CUBE(Name, CALENDAR_MONTH(CreatedDate))', accountQuery.build());
+    }
+
+    // #endregion
+    // ================
+
+    // ===============
+    // #region Literal
+
+    @isTest
+    static void testLiteral_Date() {
+        Query accountQuery = Query.of('Account')
+            .whereBy(
+                orx()
+                    .add(eq('CreatedDate', YESTERDAY()))
+                    .add(eq('CreatedDate', TODAY()))
+                    .add(eq('CreatedDate', TOMORROW()))
+                    .add(eq('CreatedDate', LAST_WEEK()))
+                    .add(eq('CreatedDate', THIS_WEEK()))
+                    .add(eq('CreatedDate', NEXT_WEEK()))
+                    .add(eq('CreatedDate', LAST_MONTH()))
+                    .add(eq('CreatedDate', THIS_MONTH()))
+                    .add(eq('CreatedDate', NEXT_MONTH()))
+                    .add(eq('CreatedDate', LAST_90_DAYS()))
+                    .add(eq('CreatedDate', NEXT_90_DAYS()))
+                    .add(eq('CreatedDate', THIS_QUARTER()))
+                    .add(eq('CreatedDate', LAST_QUARTER()))
+                    .add(eq('CreatedDate', NEXT_QUARTER()))
+                    .add(eq('CreatedDate', THIS_YEAR()))
+                    .add(eq('CreatedDate', LAST_YEAR()))
+                    .add(eq('CreatedDate', NEXT_YEAR()))
+                    .add(eq('CreatedDate', THIS_FISCAL_QUARTER()))
+                    .add(eq('CreatedDate', LAST_FISCAL_QUARTER()))
+                    .add(eq('CreatedDate', NEXT_FISCAL_QUARTER()))
+                    .add(eq('CreatedDate', THIS_FISCAL_YEAR()))
+                    .add(eq('CreatedDate', LAST_FISCAL_YEAR()))
+                    .add(eq('CreatedDate', NEXT_FISCAL_YEAR()))
+                    .add(eq('CreatedDate', LAST_N_DAYS(3)))
+                    .add(eq('CreatedDate', NEXT_N_DAYS(3)))
+                    .add(eq('CreatedDate', N_DAYS_AGO(3)))
+                    .add(eq('CreatedDate', NEXT_N_WEEKS(3)))
+                    .add(eq('CreatedDate', LAST_N_WEEKS(3)))
+                    .add(eq('CreatedDate', N_WEEKS_AGO(3)))
+                    .add(eq('CreatedDate', NEXT_N_MONTHS(3)))
+                    .add(eq('CreatedDate', LAST_N_MONTHS(3)))
+                    .add(eq('CreatedDate', N_MONTHS_AGO(3)))
+                    .add(eq('CreatedDate', NEXT_N_QUARTERS(3)))
+                    .add(eq('CreatedDate', LAST_N_QUARTERS(3)))
+                    .add(eq('CreatedDate', N_QUARTERS_AGO(3)))
+                    .add(eq('CreatedDate', NEXT_N_YEARS(3)))
+                    .add(eq('CreatedDate', LAST_N_YEARS(3)))
+                    .add(eq('CreatedDate', N_YEARS_AGO(3)))
+                    .add(eq('CreatedDate', NEXT_N_FISCAL_QUARTERS(3)))
+                    .add(eq('CreatedDate', N_FISCAL_QUARTERS_AGO(3)))
+                    .add(eq('CreatedDate', NEXT_N_FISCAL_YEARS(3)))
+                    .add(eq('CreatedDate', LAST_N_FISCAL_YEARS(3)))
+                    .add(eq('CreatedDate', N_FISCAL_YEARS_AGO(3)))
+            );
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE ' +
+                '(CreatedDate = YESTERDAY OR CreatedDate = TODAY OR CreatedDate = TOMORROW OR ' +
+                'CreatedDate = LAST_WEEK OR CreatedDate = THIS_WEEK OR CreatedDate = NEXT_WEEK OR ' +
+                'CreatedDate = LAST_MONTH OR CreatedDate = THIS_MONTH OR CreatedDate = NEXT_MONTH OR ' +
+                'CreatedDate = LAST_90_DAYS OR CreatedDate = NEXT_90_DAYS OR CreatedDate = THIS_QUARTER OR ' +
+                'CreatedDate = LAST_QUARTER OR CreatedDate = NEXT_QUARTER OR CreatedDate = THIS_YEAR OR ' +
+                'CreatedDate = LAST_YEAR OR CreatedDate = NEXT_YEAR OR CreatedDate = THIS_FISCAL_QUARTER OR ' +
+                'CreatedDate = LAST_FISCAL_QUARTER OR CreatedDate = NEXT_FISCAL_QUARTER OR ' +
+                'CreatedDate = THIS_FISCAL_YEAR OR CreatedDate = LAST_FISCAL_YEAR OR CreatedDate = NEXT_FISCAL_YEAR OR ' +
+                'CreatedDate = LAST_N_DAYS:3 OR CreatedDate = NEXT_N_DAYS:3 OR CreatedDate = N_DAYS_AGO:3 OR ' +
+                'CreatedDate = NEXT_N_WEEKS:3 OR CreatedDate = LAST_N_WEEKS:3 OR CreatedDate = N_WEEKS_AGO:3 OR ' +
+                'CreatedDate = NEXT_N_MONTHS:3 OR CreatedDate = LAST_N_MONTHS:3 OR CreatedDate = N_MONTHS_AGO:3 OR ' +
+                'CreatedDate = NEXT_N_QUARTERS:3 OR CreatedDate = LAST_N_QUARTERS:3 OR CreatedDate = N_QUARTERS_AGO:3 OR ' +
+                'CreatedDate = NEXT_N_YEARS:3 OR CreatedDate = LAST_N_YEARS:3 OR CreatedDate = N_YEARS_AGO:3 OR ' +
+                'CreatedDate = NEXT_N_FISCAL_QUARTERS:3 OR CreatedDate = N_FISCAL_QUARTERS_AGO:3 OR ' +
+                'CreatedDate = NEXT_N_FISCAL_YEARS:3 OR CreatedDate = LAST_N_FISCAL_YEARS:3 OR CreatedDate = N_FISCAL_YEARS_AGO:3)',
+            accountQuery.build()
+        );
+    }
+
+    @isTest
+    static void testLiteral_Currency() {
+        Query accountQuery = Query.of('Account').whereBy(eq('AnnualRevenue', CURRENCY('TRY', 100)));
+        Assert.areEqual('SELECT Id FROM Account WHERE AnnualRevenue = TRY100', accountQuery.build());
+    }
+
+    // #endregion
+    // ===============
+
+    // ================
+    // #region Order By
+
+    @isTest // prettier-ignore
+    static void testOrderBy() {
+        // String
+        Query.OrderByField orderByField = orderBy('Name');
+        Query accountQuery = Query.of('Account').orderBy(orderByField);
+        Assert.areEqual('SELECT Id FROM Account ORDER BY Name', accountQuery.build());
+
+        accountQuery = Query.of('Account').orderBy(orderByField, orderByField);
+        Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name', accountQuery.build());
+
+        accountQuery = Query.of('Account').orderBy(orderByField, orderByField, orderByField);
+        Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name, Name', accountQuery.build());
+
+        accountQuery = Query.of('Account').orderBy(orderByField, orderByField, orderByField, orderByField);
+        Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name, Name, Name', accountQuery.build());
+
+        accountQuery = Query.of('Account').orderBy(orderByField, orderByField, orderByField, orderByField, orderByField);
+        Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name, Name, Name, Name', accountQuery.build());
+
+        accountQuery = Query.of('Account').orderBy(orderByField, orderByField, orderByField, orderByField, orderByField,
+            orderByField);
+        Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name, Name, Name, Name, Name', accountQuery.build());
+
+        accountQuery = Query.of('Account').orderBy(orderByField, orderByField, orderByField, orderByField, orderByField,
+            orderByField, orderByField);
+        Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name, Name, Name, Name, Name, Name', accountQuery.build());
+
+        accountQuery = Query.of('Account').orderBy(orderByField, orderByField, orderByField, orderByField, orderByField,
+            orderByField, orderByField, orderByField);
+        Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name, Name, Name, Name, Name, Name, Name', accountQuery.build());
+
+        accountQuery = Query.of('Account').orderBy(orderByField, orderByField, orderByField, orderByField, orderByField,
+            orderByField, orderByField, orderByField, orderByField);
+        Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name, Name, Name, Name, Name, Name, Name, Name', accountQuery.build());
+
+        accountQuery = Query.of('Account').orderBy(orderByField, orderByField, orderByField, orderByField, orderByField,
+            orderByField, orderByField, orderByField, orderByField, orderByField);
+        Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name, Name, Name, Name, Name, Name, Name, Name, Name', accountQuery.build());
+
+        accountQuery = Query.of('Account').orderBy(new List<Query.OrderByField>{ orderByField, orderByField, orderByField });
+        Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name, Name', accountQuery.build());
+
+        // Function
+        accountQuery = Query.of('Account').orderBy(orderBy(MAX('Name')));
+        Assert.areEqual('SELECT Id FROM Account ORDER BY MAX(Name)', accountQuery.build());
+
+        // Mixing
+        accountQuery = Query.of('Account').orderBy(new List<OrderByField>{ orderByField, orderBy(MAX('Name')) });
+        Assert.areEqual('SELECT Id FROM Account ORDER BY Name, MAX(Name)', accountQuery.build());
+    }
+
+    @isTest
+    static void testOrderBy_Options() {
+        Query.OrderByField orderByField = orderBy('Name').ascending().nullsFirst();
+        Query accountQuery = Query.of('Account').orderBy(orderByField, orderByField);
+        Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name', accountQuery.build());
+
+        orderByField = orderBy('Name').descending().nullsLast().ascending().nullsFirst();
+        accountQuery = Query.of('Account').orderBy(orderByField, orderByField);
+        Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name', accountQuery.build());
+
+        orderByField = orderBy('Name').descending().nullsLast();
+        accountQuery = Query.of('Account').orderBy(orderByField, orderByField);
+        Assert.areEqual(
+            'SELECT Id FROM Account ORDER BY Name DESC NULLS LAST, Name DESC NULLS LAST',
+            accountQuery.build()
+        );
+
+        orderByField = orderBy('Name').ascending().nullsFirst().descending().nullsLast();
+        accountQuery = Query.of('Account').orderBy(orderByField, orderByField);
+        Assert.areEqual(
+            'SELECT Id FROM Account ORDER BY Name DESC NULLS LAST, Name DESC NULLS LAST',
+            accountQuery.build()
+        );
+    }
+
+    // #endregion
+    // ================
+}

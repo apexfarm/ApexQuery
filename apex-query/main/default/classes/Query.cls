@@ -16,17 +16,16 @@
  */
 
 public virtual class Query implements Querable {
-    public interface Querable extends Orderable {
+    public interface Querable extends Groupable {
+        Integer getCount();
+        Integer getCount(AccessLevel accessLevel);
         List<SObject> run();
-        // List<SObject> run(AccessLevel accessLevel);
-        // Database.QueryLocator getLocator();
-        // Database.QueryLocator getLocator(AccessLevel accessLevel);
-        // Integer getCount();
-        // Integer getCount(AccessLevel accessLevel);
+        List<SObject> run(AccessLevel accessLevel);
+        Database.QueryLocator getLocator();
+        Database.QueryLocator getLocator(AccessLevel accessLevel);
 
-        Query whereBy(Filter whereFilters);
-        // Query groupBy(Filter groupBy);
-        Query havingBy(Filter havingFilters);
+        Query whereBy(Filter whereClause);
+        Query havingBy(Filter havingClause);
 
         Query offset(Integer n);
         Query limitx(Integer n);
@@ -39,7 +38,7 @@ public virtual class Query implements Querable {
     }
 
     public interface Filter {
-        void buildFilter(List<String> fragments, TmpVars tmpVars);
+        void buildSOQL_Filter(List<String> fragments, TmpVars tmpVars);
     }
 
     public interface CompositeFilter extends Filter {
@@ -54,7 +53,7 @@ public virtual class Query implements Querable {
         }
     }
 
-    public class GroupBy {
+    private class GroupBy {
         private List<String> fieldOrFuncs = new List<String>();
         private Boolean rollup { get; set; }
         private Boolean cube { get; set; }
@@ -65,26 +64,26 @@ public virtual class Query implements Querable {
     }
 
     public class TmpVars {
-        Map<String, Object> tmpVars = new Map<String, Object>();
+        Map<String, Object> bindingVars = new Map<String, Object>();
         Integer tmpVarCount = 0;
 
-        public String put(Object var) {
+        private String put(Object var) {
             tmpVarCount++;
             String tmpVar = 'tmpVar' + tmpVarCount;
-            this.tmpVars.put(tmpVar, var);
+            this.bindingVars.put(tmpVar, var);
             return ':' + tmpVar;
         }
     }
 
     private String objectName { get; set; }
-    private List<String> selectFields = new List<String>();
+    private List<Object> selectFields = new List<Object>();
     private Map<String, Query> selectParent = new Map<String, Query>();
     private Map<String, Query> selectChild = new Map<String, Query>();
 
-    private Filter whereFilters;
-    private Filter havingFilters;
-    private GroupBy groupBy = new GroupBy();
-    private List<OrderByField> orderBys = new List<OrderByField>();
+    private Filter whereClause;
+    private Filter havingClause;
+    private GroupBy groupByClause = new GroupBy();
+    private List<OrderByField> orderClause = new List<OrderByField>();
 
     private Integer offset { get; set; }
     private Integer limitx { get; set; }
@@ -106,13 +105,13 @@ public virtual class Query implements Querable {
         this.objectName = objectName;
     }
 
-    public Query whereBy(Filter whereFilters) {
-        this.whereFilters = whereFilters;
+    public Query whereBy(Filter whereClause) {
+        this.whereClause = whereClause;
         return this;
     }
 
-    public Query havingBy(Filter havingFilters) {
-        this.havingFilters = havingFilters;
+    public Query havingBy(Filter havingClause) {
+        this.havingClause = havingClause;
         return this;
     }
 
@@ -151,36 +150,50 @@ public virtual class Query implements Querable {
         return this;
     }
 
+    public Integer getCount() {
+        return getCount(AccessLevel.SYSTEM_MODE);
+    }
+
+    public Integer getCount(AccessLevel accessLevel) {
+        TmpVars tmpVars = new TmpVars();
+        return Database.countQueryWithBinds(this.buildSOQL(tmpVars), tmpVars.bindingVars, accessLevel);
+    }
+
     public List<SObject> run() {
-        String soql = this.buildSOQL();
-        return Database.query(soql);
+        return this.run(AccessLevel.SYSTEM_MODE);
+    }
+
+    public List<SObject> run(AccessLevel accessLevel) {
+        TmpVars tmpVars = new TmpVars();
+        return Database.queryWithBinds(this.buildSOQL(tmpVars), tmpVars.bindingVars, accessLevel);
+    }
+
+    public Database.QueryLocator getLocator() {
+        return this.getLocator(AccessLevel.SYSTEM_MODE);
+    }
+
+    public Database.QueryLocator getLocator(AccessLevel accessLevel) {
+        TmpVars tmpVars = new TmpVars();
+        return Database.getQueryLocatorWithBinds(this.buildSOQL(tmpVars), tmpVars.bindingVars, accessLevel);
     }
 
     // ====================
     // #region SOQL Builder
 
-    public String buildSOQL() {
-        List<String> fragments = new List<String>();
+    public String build() {
         TmpVars tmpVars = new TmpVars();
+        return buildSOQL(tmpVars);
+    }
+
+    private String buildSOQL(TmpVars tmpVars) {
+        List<String> fragments = new List<String>();
         this.buildSOQL(fragments, tmpVars, this.objectName, 0);
         return String.join(fragments, '');
     }
 
-    public void buildSOQL(List<String> fragments, TmpVars tmpVars, String fromName, Integer level) {
+    private void buildSOQL(List<String> fragments, TmpVars tmpVars, String fromName, Integer level) {
         fragments.add('SELECT ');
-        if (this.selectFields.isEmpty()) {
-            fragments.add('Id');
-        } else {
-            Boolean isNotFirst = false;
-            for (String field : this.selectFields) {
-                if (isNotFirst) {
-                    fragments.add(', ');
-                } else {
-                    isNotFirst = true;
-                }
-                fragments.add(field);
-            }
-        }
+        this.buildSOQL_SelectFields(fragments, null);
 
         if (!this.selectParent.isEmpty()) {
             for (String relationshipName : this.selectParent.keySet()) {
@@ -202,23 +215,25 @@ public virtual class Query implements Querable {
         fragments.add(' FROM ');
         fragments.add(fromName);
 
-        if (this.whereFilters != null) {
+        if (this.whereClause != null) {
             fragments.add(' WHERE ');
-            this.whereFilters.buildFilter(fragments, tmpVars);
+            this.whereClause.buildSOQL_Filter(fragments, tmpVars);
         }
 
-        if (!this.groupBy.isEmpty()) {
+        if (!this.groupByClause.isEmpty()) {
             fragments.add(' GROUP BY ');
-            if (this.havingFilters != null) {
-                fragments.add(' HAVING ');
-                this.havingFilters.buildFilter(fragments, tmpVars);
-            }
+            this.buildSOQL_GroupBy(fragments);
         }
 
-        if (!this.orderBys.isEmpty()) {
+        if (this.havingClause != null) {
+            fragments.add(' HAVING ');
+            this.havingClause.buildSOQL_Filter(fragments, tmpVars);
+        }
+
+        if (!this.orderClause.isEmpty()) {
             fragments.add(' ORDER BY ');
             Boolean isNotFirst = false;
-            for (OrderByField field : this.orderBys) {
+            for (OrderByField field : this.orderClause) {
                 if (isNotFirst) {
                     fragments.add(', ');
                 } else {
@@ -258,20 +273,58 @@ public virtual class Query implements Querable {
         }
     }
 
-    public void buildSOQL_SelectParent(List<String> fragments, String parentRelationshipName, Integer level) {
+    private void buildSOQL_GroupBy(List<String> fragments) {
+        Boolean isNotFirst = false;
+        for (String field : this.groupByClause.fieldOrFuncs) {
+            if (isNotFirst) {
+                fragments.add(', ');
+            } else {
+                if (this.groupByClause.rollup == true) {
+                    fragments.add('ROLLUP(');
+                } else if (this.groupByClause.cube == true) {
+                    fragments.add('CUBE(');
+                }
+                isNotFirst = true;
+            }
+            fragments.add(field);
+        }
+        if (this.groupByClause.rollup == true || this.groupByClause.cube == true) {
+            fragments.add(')');
+        }
+    }
+
+    private void buildSOQL_SelectFields(List<String> fragments, String parentRelationshipName) {
         if (this.selectFields.isEmpty()) {
-            fragments.add(', ');
-            fragments.add(parentRelationshipName);
-            fragments.add('.');
-            fragments.add('Id');
-        } else {
-            for (String field : this.selectFields) {
+            if (parentRelationshipName != null) {
                 fragments.add(', ');
                 fragments.add(parentRelationshipName);
                 fragments.add('.');
-                fragments.add(field);
+            }
+            fragments.add('Id');
+        } else {
+            Boolean isNotFirst = parentRelationshipName != null;
+            for (Object field : this.selectFields) {
+                if (isNotFirst) {
+                    fragments.add(', ');
+                } else {
+                    isNotFirst = true;
+                }
+                if (field instanceof FunctionImpl) {
+                    FunctionImpl function = (FunctionImpl) field;
+                    function.buildSOQL_Function(fragments, parentRelationshipName);
+                } else {
+                    if (parentRelationshipName != null) {
+                        fragments.add(parentRelationshipName);
+                        fragments.add('.');
+                    }
+                    fragments.add((String) field);
+                }
             }
         }
+    }
+
+    private void buildSOQL_SelectParent(List<String> fragments, String parentRelationshipName, Integer level) {
+        this.buildSOQL_SelectFields(fragments, parentRelationshipName);
 
         if (level < 5 && !this.selectParent.isEmpty()) {
             for (String relationshipName : this.selectParent.keySet()) {
@@ -304,7 +357,7 @@ public virtual class Query implements Querable {
             return this;
         }
 
-        public virtual void buildFilter(List<String> fragments, TmpVars tmpVars) {
+        public virtual void buildSOQL_Filter(List<String> fragments, TmpVars tmpVars) {
             if (this.filters.isEmpty()) {
                 return;
             }
@@ -317,7 +370,7 @@ public virtual class Query implements Querable {
                 } else {
                     isNotFirst = true;
                 }
-                filter.buildFilter(fragments, tmpVars);
+                filter.buildSOQL_Filter(fragments, tmpVars);
             }
             fragments.add(')');
         }
@@ -328,18 +381,14 @@ public virtual class Query implements Querable {
             super('NOT', new List<Filter>{ filter });
         }
 
-        public override void buildFilter(List<String> fragments, TmpVars tmpVars) {
-            if (this.filters.isEmpty()) {
-                return;
-            }
-
+        public override void buildSOQL_Filter(List<String> fragments, TmpVars tmpVars) {
             Filter filter = this.filters[0];
+            fragments.add(this.operator);
             if (filter instanceof CompositeFilter) {
-                fragments.add('NOT');
-                filter.buildFilter(fragments, tmpVars);
+                filter.buildSOQL_Filter(fragments, tmpVars);
             } else {
-                fragments.add('NOT(');
-                filter.buildFilter(fragments, tmpVars);
+                fragments.add('(');
+                filter.buildSOQL_Filter(fragments, tmpVars);
                 fragments.add(')');
             }
         }
@@ -382,7 +431,7 @@ public virtual class Query implements Querable {
             this.value = value;
         }
 
-        public virtual void buildFilter(List<String> fragments, TmpVars tmpVars) {
+        public virtual void buildSOQL_Filter(List<String> fragments, TmpVars tmpVars) {
             fragments.add(this.fieldOrFunc);
             fragments.add(this.operator);
             if (value == null) {
@@ -400,7 +449,7 @@ public virtual class Query implements Querable {
             super(field, operator, values);
         }
 
-        public override void buildFilter(List<String> fragments, TmpVars tmpVars) {
+        public override void buildSOQL_Filter(List<String> fragments, TmpVars tmpVars) {
             fragments.add(this.fieldOrFunc);
             fragments.add(this.operator);
             fragments.add('(');
@@ -416,6 +465,41 @@ public virtual class Query implements Querable {
             }
             fragments.add(')');
         }
+    }
+
+    private class NotLikeFilter extends ComparisonFilter {
+        private NotLikeFilter(String fieldOrFunc, String value) {
+            super(fieldOrFunc, ' LIKE ', value);
+        }
+
+        public override void buildSOQL_Filter(List<String> fragments, TmpVars tmpVars) {
+            fragments.add('(NOT ');
+            super.buildSOQL_Filter(fragments, tmpVars);
+            fragments.add(')');
+        }
+    }
+
+    private class InQueryFilter extends ComparisonFilter {
+        private InQueryFilter(String field, String operator, Query query) {
+            super(field, operator, query);
+        }
+
+        public override void buildSOQL_Filter(List<String> fragments, TmpVars tmpVars) {
+            fragments.add(String.valueOf(this.fieldOrFunc));
+            fragments.add(this.operator);
+            fragments.add('(');
+            Query subquery = ((Query) this.value);
+            subquery.buildSOQL(fragments, tmpVars, subquery.objectName, 0);
+            fragments.add(')');
+        }
+    }
+
+    public static Filter inx(String field, Query query) {
+        return new InQueryFilter(field, ' IN ', query);
+    }
+
+    public static Filter nin(String field, Query query) {
+        return new InQueryFilter(field, ' NOT IN ', query);
     }
 
     public static Filter eq(String fieldOrFunc, Object value) {
@@ -454,7 +538,7 @@ public virtual class Query implements Querable {
     }
 
     public static Filter nlike(String field, String value) {
-        return notx(likex(field, value));
+        return new NotLikeFilter(field, value);
     }
 
     public static Filter inx(String fieldOrFunc, List<Object> values) {
@@ -480,166 +564,166 @@ public virtual class Query implements Querable {
     // #endregion
     // =========================
 
-    // ==============
-    // #region Select
+    // =====================
+    // #region Select Clause
     public interface Selectable {
-        Query selectFields(String field);
-        Query selectFields(String field1, String field2);
-        Query selectFields(String field1, String field2, String field3);
-        Query selectFields(String field1, String field2, String field3, String field4);
-        Query selectFields(String field1, String field2, String field3, String field4, String field5);
-        Query selectFields(String field1, String field2, String field3, String field4, String field5, String field6);
+        Query selectFields(Object field);
+        Query selectFields(Object field1, Object field2);
+        Query selectFields(Object field1, Object field2, Object field3);
+        Query selectFields(Object field1, Object field2, Object field3, Object field4);
+        Query selectFields(Object field1, Object field2, Object field3, Object field4, Object field5);
+        Query selectFields(Object field1, Object field2, Object field3, Object field4, Object field5, Object field6);
         Query selectFields(
-            String field1,
-            String field2,
-            String field3,
-            String field4,
-            String field5,
-            String field6,
-            String field7
+            Object field1,
+            Object field2,
+            Object field3,
+            Object field4,
+            Object field5,
+            Object field6,
+            Object field7
         );
         Query selectFields(
-            String field1,
-            String field2,
-            String field3,
-            String field4,
-            String field5,
-            String field6,
-            String field7,
-            String field8
+            Object field1,
+            Object field2,
+            Object field3,
+            Object field4,
+            Object field5,
+            Object field6,
+            Object field7,
+            Object field8
         );
         Query selectFields(
-            String field1,
-            String field2,
-            String field3,
-            String field4,
-            String field5,
-            String field6,
-            String field7,
-            String field8,
-            String field9
+            Object field1,
+            Object field2,
+            Object field3,
+            Object field4,
+            Object field5,
+            Object field6,
+            Object field7,
+            Object field8,
+            Object field9
         );
         Query selectFields(
-            String field1,
-            String field2,
-            String field3,
-            String field4,
-            String field5,
-            String field6,
-            String field7,
-            String field8,
-            String field9,
-            String field10
+            Object field1,
+            Object field2,
+            Object field3,
+            Object field4,
+            Object field5,
+            Object field6,
+            Object field7,
+            Object field8,
+            Object field9,
+            Object field10
         );
-        Query selectFields(List<String> fields);
+        Query selectFields(List<Object> fields);
 
         Query selectParent(String relationshipName, Query query);
         Query selectChild(String relationshipName, Query query);
     }
 
-    public Query selectFields(String field) {
+    public Query selectFields(Object field) {
         this.selectFields.add(field);
         return this;
     }
 
-    public Query selectFields(String field1, String field2) {
+    public Query selectFields(Object field1, Object field2) {
         this.selectFields.add(field1);
         this.selectFields.add(field2);
         return this;
     }
 
-    public Query selectFields(String field1, String field2, String field3) {
+    public Query selectFields(Object field1, Object field2, Object field3) {
         this.selectFields.add(field1);
         this.selectFields.add(field2);
         this.selectFields.add(field3);
         return this;
     }
 
-    public Query selectFields(String field1, String field2, String field3, String field4) {
-        this.selectFields.addAll(new List<String>{ field1, field2, field3, field4 });
+    public Query selectFields(Object field1, Object field2, Object field3, Object field4) {
+        this.selectFields.addAll(new List<Object>{ field1, field2, field3, field4 });
         return this;
     }
 
-    public Query selectFields(String field1, String field2, String field3, String field4, String field5) {
-        this.selectFields.addAll(new List<String>{ field1, field2, field3, field4, field5 });
+    public Query selectFields(Object field1, Object field2, Object field3, Object field4, Object field5) {
+        this.selectFields.addAll(new List<Object>{ field1, field2, field3, field4, field5 });
         return this;
     }
 
     public Query selectFields(
-        String field1,
-        String field2,
-        String field3,
-        String field4,
-        String field5,
-        String field6
+        Object field1,
+        Object field2,
+        Object field3,
+        Object field4,
+        Object field5,
+        Object field6
     ) {
-        this.selectFields.addAll(new List<String>{ field1, field2, field3, field4, field5, field6 });
+        this.selectFields.addAll(new List<Object>{ field1, field2, field3, field4, field5, field6 });
         return this;
     }
 
     public Query selectFields(
-        String field1,
-        String field2,
-        String field3,
-        String field4,
-        String field5,
-        String field6,
-        String field7
+        Object field1,
+        Object field2,
+        Object field3,
+        Object field4,
+        Object field5,
+        Object field6,
+        Object field7
     ) {
-        this.selectFields.addAll(new List<String>{ field1, field2, field3, field4, field5, field6, field7 });
+        this.selectFields.addAll(new List<Object>{ field1, field2, field3, field4, field5, field6, field7 });
         return this;
     }
 
     public Query selectFields(
-        String field1,
-        String field2,
-        String field3,
-        String field4,
-        String field5,
-        String field6,
-        String field7,
-        String field8
+        Object field1,
+        Object field2,
+        Object field3,
+        Object field4,
+        Object field5,
+        Object field6,
+        Object field7,
+        Object field8
     ) {
-        this.selectFields.addAll(new List<String>{ field1, field2, field3, field4, field5, field6, field7, field8 });
+        this.selectFields.addAll(new List<Object>{ field1, field2, field3, field4, field5, field6, field7, field8 });
         return this;
     }
 
     public Query selectFields(
-        String field1,
-        String field2,
-        String field3,
-        String field4,
-        String field5,
-        String field6,
-        String field7,
-        String field8,
-        String field9
+        Object field1,
+        Object field2,
+        Object field3,
+        Object field4,
+        Object field5,
+        Object field6,
+        Object field7,
+        Object field8,
+        Object field9
     ) {
         this.selectFields.addAll(
-            new List<String>{ field1, field2, field3, field4, field5, field6, field7, field8, field9 }
+            new List<Object>{ field1, field2, field3, field4, field5, field6, field7, field8, field9 }
         );
         return this;
     }
 
     public Query selectFields(
-        String field1,
-        String field2,
-        String field3,
-        String field4,
-        String field5,
-        String field6,
-        String field7,
-        String field8,
-        String field9,
-        String field10
+        Object field1,
+        Object field2,
+        Object field3,
+        Object field4,
+        Object field5,
+        Object field6,
+        Object field7,
+        Object field8,
+        Object field9,
+        Object field10
     ) {
         this.selectFields.addAll(
-            new List<String>{ field1, field2, field3, field4, field5, field6, field7, field8, field9, field10 }
+            new List<Object>{ field1, field2, field3, field4, field5, field6, field7, field8, field9, field10 }
         );
         return this;
     }
 
-    public Query selectFields(List<String> fields) {
+    public Query selectFields(List<Object> fields) {
         this.selectFields.addAll(fields);
         return this;
     }
@@ -654,10 +738,10 @@ public virtual class Query implements Querable {
         return this;
     }
     // #endregion
-    // ==============
+    // =====================
 
-    // ================
-    // #region Order By
+    // =======================
+    // #region Order By Clause
 
     public interface Orderable extends Selectable {
         Query orderBy(OrderByField field);
@@ -761,25 +845,25 @@ public virtual class Query implements Querable {
     }
 
     public Query orderBy(OrderByField field) {
-        this.orderBys.add(field);
+        this.orderClause.add(field);
         return this;
     }
 
     public Query orderBy(OrderByField field1, OrderByField field2) {
-        this.orderBys.add(field1);
-        this.orderBys.add(field2);
+        this.orderClause.add(field1);
+        this.orderClause.add(field2);
         return this;
     }
 
     public Query orderBy(OrderByField field1, OrderByField field2, OrderByField field3) {
-        this.orderBys.add(field1);
-        this.orderBys.add(field2);
-        this.orderBys.add(field3);
+        this.orderClause.add(field1);
+        this.orderClause.add(field2);
+        this.orderClause.add(field3);
         return this;
     }
 
     public Query orderBy(OrderByField field1, OrderByField field2, OrderByField field3, OrderByField field4) {
-        this.orderBys.addAll(new List<OrderByField>{ field1, field2, field3, field4 });
+        this.orderClause.addAll(new List<OrderByField>{ field1, field2, field3, field4 });
         return this;
     }
 
@@ -790,7 +874,7 @@ public virtual class Query implements Querable {
         OrderByField field4,
         OrderByField field5
     ) {
-        this.orderBys.addAll(new List<OrderByField>{ field1, field2, field3, field4, field5 });
+        this.orderClause.addAll(new List<OrderByField>{ field1, field2, field3, field4, field5 });
         return this;
     }
 
@@ -802,7 +886,7 @@ public virtual class Query implements Querable {
         OrderByField field5,
         OrderByField field6
     ) {
-        this.orderBys.addAll(new List<OrderByField>{ field1, field2, field3, field4, field5, field6 });
+        this.orderClause.addAll(new List<OrderByField>{ field1, field2, field3, field4, field5, field6 });
         return this;
     }
 
@@ -815,7 +899,7 @@ public virtual class Query implements Querable {
         OrderByField field6,
         OrderByField field7
     ) {
-        this.orderBys.addAll(new List<OrderByField>{ field1, field2, field3, field4, field5, field6, field7 });
+        this.orderClause.addAll(new List<OrderByField>{ field1, field2, field3, field4, field5, field6, field7 });
         return this;
     }
 
@@ -829,7 +913,9 @@ public virtual class Query implements Querable {
         OrderByField field7,
         OrderByField field8
     ) {
-        this.orderBys.addAll(new List<OrderByField>{ field1, field2, field3, field4, field5, field6, field7, field8 });
+        this.orderClause.addAll(
+            new List<OrderByField>{ field1, field2, field3, field4, field5, field6, field7, field8 }
+        );
         return this;
     }
 
@@ -844,7 +930,7 @@ public virtual class Query implements Querable {
         OrderByField field8,
         OrderByField field9
     ) {
-        this.orderBys.addAll(
+        this.orderClause.addAll(
             new List<OrderByField>{ field1, field2, field3, field4, field5, field6, field7, field8, field9 }
         );
         return this;
@@ -862,29 +948,301 @@ public virtual class Query implements Querable {
         OrderByField field9,
         OrderByField field10
     ) {
-        this.orderBys.addAll(
+        this.orderClause.addAll(
             new List<OrderByField>{ field1, field2, field3, field4, field5, field6, field7, field8, field9, field10 }
         );
         return this;
     }
 
     public Query orderBy(List<OrderByField> fields) {
-        this.orderBys.addAll(fields);
+        this.orderClause.addAll(fields);
         return this;
     }
 
     // #endregion
-    // ================
+    // =======================
 
-    // ==========================
-    // #region Group By Functions
-    public static String GROUPING(String field) {
-        return 'GROUPING(' + field + ')';
+    // =======================
+    // #region Group By Clause
+    public interface Groupable extends Orderable {
+        Query rollup();
+        Query cube();
+
+        Query groupBy(String field);
+        Query groupBy(String field1, String field2);
+        Query groupBy(String field1, String field2, String field3);
+        Query groupBy(String field1, String field2, String field3, String field4);
+        Query groupBy(String field1, String field2, String field3, String field4, String field5);
+        Query groupBy(String field1, String field2, String field3, String field4, String field5, String field6);
+        Query groupBy(
+            String field1,
+            String field2,
+            String field3,
+            String field4,
+            String field5,
+            String field6,
+            String field7
+        );
+        Query groupBy(
+            String field1,
+            String field2,
+            String field3,
+            String field4,
+            String field5,
+            String field6,
+            String field7,
+            String field8
+        );
+        Query groupBy(
+            String field1,
+            String field2,
+            String field3,
+            String field4,
+            String field5,
+            String field6,
+            String field7,
+            String field8,
+            String field9
+        );
+        Query groupBy(
+            String field1,
+            String field2,
+            String field3,
+            String field4,
+            String field5,
+            String field6,
+            String field7,
+            String field8,
+            String field9,
+            String field10
+        );
+        Query groupBy(List<String> fields);
     }
 
-    public static String GROUPING(String field, String alias) {
-        return 'GROUPING(' + field + ') ' + alias;
+    public Query rollup() {
+        this.groupByClause.rollup = true;
+        return this;
     }
+
+    public Query cube() {
+        this.groupByClause.cube = true;
+        return this;
+    }
+
+    public Query groupBy(String field) {
+        this.groupByClause.fieldOrFuncs.add(field);
+        return this;
+    }
+
+    public Query groupBy(String field1, String field2) {
+        this.groupByClause.fieldOrFuncs.add(field1);
+        this.groupByClause.fieldOrFuncs.add(field2);
+        return this;
+    }
+
+    public Query groupBy(String field1, String field2, String field3) {
+        this.groupByClause.fieldOrFuncs.add(field1);
+        this.groupByClause.fieldOrFuncs.add(field2);
+        this.groupByClause.fieldOrFuncs.add(field3);
+        return this;
+    }
+
+    public Query groupBy(String field1, String field2, String field3, String field4) {
+        this.groupByClause.fieldOrFuncs.addAll(new List<String>{ field1, field2, field3, field4 });
+        return this;
+    }
+
+    public Query groupBy(String field1, String field2, String field3, String field4, String field5) {
+        this.groupByClause.fieldOrFuncs.addAll(new List<String>{ field1, field2, field3, field4, field5 });
+        return this;
+    }
+
+    public Query groupBy(String field1, String field2, String field3, String field4, String field5, String field6) {
+        this.groupByClause.fieldOrFuncs.addAll(new List<String>{ field1, field2, field3, field4, field5, field6 });
+        return this;
+    }
+
+    public Query groupBy(
+        String field1,
+        String field2,
+        String field3,
+        String field4,
+        String field5,
+        String field6,
+        String field7
+    ) {
+        this.groupByClause.fieldOrFuncs.addAll(
+            new List<String>{ field1, field2, field3, field4, field5, field6, field7 }
+        );
+        return this;
+    }
+
+    public Query groupBy(
+        String field1,
+        String field2,
+        String field3,
+        String field4,
+        String field5,
+        String field6,
+        String field7,
+        String field8
+    ) {
+        this.groupByClause.fieldOrFuncs.addAll(
+            new List<String>{ field1, field2, field3, field4, field5, field6, field7, field8 }
+        );
+        return this;
+    }
+
+    public Query groupBy(
+        String field1,
+        String field2,
+        String field3,
+        String field4,
+        String field5,
+        String field6,
+        String field7,
+        String field8,
+        String field9
+    ) {
+        this.groupByClause.fieldOrFuncs.addAll(
+            new List<String>{ field1, field2, field3, field4, field5, field6, field7, field8, field9 }
+        );
+        return this;
+    }
+
+    public Query groupBy(
+        String field1,
+        String field2,
+        String field3,
+        String field4,
+        String field5,
+        String field6,
+        String field7,
+        String field8,
+        String field9,
+        String field10
+    ) {
+        this.groupByClause.fieldOrFuncs.addAll(
+            new List<String>{ field1, field2, field3, field4, field5, field6, field7, field8, field9, field10 }
+        );
+        return this;
+    }
+
+    public Query groupBy(List<String> fields) {
+        this.groupByClause.fieldOrFuncs.addAll(fields);
+        return this;
+    }
+
+    // #endregion
+    // =======================
+
+    // =======================
+    // #region SELECT Function
+    public interface Function {
+        void buildSOQL_Function(List<String> fragments, String parentRelationshipName);
+    }
+
+    public interface SelectFunction extends Function {
+    }
+
+    public interface CurrencyFunction extends SelectFunction {
+    }
+
+    public virtual class FunctionImpl implements Function {
+        private String function { get; set; }
+        private Object fieldOrFunc { get; set; }
+        private String alias { get; set; }
+
+        private FunctionImpl(String function, Object fieldOrFunc, String alias) {
+            this.function = function;
+            this.fieldOrFunc = fieldOrFunc;
+            this.alias = alias;
+        }
+
+        public void buildSOQL_Function(List<String> fragments, String parentRelationshipName) {
+            fragments.add(this.function);
+            fragments.add('(');
+            if (this.fieldOrFunc instanceof Function) {
+                ((Function) this.fieldOrFunc).buildSOQL_Function(fragments, parentRelationshipName);
+            } else {
+                if (parentRelationshipName != null) {
+                    fragments.add(parentRelationshipName);
+                    fragments.add('.');
+                }
+                fragments.add((String) this.fieldOrFunc);
+            }
+            fragments.add(')');
+            if (this.alias != null) {
+                fragments.add(' AS ');
+                fragments.add(this.alias);
+            }
+        }
+    }
+
+    public class SelectFunctionImpl extends FunctionImpl implements SelectFunction {
+        private SelectFunctionImpl(String function, String fieldOrFunc, String alias) {
+            super(function, fieldOrFunc, alias);
+        }
+
+        private SelectFunctionImpl(String function, CurrencyFunction fieldOrFunc, String alias) {
+            super(function, fieldOrFunc, alias);
+        }
+    }
+
+    public class CurrencyFunctionImpl extends FunctionImpl implements CurrencyFunction {
+        private CurrencyFunctionImpl(String function, String fieldOrFunc, String alias) {
+            super(function, fieldOrFunc, alias);
+        }
+    }
+
+    public static SelectFunction TO_LABEL(String field) {
+        return new SelectFunctionImpl('toLabel', field, null);
+    }
+
+    public static SelectFunction TO_LABEL(String field, String alias) {
+        return new SelectFunctionImpl('toLabel', field, alias);
+    }
+
+    public static SelectFunction FORMAT(String field) {
+        return new SelectFunctionImpl('FORMAT', field, null);
+    }
+
+    public static SelectFunction FORMAT(String field, String alias) {
+        return new SelectFunctionImpl('FORMAT', field, alias);
+    }
+
+    public static SelectFunction FORMAT(CurrencyFunction field) {
+        return new SelectFunctionImpl('FORMAT', field, null);
+    }
+
+    public static SelectFunction FORMAT(CurrencyFunction field, String alias) {
+        return new SelectFunctionImpl('FORMAT', field, alias);
+    }
+
+    public static CurrencyFunction CONVERT_CURRENCY(String field) {
+        return new CurrencyFunctionImpl('convertCurrency', field, null);
+    }
+
+    public static CurrencyFunction CONVERT_CURRENCY(String field, String alias) {
+        return new CurrencyFunctionImpl('convertCurrency', field, alias);
+    }
+
+    public static String DISTANCE(String field, Location geo, string unit) {
+        return 'DISTANCE(' +
+            String.valueOf(field) +
+            ', GEOLOCATION(' +
+            geo.latitude +
+            ', ' +
+            geo.longitude +
+            '), \'' +
+            unit +
+            '\')';
+    }
+    // #endregion
+    // =======================
+
+    // ============================
+    // #region Group By Aggregation
 
     public static String COUNT(String field) {
         return 'COUNT(' + field + ')';
@@ -933,39 +1291,24 @@ public virtual class Query implements Querable {
     public static String MIN(String field, String alias) {
         return 'MIN(' + field + ') ' + alias;
     }
+
     // #endregion
-    // ==========================
+    // ============================
 
-    // ========================
-    // #region Utility Function
-    public static String TO_LABEL(String field) {
-        return 'TOLABEL(' + field + ')';
+    // ===============================
+    // #region Group By Dimension
+
+    public static String GROUPING(String field) {
+        return 'GROUPING(' + field + ')';
     }
 
-    public static String FORMAT(String field) {
-        return 'FORMAT(' + field + ')';
+    public static String GROUPING(String field, String alias) {
+        return 'GROUPING(' + field + ') ' + alias;
     }
 
-    public static String CONVERT_CURRENCY(String field) {
-        return 'CONVERTCURRENCY(' + field + ')';
+    public static String CONVERT_TIMEZONE(String field) {
+        return 'convertTimezone(' + field + ')';
     }
-
-    public static String DISTANCE(String field, Location geo, string unit) {
-        return 'DISTANCE(' +
-            String.valueOf(field) +
-            ', GEOLOCATION(' +
-            geo.latitude +
-            ', ' +
-            geo.longitude +
-            '), \'' +
-            unit +
-            '\')';
-    }
-    // #endregion
-    // ========================
-
-    // =======================
-    // #region Date Function
 
     public static String CALENDAR_MONTH(String field) {
         return 'CALENDAR_MONTH(' + field + ')';
@@ -1019,12 +1362,8 @@ public virtual class Query implements Querable {
         return 'WEEK_IN_YEAR(' + field + ')';
     }
 
-    public static String CONVERT_TIMEZONE(String field) {
-        return 'CONVERTTIMEZONE(' + field + ')';
-    }
-
     // #endregion
-    // =======================
+    // ===============================
 
     // ====================
     // #region Date Literal
@@ -1207,607 +1546,6 @@ public virtual class Query implements Querable {
     // #region Currency Literal
     public static Literal CURRENCY(String code, Decimal value) {
         return new Literal(code + value);
-    }
-
-    public static Literal AED(Decimal value) {
-        return new Literal('AED' + value);
-    }
-
-    public static Literal AFN(Decimal value) {
-        return new Literal('AFN' + value);
-    }
-
-    public static Literal ALL(Decimal value) {
-        return new Literal('ALL' + value);
-    }
-
-    public static Literal AMD(Decimal value) {
-        return new Literal('AMD' + value);
-    }
-
-    public static Literal ANG(Decimal value) {
-        return new Literal('ANG' + value);
-    }
-
-    public static Literal AOA(Decimal value) {
-        return new Literal('AOA' + value);
-    }
-
-    public static Literal ARS(Decimal value) {
-        return new Literal('ARS' + value);
-    }
-
-    public static Literal AUD(Decimal value) {
-        return new Literal('AUD' + value);
-    }
-
-    public static Literal AWG(Decimal value) {
-        return new Literal('AWG' + value);
-    }
-
-    public static Literal AZN(Decimal value) {
-        return new Literal('AZN' + value);
-    }
-
-    public static Literal BAM(Decimal value) {
-        return new Literal('BAM' + value);
-    }
-
-    public static Literal BBD(Decimal value) {
-        return new Literal('BBD' + value);
-    }
-
-    public static Literal BDT(Decimal value) {
-        return new Literal('BDT' + value);
-    }
-
-    public static Literal BGN(Decimal value) {
-        return new Literal('BGN' + value);
-    }
-
-    public static Literal BHD(Decimal value) {
-        return new Literal('BHD' + value);
-    }
-
-    public static Literal BIF(Decimal value) {
-        return new Literal('BIF' + value);
-    }
-
-    public static Literal BMD(Decimal value) {
-        return new Literal('BMD' + value);
-    }
-
-    public static Literal BND(Decimal value) {
-        return new Literal('BND' + value);
-    }
-
-    public static Literal BOB(Decimal value) {
-        return new Literal('BOB' + value);
-    }
-
-    public static Literal BRL(Decimal value) {
-        return new Literal('BRL' + value);
-    }
-
-    public static Literal BSD(Decimal value) {
-        return new Literal('BSD' + value);
-    }
-
-    public static Literal BTN(Decimal value) {
-        return new Literal('BTN' + value);
-    }
-
-    public static Literal BWP(Decimal value) {
-        return new Literal('BWP' + value);
-    }
-
-    public static Literal BYN(Decimal value) {
-        return new Literal('BYN' + value);
-    }
-
-    public static Literal BZD(Decimal value) {
-        return new Literal('BZD' + value);
-    }
-
-    public static Literal CAD(Decimal value) {
-        return new Literal('CAD' + value);
-    }
-
-    public static Literal CDF(Decimal value) {
-        return new Literal('CDF' + value);
-    }
-
-    public static Literal CHF(Decimal value) {
-        return new Literal('CHF' + value);
-    }
-
-    public static Literal CLP(Decimal value) {
-        return new Literal('CLP' + value);
-    }
-
-    public static Literal CNY(Decimal value) {
-        return new Literal('CNY' + value);
-    }
-
-    public static Literal COP(Decimal value) {
-        return new Literal('COP' + value);
-    }
-
-    public static Literal CRC(Decimal value) {
-        return new Literal('CRC' + value);
-    }
-
-    public static Literal CSD(Decimal value) {
-        return new Literal('CSD' + value);
-    }
-
-    public static Literal CUP(Decimal value) {
-        return new Literal('CUP' + value);
-    }
-
-    public static Literal CVE(Decimal value) {
-        return new Literal('CVE' + value);
-    }
-
-    public static Literal CZK(Decimal value) {
-        return new Literal('CZK' + value);
-    }
-
-    public static Literal DJF(Decimal value) {
-        return new Literal('DJF' + value);
-    }
-
-    public static Literal DKK(Decimal value) {
-        return new Literal('DKK' + value);
-    }
-
-    public static Literal DOP(Decimal value) {
-        return new Literal('DOP' + value);
-    }
-
-    public static Literal DZD(Decimal value) {
-        return new Literal('DZD' + value);
-    }
-
-    public static Literal EGP(Decimal value) {
-        return new Literal('EGP' + value);
-    }
-
-    public static Literal ERN(Decimal value) {
-        return new Literal('ERN' + value);
-    }
-
-    public static Literal ETB(Decimal value) {
-        return new Literal('ETB' + value);
-    }
-
-    public static Literal EUR(Decimal value) {
-        return new Literal('EUR' + value);
-    }
-
-    public static Literal FJD(Decimal value) {
-        return new Literal('FJD' + value);
-    }
-
-    public static Literal FKP(Decimal value) {
-        return new Literal('FKP' + value);
-    }
-
-    public static Literal GBP(Decimal value) {
-        return new Literal('GBP' + value);
-    }
-
-    public static Literal GEL(Decimal value) {
-        return new Literal('GEL' + value);
-    }
-
-    public static Literal GHS(Decimal value) {
-        return new Literal('GHS' + value);
-    }
-
-    public static Literal GIP(Decimal value) {
-        return new Literal('GIP' + value);
-    }
-
-    public static Literal GMD(Decimal value) {
-        return new Literal('GMD' + value);
-    }
-
-    public static Literal GNF(Decimal value) {
-        return new Literal('GNF' + value);
-    }
-
-    public static Literal GTQ(Decimal value) {
-        return new Literal('GTQ' + value);
-    }
-
-    public static Literal GYD(Decimal value) {
-        return new Literal('GYD' + value);
-    }
-
-    public static Literal HKD(Decimal value) {
-        return new Literal('HKD' + value);
-    }
-
-    public static Literal HNL(Decimal value) {
-        return new Literal('HNL' + value);
-    }
-
-    public static Literal HRK(Decimal value) {
-        return new Literal('HRK' + value);
-    }
-
-    public static Literal HTG(Decimal value) {
-        return new Literal('HTG' + value);
-    }
-
-    public static Literal HUF(Decimal value) {
-        return new Literal('HUF' + value);
-    }
-
-    public static Literal IDR(Decimal value) {
-        return new Literal('IDR' + value);
-    }
-
-    public static Literal ILS(Decimal value) {
-        return new Literal('ILS' + value);
-    }
-
-    public static Literal INR(Decimal value) {
-        return new Literal('INR' + value);
-    }
-
-    public static Literal IQD(Decimal value) {
-        return new Literal('IQD' + value);
-    }
-
-    public static Literal IRR(Decimal value) {
-        return new Literal('IRR' + value);
-    }
-
-    public static Literal ISK(Decimal value) {
-        return new Literal('ISK' + value);
-    }
-
-    public static Literal JMD(Decimal value) {
-        return new Literal('JMD' + value);
-    }
-
-    public static Literal JOD(Decimal value) {
-        return new Literal('JOD' + value);
-    }
-
-    public static Literal JPY(Decimal value) {
-        return new Literal('JPY' + value);
-    }
-
-    public static Literal KES(Decimal value) {
-        return new Literal('KES' + value);
-    }
-
-    public static Literal KGS(Decimal value) {
-        return new Literal('KGS' + value);
-    }
-
-    public static Literal KHR(Decimal value) {
-        return new Literal('KHR' + value);
-    }
-
-    public static Literal KMF(Decimal value) {
-        return new Literal('KMF' + value);
-    }
-
-    public static Literal KPW(Decimal value) {
-        return new Literal('KPW' + value);
-    }
-
-    public static Literal KRW(Decimal value) {
-        return new Literal('KRW' + value);
-    }
-
-    public static Literal KWD(Decimal value) {
-        return new Literal('KWD' + value);
-    }
-
-    public static Literal KYD(Decimal value) {
-        return new Literal('KYD' + value);
-    }
-
-    public static Literal KZT(Decimal value) {
-        return new Literal('KZT' + value);
-    }
-
-    public static Literal LAK(Decimal value) {
-        return new Literal('LAK' + value);
-    }
-
-    public static Literal LBP(Decimal value) {
-        return new Literal('LBP' + value);
-    }
-
-    public static Literal LKR(Decimal value) {
-        return new Literal('LKR' + value);
-    }
-
-    public static Literal LRD(Decimal value) {
-        return new Literal('LRD' + value);
-    }
-
-    public static Literal LYD(Decimal value) {
-        return new Literal('LYD' + value);
-    }
-
-    public static Literal MAD(Decimal value) {
-        return new Literal('MAD' + value);
-    }
-
-    public static Literal MDL(Decimal value) {
-        return new Literal('MDL' + value);
-    }
-
-    public static Literal MGA(Decimal value) {
-        return new Literal('MGA' + value);
-    }
-
-    public static Literal MKD(Decimal value) {
-        return new Literal('MKD' + value);
-    }
-
-    public static Literal MMK(Decimal value) {
-        return new Literal('MMK' + value);
-    }
-
-    public static Literal MOP(Decimal value) {
-        return new Literal('MOP' + value);
-    }
-
-    public static Literal MRU(Decimal value) {
-        return new Literal('MRU' + value);
-    }
-
-    public static Literal MUR(Decimal value) {
-        return new Literal('MUR' + value);
-    }
-
-    public static Literal MWK(Decimal value) {
-        return new Literal('MWK' + value);
-    }
-
-    public static Literal MXN(Decimal value) {
-        return new Literal('MXN' + value);
-    }
-
-    public static Literal MYR(Decimal value) {
-        return new Literal('MYR' + value);
-    }
-
-    public static Literal MZN(Decimal value) {
-        return new Literal('MZN' + value);
-    }
-
-    public static Literal NAD(Decimal value) {
-        return new Literal('NAD' + value);
-    }
-
-    public static Literal NGN(Decimal value) {
-        return new Literal('NGN' + value);
-    }
-
-    public static Literal NIO(Decimal value) {
-        return new Literal('NIO' + value);
-    }
-
-    public static Literal NOK(Decimal value) {
-        return new Literal('NOK' + value);
-    }
-
-    public static Literal NPR(Decimal value) {
-        return new Literal('NPR' + value);
-    }
-
-    public static Literal NZD(Decimal value) {
-        return new Literal('NZD' + value);
-    }
-
-    public static Literal OMR(Decimal value) {
-        return new Literal('OMR' + value);
-    }
-
-    public static Literal PAB(Decimal value) {
-        return new Literal('PAB' + value);
-    }
-
-    public static Literal PEN(Decimal value) {
-        return new Literal('PEN' + value);
-    }
-
-    public static Literal PGK(Decimal value) {
-        return new Literal('PGK' + value);
-    }
-
-    public static Literal PHP(Decimal value) {
-        return new Literal('PHP' + value);
-    }
-
-    public static Literal PKR(Decimal value) {
-        return new Literal('PKR' + value);
-    }
-
-    public static Literal PLN(Decimal value) {
-        return new Literal('PLN' + value);
-    }
-
-    public static Literal PYG(Decimal value) {
-        return new Literal('PYG' + value);
-    }
-
-    public static Literal QAR(Decimal value) {
-        return new Literal('QAR' + value);
-    }
-
-    public static Literal RON(Decimal value) {
-        return new Literal('RON' + value);
-    }
-
-    public static Literal RSD(Decimal value) {
-        return new Literal('RSD' + value);
-    }
-
-    public static Literal RUB(Decimal value) {
-        return new Literal('RUB' + value);
-    }
-
-    public static Literal RWF(Decimal value) {
-        return new Literal('RWF' + value);
-    }
-
-    public static Literal SAR(Decimal value) {
-        return new Literal('SAR' + value);
-    }
-
-    public static Literal SBD(Decimal value) {
-        return new Literal('SBD' + value);
-    }
-
-    public static Literal SCR(Decimal value) {
-        return new Literal('SCR' + value);
-    }
-
-    public static Literal SDG(Decimal value) {
-        return new Literal('SDG' + value);
-    }
-
-    public static Literal SEK(Decimal value) {
-        return new Literal('SEK' + value);
-    }
-
-    public static Literal SGD(Decimal value) {
-        return new Literal('SGD' + value);
-    }
-
-    public static Literal SHP(Decimal value) {
-        return new Literal('SHP' + value);
-    }
-
-    public static Literal SLE(Decimal value) {
-        return new Literal('SLE' + value);
-    }
-
-    public static Literal SLL(Decimal value) {
-        return new Literal('SLL' + value);
-    }
-
-    public static Literal SOS(Decimal value) {
-        return new Literal('SOS' + value);
-    }
-
-    public static Literal SRD(Decimal value) {
-        return new Literal('SRD' + value);
-    }
-
-    public static Literal STN(Decimal value) {
-        return new Literal('STN' + value);
-    }
-
-    public static Literal SYP(Decimal value) {
-        return new Literal('SYP' + value);
-    }
-
-    public static Literal SZL(Decimal value) {
-        return new Literal('SZL' + value);
-    }
-
-    public static Literal THB(Decimal value) {
-        return new Literal('THB' + value);
-    }
-
-    public static Literal TJS(Decimal value) {
-        return new Literal('TJS' + value);
-    }
-
-    public static Literal TND(Decimal value) {
-        return new Literal('TND' + value);
-    }
-
-    public static Literal TOP(Decimal value) {
-        return new Literal('TOP' + value);
-    }
-
-    // !TRY is a keywork
-    // public static Literal TRY(Decimal value) {
-    // new Literal(    return 'TRY' + value);
-    // }
-
-    public static Literal TTD(Decimal value) {
-        return new Literal('TTD' + value);
-    }
-
-    public static Literal TWD(Decimal value) {
-        return new Literal('TWD' + value);
-    }
-
-    public static Literal TZS(Decimal value) {
-        return new Literal('TZS' + value);
-    }
-
-    public static Literal UAH(Decimal value) {
-        return new Literal('UAH' + value);
-    }
-
-    public static Literal UGX(Decimal value) {
-        return new Literal('UGX' + value);
-    }
-
-    public static Literal USD(Decimal value) {
-        return new Literal('USD' + value);
-    }
-
-    public static Literal UYU(Decimal value) {
-        return new Literal('UYU' + value);
-    }
-
-    public static Literal UZS(Decimal value) {
-        return new Literal('UZS' + value);
-    }
-
-    public static Literal VES(Decimal value) {
-        return new Literal('VES' + value);
-    }
-
-    public static Literal VND(Decimal value) {
-        return new Literal('VND' + value);
-    }
-
-    public static Literal VUV(Decimal value) {
-        return new Literal('VUV' + value);
-    }
-
-    public static Literal WST(Decimal value) {
-        return new Literal('WST' + value);
-    }
-
-    public static Literal XAF(Decimal value) {
-        return new Literal('XAF' + value);
-    }
-
-    public static Literal XCD(Decimal value) {
-        return new Literal('XCD' + value);
-    }
-
-    public static Literal XOF(Decimal value) {
-        return new Literal('XOF' + value);
-    }
-
-    public static Literal XPF(Decimal value) {
-        return new Literal('XPF' + value);
-    }
-
-    public static Literal YER(Decimal value) {
-        return new Literal('YER' + value);
-    }
-
-    public static Literal ZAR(Decimal value) {
-        return new Literal('ZAR' + value);
     }
 
     // #endregion
