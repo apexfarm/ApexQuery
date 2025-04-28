@@ -2,14 +2,14 @@ class QueryTest extends Query {
     public void test() {
         // prettier-ignore
         Query parentAccount = Query.of('Account')
-            .selectFields('Name', FORMAT(CONVERT_CURRENCY('AnnualRevenue')), 'BillingState')
-            .selectParent('Parent', Query.of('Account').selectFields('Name', 'AnnualRevenue', 'BillingState'));
+            .selectBy('Name', format(convertCurrency('AnnualRevenue')), 'BillingState')
+            .selectParent('Parent', Query.of('Account').selectBy('Name', 'AnnualRevenue', 'BillingState'));
 
         // prettier-ignore
         Query q = Query.of('Account')
-            .selectFields('Name', CONVERT_CURRENCY('AnnualRevenue'), 'BillingState')
+            .selectBy('Name', convertCurrency('AnnualRevenue'), 'BillingState')
             .selectParent('Parent', parentAccount)
-            .selectChild('Contacts', Query.of('Contact').selectFields('Name'))
+            .selectChild('Contacts', Query.of('Contact').selectBy('Name'))
             .whereBy(orx()
                 .add(andx()
                     .add(gt('AnnualRevenue', CURRENCY('CNY', 1000)))
@@ -23,7 +23,7 @@ class QueryTest extends Query {
                     .add(eq('BillingState', 'Shanghai'))
                 )
             )
-            .groupBy('Name', CALENDAR_MONTH('createdDate'), 'BillingState')
+            .groupBy('Name', calendarMonth('createdDate'), 'BillingState')
             .havingBy(gt(SUM('AnnualRevenue'), CURRENCY('CNY', 1000)))
             .orderBy(orderBy('Name').ascending().nullsLast(), orderBy('AnnualRevenue').descending())
             .limitx(10)

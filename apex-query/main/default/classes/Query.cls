@@ -567,13 +567,13 @@ public virtual class Query implements Querable {
     // =====================
     // #region Select Clause
     public interface Selectable {
-        Query selectFields(Object field);
-        Query selectFields(Object field1, Object field2);
-        Query selectFields(Object field1, Object field2, Object field3);
-        Query selectFields(Object field1, Object field2, Object field3, Object field4);
-        Query selectFields(Object field1, Object field2, Object field3, Object field4, Object field5);
-        Query selectFields(Object field1, Object field2, Object field3, Object field4, Object field5, Object field6);
-        Query selectFields(
+        Query selectBy(Object field);
+        Query selectBy(Object field1, Object field2);
+        Query selectBy(Object field1, Object field2, Object field3);
+        Query selectBy(Object field1, Object field2, Object field3, Object field4);
+        Query selectBy(Object field1, Object field2, Object field3, Object field4, Object field5);
+        Query selectBy(Object field1, Object field2, Object field3, Object field4, Object field5, Object field6);
+        Query selectBy(
             Object field1,
             Object field2,
             Object field3,
@@ -582,7 +582,7 @@ public virtual class Query implements Querable {
             Object field6,
             Object field7
         );
-        Query selectFields(
+        Query selectBy(
             Object field1,
             Object field2,
             Object field3,
@@ -592,7 +592,7 @@ public virtual class Query implements Querable {
             Object field7,
             Object field8
         );
-        Query selectFields(
+        Query selectBy(
             Object field1,
             Object field2,
             Object field3,
@@ -603,7 +603,7 @@ public virtual class Query implements Querable {
             Object field8,
             Object field9
         );
-        Query selectFields(
+        Query selectBy(
             Object field1,
             Object field2,
             Object field3,
@@ -615,53 +615,46 @@ public virtual class Query implements Querable {
             Object field9,
             Object field10
         );
-        Query selectFields(List<Object> fields);
+        Query selectBy(List<Object> fields);
 
         Query selectParent(String relationshipName, Query query);
         Query selectChild(String relationshipName, Query query);
     }
 
-    public Query selectFields(Object field) {
+    public Query selectBy(Object field) {
         this.selectFields.add(field);
         return this;
     }
 
-    public Query selectFields(Object field1, Object field2) {
+    public Query selectBy(Object field1, Object field2) {
         this.selectFields.add(field1);
         this.selectFields.add(field2);
         return this;
     }
 
-    public Query selectFields(Object field1, Object field2, Object field3) {
+    public Query selectBy(Object field1, Object field2, Object field3) {
         this.selectFields.add(field1);
         this.selectFields.add(field2);
         this.selectFields.add(field3);
         return this;
     }
 
-    public Query selectFields(Object field1, Object field2, Object field3, Object field4) {
+    public Query selectBy(Object field1, Object field2, Object field3, Object field4) {
         this.selectFields.addAll(new List<Object>{ field1, field2, field3, field4 });
         return this;
     }
 
-    public Query selectFields(Object field1, Object field2, Object field3, Object field4, Object field5) {
+    public Query selectBy(Object field1, Object field2, Object field3, Object field4, Object field5) {
         this.selectFields.addAll(new List<Object>{ field1, field2, field3, field4, field5 });
         return this;
     }
 
-    public Query selectFields(
-        Object field1,
-        Object field2,
-        Object field3,
-        Object field4,
-        Object field5,
-        Object field6
-    ) {
+    public Query selectBy(Object field1, Object field2, Object field3, Object field4, Object field5, Object field6) {
         this.selectFields.addAll(new List<Object>{ field1, field2, field3, field4, field5, field6 });
         return this;
     }
 
-    public Query selectFields(
+    public Query selectBy(
         Object field1,
         Object field2,
         Object field3,
@@ -674,7 +667,7 @@ public virtual class Query implements Querable {
         return this;
     }
 
-    public Query selectFields(
+    public Query selectBy(
         Object field1,
         Object field2,
         Object field3,
@@ -688,7 +681,7 @@ public virtual class Query implements Querable {
         return this;
     }
 
-    public Query selectFields(
+    public Query selectBy(
         Object field1,
         Object field2,
         Object field3,
@@ -705,7 +698,7 @@ public virtual class Query implements Querable {
         return this;
     }
 
-    public Query selectFields(
+    public Query selectBy(
         Object field1,
         Object field2,
         Object field3,
@@ -723,7 +716,7 @@ public virtual class Query implements Querable {
         return this;
     }
 
-    public Query selectFields(List<Object> fields) {
+    public Query selectBy(List<Object> fields) {
         this.selectFields.addAll(fields);
         return this;
     }
@@ -1195,39 +1188,39 @@ public virtual class Query implements Querable {
         }
     }
 
-    public static SelectFunction TO_LABEL(String field) {
+    public static SelectFunction toLabel(String field) {
         return new SelectFunctionImpl('toLabel', field, null);
     }
 
-    public static SelectFunction TO_LABEL(String field, String alias) {
+    public static SelectFunction toLabel(String field, String alias) {
         return new SelectFunctionImpl('toLabel', field, alias);
     }
 
-    public static SelectFunction FORMAT(String field) {
+    public static SelectFunction format(String field) {
         return new SelectFunctionImpl('FORMAT', field, null);
     }
 
-    public static SelectFunction FORMAT(String field, String alias) {
+    public static SelectFunction format(String field, String alias) {
         return new SelectFunctionImpl('FORMAT', field, alias);
     }
 
-    public static SelectFunction FORMAT(CurrencyFunction field) {
+    public static SelectFunction format(CurrencyFunction field) {
         return new SelectFunctionImpl('FORMAT', field, null);
     }
 
-    public static SelectFunction FORMAT(CurrencyFunction field, String alias) {
+    public static SelectFunction format(CurrencyFunction field, String alias) {
         return new SelectFunctionImpl('FORMAT', field, alias);
     }
 
-    public static CurrencyFunction CONVERT_CURRENCY(String field) {
+    public static CurrencyFunction convertCurrency(String field) {
         return new CurrencyFunctionImpl('convertCurrency', field, null);
     }
 
-    public static CurrencyFunction CONVERT_CURRENCY(String field, String alias) {
+    public static CurrencyFunction convertCurrency(String field, String alias) {
         return new CurrencyFunctionImpl('convertCurrency', field, alias);
     }
 
-    public static String DISTANCE(String field, Location geo, string unit) {
+    public static String distance(String field, Location geo, string unit) {
         return 'DISTANCE(' +
             String.valueOf(field) +
             ', GEOLOCATION(' +
@@ -1244,51 +1237,51 @@ public virtual class Query implements Querable {
     // ============================
     // #region Group By Aggregation
 
-    public static String COUNT(String field) {
+    public static String count(String field) {
         return 'COUNT(' + field + ')';
     }
 
-    public static String COUNT(String field, String alias) {
+    public static String count(String field, String alias) {
         return 'COUNT(' + field + ') ' + alias;
     }
 
-    public static String COUNT_DISTINCT(String field) {
+    public static String countDistinct(String field) {
         return 'COUNT_DISTINCT(' + field + ')';
     }
 
-    public static String COUNT_DISTINCT(String field, String alias) {
+    public static String countDistinct(String field, String alias) {
         return 'COUNT_DISTINCT(' + field + ') ' + alias;
     }
 
-    public static String SUM(String field) {
+    public static String sum(String field) {
         return 'SUM(' + field + ')';
     }
 
-    public static String SUM(String field, String alias) {
+    public static String sum(String field, String alias) {
         return 'SUM(' + field + ') ' + alias;
     }
 
-    public static String AVG(String field) {
+    public static String avg(String field) {
         return 'AVG(' + field + ')';
     }
 
-    public static String AVG(String field, String alias) {
+    public static String avg(String field, String alias) {
         return 'AVG(' + field + ') ' + alias;
     }
 
-    public static String MAX(String field) {
+    public static String max(String field) {
         return 'MAX(' + field + ')';
     }
 
-    public static String MAX(String field, String alias) {
+    public static String max(String field, String alias) {
         return 'MAX(' + field + ') ' + alias;
     }
 
-    public static String MIN(String field) {
+    public static String min(String field) {
         return 'MIN(' + field + ')';
     }
 
-    public static String MIN(String field, String alias) {
+    public static String min(String field, String alias) {
         return 'MIN(' + field + ') ' + alias;
     }
 
@@ -1298,67 +1291,67 @@ public virtual class Query implements Querable {
     // ===============================
     // #region Group By Dimension
 
-    public static String GROUPING(String field) {
+    public static String grouping(String field) {
         return 'GROUPING(' + field + ')';
     }
 
-    public static String GROUPING(String field, String alias) {
+    public static String grouping(String field, String alias) {
         return 'GROUPING(' + field + ') ' + alias;
     }
 
-    public static String CONVERT_TIMEZONE(String field) {
+    public static String convertTimezone(String field) {
         return 'convertTimezone(' + field + ')';
     }
 
-    public static String CALENDAR_MONTH(String field) {
+    public static String calendarMonth(String field) {
         return 'CALENDAR_MONTH(' + field + ')';
     }
 
-    public static String CALENDAR_QUARTER(String field) {
+    public static String calendarQuarter(String field) {
         return 'CALENDAR_QUARTER(' + field + ')';
     }
 
-    public static String CALENDAR_YEAR(String field) {
+    public static String calendarYear(String field) {
         return 'CALENDAR_YEAR(' + field + ')';
     }
 
-    public static String DAY_IN_MONTH(String field) {
+    public static String dayInMonth(String field) {
         return 'DAY_IN_MONTH(' + field + ')';
     }
 
-    public static String DAY_IN_WEEK(String field) {
+    public static String dayInWeek(String field) {
         return 'DAY_IN_WEEK(' + field + ')';
     }
 
-    public static String DAY_IN_YEAR(String field) {
+    public static String dayInYear(String field) {
         return 'DAY_IN_YEAR(' + field + ')';
     }
 
-    public static String DAY_ONLY(String field) {
+    public static String dayOnly(String field) {
         return 'DAY_ONLY(' + field + ')';
     }
 
-    public static String FISCAL_MONTH(String field) {
+    public static String fiscalMonth(String field) {
         return 'FISCAL_MONTH(' + field + ')';
     }
 
-    public static String FISCAL_QUARTER(String field) {
+    public static String fiscalQuarter(String field) {
         return 'FISCAL_QUARTER(' + field + ')';
     }
 
-    public static String FISCAL_YEAR(String field) {
+    public static String fiscalYear(String field) {
         return 'FISCAL_YEAR(' + field + ')';
     }
 
-    public static String HOUR_IN_DAY(String field) {
+    public static String hourInDay(String field) {
         return 'HOUR_IN_DAY(' + field + ')';
     }
 
-    public static String WEEK_IN_MONTH(String field) {
+    public static String weekInMonth(String field) {
         return 'WEEK_IN_MONTH(' + field + ')';
     }
 
-    public static String WEEK_IN_YEAR(String field) {
+    public static String weekInYear(String field) {
         return 'WEEK_IN_YEAR(' + field + ')';
     }
 

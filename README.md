@@ -1,48 +1,50 @@
 # Apex Query
 
-![](https://img.shields.io/badge/version-2.0.0-brightgreen.svg) ![](https://img.shields.io/badge/build-passing-brightgreen.svg) ![](https://img.shields.io/badge/coverage-99%25-brightgreen.svg)
+![](https://img.shields.io/badge/version-3.0.0-brightgreen.svg) ![](https://img.shields.io/badge/build-passing-brightgreen.svg) ![](https://img.shields.io/badge/coverage-99%25-brightgreen.svg)
 
-Using a query builder to build dynamic SOQL gives many advantages:
+A query builder to build dynamic SOQL.
 
-1. **More efficient**: No need to deal with string concatenation, and handsfree from handling binding variable names.
-2. **Less error-prone**: APIs are carefully designed with strong types, cannot pass wrong values.
-
-| Environment           | Installation Link                                                                                                                                         | Version |
-| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
-| Production, Developer | <a target="_blank" href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t2v000007OimYAAS"><img src="docs/images/deploy-button.png"></a> | ver 2.0 |
-| Sandbox               | <a target="_blank" href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t2v000007OimYAAS"><img src="docs/images/deploy-button.png"></a>  | ver 2.0 |
-
-### Online Articles
-
-- [Advantages of Using SOQL Builder in Salesforce](https://medium.com/@jeff.jianfeng.jin/advantages-of-using-soql-builder-in-salesforce-9e82925a74b0) (medium link)
+| Environment           | Installation Link                                            | Version |
+| --------------------- | ------------------------------------------------------------ | ------- |
+| Production, Developer | <a target="_blank" href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t2v000007OimYAAS"><img src="docs/images/deploy-button.png"></a> | ver 3.0 |
+| Sandbox               | <a target="_blank" href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t2v000007OimYAAS"><img src="docs/images/deploy-button.png"></a> | ver 3.0 |
 
 ---
 
-### Release v2.0.0
+### Release v3.0.0
 
-Small changes but they are breaking v1.x. However v1.x will be maintained in a separate branch for bug fixes, in case some projects don't want to upgrade.
+Apologies to ones already adopted v2.0. It can still be an option and no need to upgrade. Here are some backgrounds for developing v3.0:
 
-1. Renamed the following types and methods, so the they are more consistent to their keyword counterparts and easy to remember.
+1. Performance is improved by 30%. This isn't much compared a 7 vs 10 CPU time difference.
+2. Strong type references are reduced, to make the library easier to maintain and use.
+3. Rarely used features are removed, also to make the library easier to maintain.
 
-   - `Query.Selector` -> `Query.SelectBy`
+* **Removed Features**
+  * Removed currency helpers such as `USD(100)`, please use `CURRENCY('USD', 100)` instead.
+  * Removed all methods accepting `SObjectField` as parameters, please use their `String` counterparts.
+  * Removed `TYPEOF` statement, please build it with a long string manually instead.
+  * Removed all features were designed for value objects.
+  * Removed traditional filter composition, i.e. `andx(filter1, filter2)`. But `andx(new List<Filter> { filter1, filter 2})` is preserved.
 
-   - `Query.selector()` -> `Query.selectBy()`
+* **API Changes**:
+  * Normalized functions (i.e. `max()`) to return strings, instead of strong types.
+  * Normalized filters (i.e. `eq()`) to accept objects, instead of strong types.
+  * `Query.of(Account.SobjectType)` => `Query.of('Account')`
+  * `Query.filterBy()` => `Query.whereBy()`
+  * Rename functions with 'camel case' instead of uppercase, literals remains in uppercase. for example:
+    * `CONVERT_CURRENCY()` => `convertCurrency()`
+    * `MAX()` => `max()`
+    * `YESTERDAY()` is still in uppercase.
 
-   - `Query.Orderer` -> `Query.OrderBy`
+* **New Features**:
+  * Parent query chaining (`Query.selectParent()`). 
+  * Child query chaining (`Query.selectChild()`). This is not new but also get enhanced.
 
-   - `Query.orderer()` -> `Query.orderBy()`
-
-   - `Query.Grouper` -> `Query.GroupBy`
-
-   - `Query.grouper()` -> `Query.groupBy()`
-
-2. Deprecated two functions `DISTANCE_IN_KM()` and `DISTANCE_IN_MI()`, but introduced `DISTANCE()`, which is more flexible since units are passed as parameters instead.
 
 ---
 
 ## Table of Contents
 
-- [1. Design Principles](#1-design-principles)
 - [2. Naming Conventions](#2-naming-conventions)
   - [2.1 Naming Readability](#21-naming-readability)
   - [2.2 Naming Confliction](#22-naming-confliction)
@@ -67,63 +69,25 @@ Small changes but they are breaking v1.x. However v1.x will be maintained in a s
   - [7.2 Currency Literals](#72-currency-literals)
 - [8. License](#8-license)
 
-## 1. Design Principles
-
-1. **Highly Compatible**: Support all syntaxes and functions of SOQL, except the following syntaxes as of current state:
-
-   - `USING SCOPE` statement.
-   - `WITH [DATA CATEGORY]` statement.
-
-2. **Highly Composable**: Clauses can be created standalone, then passed around, modified and composed into queries in a later stage.
-
-   ```java
-   Query.SelectBy selectBy = selectBy().add(Account.Id, Account.Name);
-   Query.Filter filter = andx(
-       gt(Account.AnnualRevenue, 2000),
-       lt(Account.AnnualRevenue, 2000));
-   Query.OrderBy orderBy = orderBy().add(Account.CreatedDate).descending().nullsLast();
-
-   List<Account> accounts = (List<Account>) Query.of(Account.SObjecType)
-       .selectBy(selectBy).filterBy(filter).orderBy(orderBy)
-       .run();
-   ```
-
-3. **Value Objects**: Queries and all clauses are value objects, which means different query instances are considered equal when built with same parameters in the same order.
-
-   ```java
-   Assert.areEqual(
-       Query.of(Account.SObjectType).selectBy(Account.Id, Account.Name)),
-       Query.of(Account.SObjectType).selectBy(Account.Id, Account.Name))
-   );
-   ```
-
-4. **Strong Types**: Strong types are enforced when possible, so developers can make less mistakes when construct queries.
-
-   ```java
-   // Example 1: date function can only be compared with an Integer.
-   qt(CALENDAR_MONTH(Contact.Birthdate), 1);   // pass
-   qt(CALENDAR_MONTH(Contact.Birthdate), 'A'); // fail
-   ```
-
 ## 2. Naming Conventions
 
 ### 2.1 Naming Readability
 
 Here are the naming conventions used to increase query readability:
 
-|               | Description                                                                | Naming Convention | Reasoning                                                                                                                                             | Example                                                               |
-| ------------- | -------------------------------------------------------------------------- | ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| **Keywords**  | These are backbone structures of a SOQL.                                   | camelCase         | Keywords should easily remind users to their SOQL counterparts.                                                                                       | `selectBy`, `filterBy`, `groupBy`, `havingBy`, `orderBy`              |
-| **Operators** | These are mainly logical and comparison operators.                         | camelCase         | Operators should be small and short to be operator-like, abbreviation is used when appropriate.                                                       | `eq`, `ne`, `gt`, `gte`, `lt`, `lte`, `inx`, `nin`                    |
-| **Functions** | These are used to perform aggregation, formatting, and date accessing etc. | UPPER_CASE        | This gives best readability, because it can be easily noticed when appearing among many lower case characters of field names, keywords and operators. | `COUNT`, `MAX`, `TO_LABEL`, `FORMAT`, `CALENDAR_MONTH`, `FISCAL_YEAR` |
-| **Literals**  | There are only date and currency literals.                                 | UPPER_CASE        | Those are constant-like values, so static constant variable naming convention is preferred.                                                           | `LAST_90_DAYS()`, `LAST_N_DAYS(30)`, `USD(100)`, `CYN(888)`           |
+|               | Description                                                  | Naming Convention | Reasoning                                                    | Example                                                      |
+| ------------- | ------------------------------------------------------------ | ----------------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| **Keywords**  | These are backbone structures of a SOQL.                     | camelCase         | Keywords should easily remind users to their SOQL counterparts. | `selectBy`, `whereBy`, `groupBy`, `havingBy`, `orderBy`      |
+| **Operators** | These are mainly logical and comparison operators.           | lowercase         | Operators should be small and short to be operator-like, abbreviation is used when appropriate. | `eq`, `ne`, `gt`, `gte`, `lt`, `lte`, `inx`, `nin`           |
+| **Functions** | These are used to perform aggregation, formatting, and date accessing etc. | camelCase         | Camel cases are easy to type.                                | `count`, `max`, `toLabel`, `format`, `calendarMonth`, `fiscalYear` |
+| **Literals**  | There are only date and currency literals.                   | UPPER_CASE        | Those are constant-like values, so static constant variable naming convention is preferred. | `LAST_90_DAYS()`, `LAST_N_DAYS(30)`, `CURRENCY('USD', 100)`  |
 
 ### 2.2 Naming Confliction
 
 Here are the naming conventions to avoid conflictions with existing keywords or operators.
 
-1.  Use `<keyword>By()` format for SOQL keywords, such as `selectBy`, `filterBy`, `groupBy`, `havingBy`, `orderBy`.
-2.  Use `<operator>x()` format for conflicted operators only, such as `orx()`, `andx()`, `inx()`, `likex()`. No need to memorize when to follow this pattern, the IDE will highlight there is a confliction, then you will know its time to add the x suffix.
+1.  Use `<keyword>By()` format for SOQL keywords, such as `selectBy`, `whereBy`, `groupBy`, `havingBy`, `orderBy`.
+2.  Use `<operator>x()` format for conflicted operators only, such as `orx()`, `andx()`, `inx()`, `likex()`.
 
 ## 3. Overview
 

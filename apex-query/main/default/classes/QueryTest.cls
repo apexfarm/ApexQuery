@@ -33,42 +33,42 @@ public with sharing class QueryTest extends Query {
 
     @isTest // prettier-ignore
     static void testSelect_Fields() {
-        Query accountQuery = Query.of('Account').selectFields('Name1');
+        Query accountQuery = Query.of('Account').selectBy('Name1');
         Assert.areEqual('SELECT Name1 FROM Account', accountQuery.build());
 
-        accountQuery = Query.of('Account').selectFields('Name1', 'Name2');
+        accountQuery = Query.of('Account').selectBy('Name1', 'Name2');
         Assert.areEqual('SELECT Name1, Name2 FROM Account', accountQuery.build());
 
-        accountQuery = Query.of('Account').selectFields('Name1', 'Name2', 'Name3');
+        accountQuery = Query.of('Account').selectBy('Name1', 'Name2', 'Name3');
         Assert.areEqual('SELECT Name1, Name2, Name3 FROM Account', accountQuery.build());
 
-        accountQuery = Query.of('Account').selectFields('Name1', 'Name2', 'Name3', 'Name4');
+        accountQuery = Query.of('Account').selectBy('Name1', 'Name2', 'Name3', 'Name4');
         Assert.areEqual('SELECT Name1, Name2, Name3, Name4 FROM Account', accountQuery.build());
 
-        accountQuery = Query.of('Account').selectFields('Name1', 'Name2', 'Name3', 'Name4', 'Name5');
+        accountQuery = Query.of('Account').selectBy('Name1', 'Name2', 'Name3', 'Name4', 'Name5');
         Assert.areEqual('SELECT Name1, Name2, Name3, Name4, Name5 FROM Account', accountQuery.build());
 
-        accountQuery = Query.of('Account').selectFields('Name1', 'Name2', 'Name3', 'Name4', 'Name5', 'Name6');
+        accountQuery = Query.of('Account').selectBy('Name1', 'Name2', 'Name3', 'Name4', 'Name5', 'Name6');
         Assert.areEqual('SELECT Name1, Name2, Name3, Name4, Name5, Name6 FROM Account', accountQuery.build());
 
-        accountQuery = Query.of('Account').selectFields('Name1', 'Name2', 'Name3', 'Name4', 'Name5', 'Name6', 'Name7');
+        accountQuery = Query.of('Account').selectBy('Name1', 'Name2', 'Name3', 'Name4', 'Name5', 'Name6', 'Name7');
         Assert.areEqual('SELECT Name1, Name2, Name3, Name4, Name5, Name6, Name7 FROM Account', accountQuery.build());
 
-        accountQuery = Query.of('Account').selectFields('Name1', 'Name2', 'Name3', 'Name4', 'Name5', 'Name6', 'Name7', 'Name8');
+        accountQuery = Query.of('Account').selectBy('Name1', 'Name2', 'Name3', 'Name4', 'Name5', 'Name6', 'Name7', 'Name8');
         Assert.areEqual('SELECT Name1, Name2, Name3, Name4, Name5, Name6, Name7, Name8 FROM Account', accountQuery.build());
 
-        accountQuery = Query.of('Account').selectFields('Name1', 'Name2', 'Name3', 'Name4', 'Name5', 'Name6', 'Name7', 'Name8', 'Name9');
+        accountQuery = Query.of('Account').selectBy('Name1', 'Name2', 'Name3', 'Name4', 'Name5', 'Name6', 'Name7', 'Name8', 'Name9');
         Assert.areEqual('SELECT Name1, Name2, Name3, Name4, Name5, Name6, Name7, Name8, Name9 FROM Account', accountQuery.build());
 
-        accountQuery = Query.of('Account').selectFields('Name1', 'Name2', 'Name3', 'Name4', 'Name5', 'Name6', 'Name7', 'Name8', 'Name9', 'Name10');
+        accountQuery = Query.of('Account').selectBy('Name1', 'Name2', 'Name3', 'Name4', 'Name5', 'Name6', 'Name7', 'Name8', 'Name9', 'Name10');
         Assert.areEqual('SELECT Name1, Name2, Name3, Name4, Name5, Name6, Name7, Name8, Name9, Name10 FROM Account', accountQuery.build());
 
-        accountQuery = Query.of('Account').selectFields(new List<String> { 'Name1', 'Name2', 'Name3' });
+        accountQuery = Query.of('Account').selectBy(new List<String> { 'Name1', 'Name2', 'Name3' });
         Assert.areEqual('SELECT Name1, Name2, Name3 FROM Account', accountQuery.build());
 
         accountQuery = Query.of('Account')
-            .selectFields(new List<String> { 'Name1', 'Name2', 'Name3' })
-            .selectFields(new List<String> { 'Name4', 'Name5', 'Name6' });
+            .selectBy(new List<String> { 'Name1', 'Name2', 'Name3' })
+            .selectBy(new List<String> { 'Name4', 'Name5', 'Name6' });
         Assert.areEqual('SELECT Name1, Name2, Name3, Name4, Name5, Name6 FROM Account', accountQuery.build());
     }
 
@@ -76,16 +76,16 @@ public with sharing class QueryTest extends Query {
     static void testSelect_Functions() {
         Query accountQuery;
 
-        accountQuery = Query.of('Account').selectFields(TO_LABEL('AccountSource'));
+        accountQuery = Query.of('Account').selectBy(toLabel('AccountSource'));
         Assert.areEqual('SELECT toLabel(AccountSource) FROM Account', accountQuery.build());
 
-        accountQuery = Query.of('Account').selectFields(CONVERT_CURRENCY('AnnualRevenue'));
+        accountQuery = Query.of('Account').selectBy(convertCurrency('AnnualRevenue'));
         Assert.areEqual('SELECT convertCurrency(AnnualRevenue) FROM Account', accountQuery.build());
 
-        accountQuery = Query.of('Account').selectFields(FORMAT('AnnualRevenue'));
+        accountQuery = Query.of('Account').selectBy(format('AnnualRevenue'));
         Assert.areEqual('SELECT FORMAT(AnnualRevenue) FROM Account', accountQuery.build());
 
-        accountQuery = Query.of('Account').selectFields(FORMAT(CONVERT_CURRENCY('AnnualRevenue')));
+        accountQuery = Query.of('Account').selectBy(format(convertCurrency('AnnualRevenue')));
         Assert.areEqual('SELECT FORMAT(convertCurrency(AnnualRevenue)) FROM Account', accountQuery.build());
 
         accountQuery = Query.of('Account')
@@ -96,16 +96,16 @@ public with sharing class QueryTest extends Query {
         );
 
         // with alias
-        accountQuery = Query.of('Account').selectFields(TO_LABEL('AccountSource', 'alias'));
+        accountQuery = Query.of('Account').selectBy(toLabel('AccountSource', 'alias'));
         Assert.areEqual('SELECT toLabel(AccountSource) AS alias FROM Account', accountQuery.build());
 
-        accountQuery = Query.of('Account').selectFields(CONVERT_CURRENCY('AnnualRevenue', 'alias'));
+        accountQuery = Query.of('Account').selectBy(convertCurrency('AnnualRevenue', 'alias'));
         Assert.areEqual('SELECT convertCurrency(AnnualRevenue) AS alias FROM Account', accountQuery.build());
 
-        accountQuery = Query.of('Account').selectFields(FORMAT('AnnualRevenue', 'alias'));
+        accountQuery = Query.of('Account').selectBy(format('AnnualRevenue', 'alias'));
         Assert.areEqual('SELECT FORMAT(AnnualRevenue) AS alias FROM Account', accountQuery.build());
 
-        accountQuery = Query.of('Account').selectFields(FORMAT(CONVERT_CURRENCY('AnnualRevenue'), 'alias'));
+        accountQuery = Query.of('Account').selectBy(format(convertCurrency('AnnualRevenue'), 'alias'));
         Assert.areEqual('SELECT FORMAT(convertCurrency(AnnualRevenue)) AS alias FROM Account', accountQuery.build());
     }
 
@@ -114,15 +114,15 @@ public with sharing class QueryTest extends Query {
         Query grandGrandParentAccountQuery = Query.of('Account');
 
         Query grandParentAccountQuery = Query.of('Account')
-            .selectFields('Name', FORMAT(CONVERT_CURRENCY('AnnualRevenue'), 'alias'), TO_LABEL('Industry'))
+            .selectBy('Name', format(convertCurrency('AnnualRevenue'), 'alias'), toLabel('Industry'))
             .selectParent('Parent', grandGrandParentAccountQuery);
 
         Query parentAccountQuery = Query.of('Account')
-            .selectFields('Name', FORMAT(CONVERT_CURRENCY('AnnualRevenue')), TO_LABEL('Industry'))
+            .selectBy('Name', format(convertCurrency('AnnualRevenue')), toLabel('Industry'))
             .selectParent('Parent', grandParentAccountQuery);
 
         Query accountQuery = Query.of('Account')
-            .selectFields('Name', FORMAT(CONVERT_CURRENCY('AnnualRevenue')), TO_LABEL('Industry'))
+            .selectBy('Name', format(convertCurrency('AnnualRevenue')), toLabel('Industry'))
             .selectParent('Parent', parentAccountQuery);
         Assert.areEqual(
             'SELECT Name, FORMAT(convertCurrency(AnnualRevenue)), toLabel(Industry), ' +
@@ -136,7 +136,7 @@ public with sharing class QueryTest extends Query {
     @isTest
     static void testSelect_Child() {
         Query parentAccountQuery = Query.of('Account')
-            .selectFields('Name', FORMAT(CONVERT_CURRENCY('AnnualRevenue')), TO_LABEL('Industry'));
+            .selectBy('Name', format(convertCurrency('AnnualRevenue')), toLabel('Industry'));
         Query opprotunityQuery = Query.of('Opportunity').selectParent('Account', parentAccountQuery);
         Query contactQuery = Query.of('Contact').selectChild('Opportunities', opprotunityQuery);
 
@@ -298,68 +298,68 @@ public with sharing class QueryTest extends Query {
         );
 
         // param1 are AggregateFunction
-        filter = eq(MAX('BillingCountry'), 'China');
+        filter = eq(max('BillingCountry'), 'China');
         Assert.areEqual(
             'SELECT Id FROM Account HAVING MAX(BillingCountry) = :tmpVar1',
             Query.of('Account').havingBy(filter).build()
         );
 
-        filter = eq(MAX('BillingCountry'), true);
+        filter = eq(max('BillingCountry'), true);
         Assert.areEqual(
             'SELECT Id FROM Account HAVING MAX(BillingCountry) = :tmpVar1',
             Query.of('Account').havingBy(filter).build()
         );
 
-        filter = eq(MAX('BillingCountry'), 123.456);
+        filter = eq(max('BillingCountry'), 123.456);
         Assert.areEqual(
             'SELECT Id FROM Account HAVING MAX(BillingCountry) = :tmpVar1',
             Query.of('Account').havingBy(filter).build()
         );
 
-        filter = eq(MAX('BillingCountry'), Datetime.newInstance(2023, 1, 1, 12, 12, 12));
+        filter = eq(max('BillingCountry'), Datetime.newInstance(2023, 1, 1, 12, 12, 12));
         Assert.areEqual(
             'SELECT Id FROM Account HAVING MAX(BillingCountry) = :tmpVar1',
             Query.of('Account').havingBy(filter).build()
         );
 
-        filter = eq(MAX('BillingCountry'), Date.newInstance(2023, 1, 1));
+        filter = eq(max('BillingCountry'), Date.newInstance(2023, 1, 1));
         Assert.areEqual(
             'SELECT Id FROM Account HAVING MAX(BillingCountry) = :tmpVar1',
             Query.of('Account').havingBy(filter).build()
         );
 
-        filter = eq(MAX('BillingCountry'), Time.newInstance(12, 12, 12, 12));
+        filter = eq(max('BillingCountry'), Time.newInstance(12, 12, 12, 12));
         Assert.areEqual(
             'SELECT Id FROM Account HAVING MAX(BillingCountry) = :tmpVar1',
             Query.of('Account').havingBy(filter).build()
         );
 
-        filter = eq(MAX('BillingCountry'), LAST_N_DAYS(2));
+        filter = eq(max('BillingCountry'), LAST_N_DAYS(2));
         Assert.areEqual(
             'SELECT Id FROM Account HAVING MAX(BillingCountry) = LAST_N_DAYS:2',
             Query.of('Account').havingBy(filter).build()
         );
 
-        filter = eq(MAX('BillingCountry'), CURRENCY('CNY', 2000));
+        filter = eq(max('BillingCountry'), CURRENCY('CNY', 2000));
         Assert.areEqual(
             'SELECT Id FROM Account HAVING MAX(BillingCountry) = CNY2000',
             Query.of('Account').havingBy(filter).build()
         );
 
-        filter = eqNull(MAX('BillingCountry'));
+        filter = eqNull(max('BillingCountry'));
         Assert.areEqual(
             'SELECT Id FROM Account HAVING MAX(BillingCountry) = NULL',
             Query.of('Account').havingBy(filter).build()
         );
 
         // param1 are others
-        filter = eq(DISTANCE('ShippingAddress', Location.newInstance(37.775001, -122.41801), 'km'), 12.3);
+        filter = eq(distance('ShippingAddress', Location.newInstance(37.775001, -122.41801), 'km'), 12.3);
         Assert.areEqual(
             'SELECT Id FROM Account WHERE DISTANCE(ShippingAddress, GEOLOCATION(37.775001, -122.41801), \'km\') = :tmpVar1',
             Query.of('Account').whereBy(filter).build()
         );
 
-        filter = eq(CALENDAR_MONTH('CreatedDate'), 2);
+        filter = eq(calendarMonth('CreatedDate'), 2);
         Assert.areEqual(
             'SELECT Id FROM Account WHERE CALENDAR_MONTH(CreatedDate) = :tmpVar1',
             Query.of('Account').whereBy(filter).build()
@@ -422,20 +422,20 @@ public with sharing class QueryTest extends Query {
         );
 
         // param1 are AggregateFunction
-        filter = between(MAX('BillingCountry'), 'China', 'China');
+        filter = between(max('BillingCountry'), 'China', 'China');
         Assert.areEqual(
             'SELECT Id FROM Account HAVING (MAX(BillingCountry) >= :tmpVar1 AND MAX(BillingCountry) <= :tmpVar2)',
             Query.of('Account').havingBy(filter).build()
         );
 
-        filter = between(MAX('BillingCountry'), 123.456, 123.456);
+        filter = between(max('BillingCountry'), 123.456, 123.456);
         Assert.areEqual(
             'SELECT Id FROM Account HAVING (MAX(BillingCountry) >= :tmpVar1 AND MAX(BillingCountry) <= :tmpVar2)',
             Query.of('Account').havingBy(filter).build()
         );
 
         filter = between(
-            MAX('BillingCountry'),
+            max('BillingCountry'),
             Datetime.newInstance(2023, 1, 1, 12, 12, 12),
             Datetime.newInstance(2023, 1, 1, 12, 12, 12)
         );
@@ -444,14 +444,14 @@ public with sharing class QueryTest extends Query {
             Query.of('Account').havingBy(filter).build()
         );
 
-        filter = between(MAX('BillingCountry'), Date.newInstance(2023, 1, 1), Date.newInstance(2023, 1, 1));
+        filter = between(max('BillingCountry'), Date.newInstance(2023, 1, 1), Date.newInstance(2023, 1, 1));
         Assert.areEqual(
             'SELECT Id FROM Account HAVING (MAX(BillingCountry) >= :tmpVar1 AND MAX(BillingCountry) <= :tmpVar2)',
             Query.of('Account').havingBy(filter).build()
         );
 
         filter = between(
-            MAX('BillingCountry'),
+            max('BillingCountry'),
             Time.newInstance(12, 12, 12, 12),
             Time.newInstance(12, 12, 12, 12)
         );
@@ -460,13 +460,13 @@ public with sharing class QueryTest extends Query {
             Query.of('Account').havingBy(filter).build()
         );
 
-        filter = between(MAX('BillingCountry'), LAST_N_DAYS(2), LAST_N_DAYS(2));
+        filter = between(max('BillingCountry'), LAST_N_DAYS(2), LAST_N_DAYS(2));
         Assert.areEqual(
             'SELECT Id FROM Account HAVING (MAX(BillingCountry) >= LAST_N_DAYS:2 AND MAX(BillingCountry) <= LAST_N_DAYS:2)',
             Query.of('Account').havingBy(filter).build()
         );
 
-        filter = between(MAX('BillingCountry'), CURRENCY('CNY', 2000), CURRENCY('CNY', 2000));
+        filter = between(max('BillingCountry'), CURRENCY('CNY', 2000), CURRENCY('CNY', 2000));
         Assert.areEqual(
             'SELECT Id FROM Account HAVING (MAX(BillingCountry) >= CNY2000 AND MAX(BillingCountry) <= CNY2000)',
             Query.of('Account').havingBy(filter).build()
@@ -483,7 +483,7 @@ public with sharing class QueryTest extends Query {
             Query.of('Account').whereBy(filter).build()
         );
 
-        filter = between(CALENDAR_MONTH('CreatedDate'), 2, 2);
+        filter = between(calendarMonth('CreatedDate'), 2, 2);
         Assert.areEqual(
             'SELECT Id FROM Account WHERE (CALENDAR_MONTH(CreatedDate) >= :tmpVar1 AND CALENDAR_MONTH(CreatedDate) <= :tmpVar2)',
             Query.of('Account').whereBy(filter).build()
@@ -511,7 +511,7 @@ public with sharing class QueryTest extends Query {
             Query.of('Account').whereBy(filter).build()
         );
 
-        filter = likex(MAX('BillingCountry'), '%China%');
+        filter = likex(max('BillingCountry'), '%China%');
         Assert.areEqual(
             'SELECT Id FROM Account HAVING MAX(BillingCountry) LIKE :tmpVar1',
             Query.of('Account').havingBy(filter).build()
@@ -535,7 +535,7 @@ public with sharing class QueryTest extends Query {
             Query.of('Account').whereBy(filter).build()
         );
 
-        filter = nlike(MAX('BillingCountry'), '%China%');
+        filter = nlike(max('BillingCountry'), '%China%');
         Assert.areEqual(
             'SELECT Id FROM Account HAVING (NOT MAX(BillingCountry) LIKE :tmpVar1)',
             Query.of('Account').havingBy(filter).build()
@@ -640,7 +640,7 @@ public with sharing class QueryTest extends Query {
         //     Query.of('Account').whereBy(filter).build()
         // );
 
-        Query contactQuery = Query.of('Contact').selectFields('AccountId');
+        Query contactQuery = Query.of('Contact').selectBy('AccountId');
         filter = inx('Id', contactQuery);
         Assert.areEqual(
             'SELECT Id FROM Account WHERE Id IN (SELECT AccountId FROM Contact)',
@@ -656,22 +656,22 @@ public with sharing class QueryTest extends Query {
     @isTest // prettier-ignore
     static void testGroupBy_Measure() {
         Query accountQuery;
-        accountQuery = Query.of('Account').selectFields(COUNT('Name'), COUNT('Name', 'alias'));
+        accountQuery = Query.of('Account').selectBy(count('Name'), count('Name', 'alias'));
         Assert.areEqual('SELECT COUNT(Name), COUNT(Name) alias FROM Account', accountQuery.build());
 
-        accountQuery = Query.of('Account').selectFields(COUNT_DISTINCT('Name'), COUNT_DISTINCT('Name', 'alias'));
+        accountQuery = Query.of('Account').selectBy(countDistinct('Name'), countDistinct('Name', 'alias'));
         Assert.areEqual('SELECT COUNT_DISTINCT(Name), COUNT_DISTINCT(Name) alias FROM Account', accountQuery.build());
 
-        accountQuery = Query.of('Account').selectFields(SUM('Name'), SUM('Name', 'alias'));
+        accountQuery = Query.of('Account').selectBy(sum('Name'), sum('Name', 'alias'));
         Assert.areEqual('SELECT SUM(Name), SUM(Name) alias FROM Account', accountQuery.build());
 
-        accountQuery = Query.of('Account').selectFields(AVG('Name'), AVG('Name', 'alias'));
+        accountQuery = Query.of('Account').selectBy(avg('Name'), avg('Name', 'alias'));
         Assert.areEqual('SELECT AVG(Name), AVG(Name) alias FROM Account', accountQuery.build());
 
-        accountQuery = Query.of('Account').selectFields(MAX('Name'), MAX('Name', 'alias'));
+        accountQuery = Query.of('Account').selectBy(max('Name'), max('Name', 'alias'));
         Assert.areEqual('SELECT MAX(Name), MAX(Name) alias FROM Account', accountQuery.build());
 
-        accountQuery = Query.of('Account').selectFields(MIN('Name'), MIN('Name', 'alias'));
+        accountQuery = Query.of('Account').selectBy(min('Name'), min('Name', 'alias'));
         Assert.areEqual('SELECT MIN(Name), MIN(Name) alias FROM Account', accountQuery.build());
     }
 
@@ -679,87 +679,87 @@ public with sharing class QueryTest extends Query {
     static void testGroupBy_Dimention() {
         Query accountQuery;
 
-        accountQuery = Query.of('Account').selectFields(GROUPING('Name'), GROUPING('Name', 'alias'));
+        accountQuery = Query.of('Account').selectBy(grouping('Name'), grouping('Name', 'alias'));
         Assert.areEqual('SELECT GROUPING(Name), GROUPING(Name) alias FROM Account', accountQuery.build());
 
-        accountQuery = Query.of('Account').selectFields(CALENDAR_MONTH('CreatedDate'));
+        accountQuery = Query.of('Account').selectBy(calendarMonth('CreatedDate'));
         Assert.areEqual('SELECT CALENDAR_MONTH(CreatedDate) FROM Account', accountQuery.build());
 
-        accountQuery = Query.of('Account').selectFields(CALENDAR_QUARTER('CreatedDate'));
+        accountQuery = Query.of('Account').selectBy(calendarQuarter('CreatedDate'));
         Assert.areEqual('SELECT CALENDAR_QUARTER(CreatedDate) FROM Account', accountQuery.build());
 
-        accountQuery = Query.of('Account').selectFields(CALENDAR_YEAR('CreatedDate'));
+        accountQuery = Query.of('Account').selectBy(calendarYear('CreatedDate'));
         Assert.areEqual('SELECT CALENDAR_YEAR(CreatedDate) FROM Account', accountQuery.build());
 
-        accountQuery = Query.of('Account').selectFields(DAY_IN_MONTH('CreatedDate'));
+        accountQuery = Query.of('Account').selectBy(dayInMonth('CreatedDate'));
         Assert.areEqual('SELECT DAY_IN_MONTH(CreatedDate) FROM Account', accountQuery.build());
 
-        accountQuery = Query.of('Account').selectFields(DAY_IN_WEEK('CreatedDate'));
+        accountQuery = Query.of('Account').selectBy(dayInWeek('CreatedDate'));
         Assert.areEqual('SELECT DAY_IN_WEEK(CreatedDate) FROM Account', accountQuery.build());
 
-        accountQuery = Query.of('Account').selectFields(DAY_IN_YEAR('CreatedDate'));
+        accountQuery = Query.of('Account').selectBy(dayInYear('CreatedDate'));
         Assert.areEqual('SELECT DAY_IN_YEAR(CreatedDate) FROM Account', accountQuery.build());
 
-        accountQuery = Query.of('Account').selectFields(DAY_ONLY('CreatedDate'));
+        accountQuery = Query.of('Account').selectBy(dayOnly('CreatedDate'));
         Assert.areEqual('SELECT DAY_ONLY(CreatedDate) FROM Account', accountQuery.build());
 
-        accountQuery = Query.of('Account').selectFields(FISCAL_MONTH('CreatedDate'));
+        accountQuery = Query.of('Account').selectBy(fiscalMonth('CreatedDate'));
         Assert.areEqual('SELECT FISCAL_MONTH(CreatedDate) FROM Account', accountQuery.build());
 
-        accountQuery = Query.of('Account').selectFields(FISCAL_QUARTER('CreatedDate'));
+        accountQuery = Query.of('Account').selectBy(fiscalQuarter('CreatedDate'));
         Assert.areEqual('SELECT FISCAL_QUARTER(CreatedDate) FROM Account', accountQuery.build());
 
-        accountQuery = Query.of('Account').selectFields(FISCAL_YEAR('CreatedDate'));
+        accountQuery = Query.of('Account').selectBy(fiscalYear('CreatedDate'));
         Assert.areEqual('SELECT FISCAL_YEAR(CreatedDate) FROM Account', accountQuery.build());
 
-        accountQuery = Query.of('Account').selectFields(HOUR_IN_DAY('CreatedDate'));
+        accountQuery = Query.of('Account').selectBy(hourInDay('CreatedDate'));
         Assert.areEqual('SELECT HOUR_IN_DAY(CreatedDate) FROM Account', accountQuery.build());
 
-        accountQuery = Query.of('Account').selectFields(WEEK_IN_MONTH('CreatedDate'));
+        accountQuery = Query.of('Account').selectBy(weekInMonth('CreatedDate'));
         Assert.areEqual('SELECT WEEK_IN_MONTH(CreatedDate) FROM Account', accountQuery.build());
 
-        accountQuery = Query.of('Account').selectFields(WEEK_IN_YEAR('CreatedDate'));
+        accountQuery = Query.of('Account').selectBy(weekInYear('CreatedDate'));
         Assert.areEqual('SELECT WEEK_IN_YEAR(CreatedDate) FROM Account', accountQuery.build());
 
 
-        // CONVERT_TIMEZONE
-        accountQuery = Query.of('Account').selectFields(CALENDAR_MONTH(CONVERT_TIMEZONE('CreatedDate')));
+        // convertTimezone
+        accountQuery = Query.of('Account').selectBy(calendarMonth(convertTimezone('CreatedDate')));
         Assert.areEqual('SELECT CALENDAR_MONTH(convertTimezone(CreatedDate)) FROM Account', accountQuery.build());
 
-        accountQuery = Query.of('Account').selectFields(CALENDAR_QUARTER(CONVERT_TIMEZONE('CreatedDate')));
+        accountQuery = Query.of('Account').selectBy(calendarQuarter(convertTimezone('CreatedDate')));
         Assert.areEqual('SELECT CALENDAR_QUARTER(convertTimezone(CreatedDate)) FROM Account', accountQuery.build());
 
-        accountQuery = Query.of('Account').selectFields(CALENDAR_YEAR(CONVERT_TIMEZONE('CreatedDate')));
+        accountQuery = Query.of('Account').selectBy(calendarYear(convertTimezone('CreatedDate')));
         Assert.areEqual('SELECT CALENDAR_YEAR(convertTimezone(CreatedDate)) FROM Account', accountQuery.build());
 
-        accountQuery = Query.of('Account').selectFields(DAY_IN_MONTH(CONVERT_TIMEZONE('CreatedDate')));
+        accountQuery = Query.of('Account').selectBy(dayInMonth(convertTimezone('CreatedDate')));
         Assert.areEqual('SELECT DAY_IN_MONTH(convertTimezone(CreatedDate)) FROM Account', accountQuery.build());
 
-        accountQuery = Query.of('Account').selectFields(DAY_IN_WEEK(CONVERT_TIMEZONE('CreatedDate')));
+        accountQuery = Query.of('Account').selectBy(dayInWeek(convertTimezone('CreatedDate')));
         Assert.areEqual('SELECT DAY_IN_WEEK(convertTimezone(CreatedDate)) FROM Account', accountQuery.build());
 
-        accountQuery = Query.of('Account').selectFields(DAY_IN_YEAR(CONVERT_TIMEZONE('CreatedDate')));
+        accountQuery = Query.of('Account').selectBy(dayInYear(convertTimezone('CreatedDate')));
         Assert.areEqual('SELECT DAY_IN_YEAR(convertTimezone(CreatedDate)) FROM Account', accountQuery.build());
 
-        accountQuery = Query.of('Account').selectFields(DAY_ONLY(CONVERT_TIMEZONE('CreatedDate')));
+        accountQuery = Query.of('Account').selectBy(dayOnly(convertTimezone('CreatedDate')));
         Assert.areEqual('SELECT DAY_ONLY(convertTimezone(CreatedDate)) FROM Account', accountQuery.build());
 
-        accountQuery = Query.of('Account').selectFields(FISCAL_MONTH(CONVERT_TIMEZONE('CreatedDate')));
+        accountQuery = Query.of('Account').selectBy(fiscalMonth(convertTimezone('CreatedDate')));
         Assert.areEqual('SELECT FISCAL_MONTH(convertTimezone(CreatedDate)) FROM Account', accountQuery.build());
 
-        accountQuery = Query.of('Account').selectFields(FISCAL_QUARTER(CONVERT_TIMEZONE('CreatedDate')));
+        accountQuery = Query.of('Account').selectBy(fiscalQuarter(convertTimezone('CreatedDate')));
         Assert.areEqual('SELECT FISCAL_QUARTER(convertTimezone(CreatedDate)) FROM Account', accountQuery.build());
 
-        accountQuery = Query.of('Account').selectFields(FISCAL_YEAR(CONVERT_TIMEZONE('CreatedDate')));
+        accountQuery = Query.of('Account').selectBy(fiscalYear(convertTimezone('CreatedDate')));
         Assert.areEqual('SELECT FISCAL_YEAR(convertTimezone(CreatedDate)) FROM Account', accountQuery.build());
 
-        accountQuery = Query.of('Account').selectFields(HOUR_IN_DAY(CONVERT_TIMEZONE('CreatedDate')));
+        accountQuery = Query.of('Account').selectBy(hourInDay(convertTimezone('CreatedDate')));
         Assert.areEqual('SELECT HOUR_IN_DAY(convertTimezone(CreatedDate)) FROM Account', accountQuery.build());
 
-        accountQuery = Query.of('Account').selectFields(WEEK_IN_MONTH(CONVERT_TIMEZONE('CreatedDate')));
+        accountQuery = Query.of('Account').selectBy(weekInMonth(convertTimezone('CreatedDate')));
         Assert.areEqual('SELECT WEEK_IN_MONTH(convertTimezone(CreatedDate)) FROM Account', accountQuery.build());
 
-        accountQuery = Query.of('Account').selectFields(WEEK_IN_YEAR(CONVERT_TIMEZONE('CreatedDate')));
+        accountQuery = Query.of('Account').selectBy(weekInYear(convertTimezone('CreatedDate')));
         Assert.areEqual('SELECT WEEK_IN_YEAR(convertTimezone(CreatedDate)) FROM Account', accountQuery.build());
     }
 
@@ -797,27 +797,27 @@ public with sharing class QueryTest extends Query {
         Assert.areEqual('SELECT Id FROM Account GROUP BY Name, Name, Name, Name, Name, Name, Name, Name, Name, Name', accountQuery.build());
 
         accountQuery = Query.of('Account')
-            .groupBy(new List<String>{ 'Name', 'Name', CALENDAR_MONTH('CreatedDate') });
+            .groupBy(new List<String>{ 'Name', 'Name', calendarMonth('CreatedDate') });
         Assert.areEqual(
             'SELECT Id FROM Account GROUP BY Name, Name, CALENDAR_MONTH(CreatedDate)',
             accountQuery.build()
         );
 
         // Function
-        accountQuery = Query.of('Account').groupBy(CALENDAR_MONTH('CreatedDate'));
+        accountQuery = Query.of('Account').groupBy(calendarMonth('CreatedDate'));
         Assert.areEqual('SELECT Id FROM Account GROUP BY CALENDAR_MONTH(CreatedDate)', accountQuery.build());
 
-        accountQuery = Query.of('Account').groupBy(CALENDAR_MONTH(CONVERT_TIMEZONE('CreatedDate')));
+        accountQuery = Query.of('Account').groupBy(calendarMonth(convertTimezone('CreatedDate')));
         Assert.areEqual('SELECT Id FROM Account GROUP BY CALENDAR_MONTH(convertTimezone(CreatedDate))', accountQuery.build());
     }
 
     @isTest // prettier-ignore
     static void testGroupBy_Options() {
         // String
-        Query accountQuery = Query.of('Account').groupBy('Name', CALENDAR_MONTH('CreatedDate')).rollup();
+        Query accountQuery = Query.of('Account').groupBy('Name', calendarMonth('CreatedDate')).rollup();
         Assert.areEqual('SELECT Id FROM Account GROUP BY ROLLUP(Name, CALENDAR_MONTH(CreatedDate))', accountQuery.build());
 
-        accountQuery = Query.of('Account').groupBy('Name', CALENDAR_MONTH('CreatedDate')).cube();
+        accountQuery = Query.of('Account').groupBy('Name', calendarMonth('CreatedDate')).cube();
         Assert.areEqual('SELECT Id FROM Account GROUP BY CUBE(Name, CALENDAR_MONTH(CreatedDate))', accountQuery.build());
     }
 
@@ -952,11 +952,11 @@ public with sharing class QueryTest extends Query {
         Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name, Name', accountQuery.build());
 
         // Function
-        accountQuery = Query.of('Account').orderBy(orderBy(MAX('Name')));
+        accountQuery = Query.of('Account').orderBy(orderBy(max('Name')));
         Assert.areEqual('SELECT Id FROM Account ORDER BY MAX(Name)', accountQuery.build());
 
         // Mixing
-        accountQuery = Query.of('Account').orderBy(new List<OrderByField>{ orderByField, orderBy(MAX('Name')) });
+        accountQuery = Query.of('Account').orderBy(new List<OrderByField>{ orderByField, orderBy(max('Name')) });
         Assert.areEqual('SELECT Id FROM Account ORDER BY Name, MAX(Name)', accountQuery.build());
     }
 
