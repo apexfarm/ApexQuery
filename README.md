@@ -2,466 +2,379 @@
 
 ![](https://img.shields.io/badge/version-3.0.0-brightgreen.svg) ![](https://img.shields.io/badge/build-passing-brightgreen.svg) ![](https://img.shields.io/badge/coverage-99%25-brightgreen.svg)
 
-A query builder to build dynamic SOQL.
+A query builder to build SOQL dynamically.
 
-| Environment           | Installation Link                                            | Version |
-| --------------------- | ------------------------------------------------------------ | ------- |
-| Production, Developer | <a target="_blank" href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04t2v000007OimYAAS"><img src="docs/images/deploy-button.png"></a> | ver 3.0 |
-| Sandbox               | <a target="_blank" href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04t2v000007OimYAAS"><img src="docs/images/deploy-button.png"></a> | ver 3.0 |
+| Environment           | Installation Link                                                                                                                                         | Version |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| Production, Developer | <a target="_blank" href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04tGC000007TLzwYAG"><img src="docs/images/deploy-button.png"></a> | ver 3.0 |
+| Sandbox               | <a target="_blank" href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04tGC000007TLzwYAG"><img src="docs/images/deploy-button.png"></a>  | ver 3.0 |
 
 ---
 
 ### Release v3.0.0
 
-Apologies to ones already adopted v2.0. It can still be an option and no need to upgrade. Here are some backgrounds for developing v3.0:
+v2.0 was too complex to maintain and use. v3.0 was trying to be simple, and by far it's the best outcome I can have. During the remake, I am getting started to feel string concatenations are also good options in some cases.
 
-1. Performance is improved by 30%. This isn't much compared a 7 vs 10 CPU time difference.
-2. Strong type references are reduced, to make the library easier to maintain and use.
-3. Rarely used features are removed, also to make the library easier to maintain.
-
-* **Removed Features**
-  * Removed currency helpers such as `USD(100)`, please use `CURRENCY('USD', 100)` instead.
-  * Removed all methods accepting `SObjectField` as parameters, please use their `String` counterparts.
-  * Removed `TYPEOF` statement, please build it with a long string manually instead.
-  * Removed all features were designed for value objects.
-  * Removed traditional filter composition, i.e. `andx(filter1, filter2)`. But `andx(new List<Filter> { filter1, filter 2})` is preserved.
-
-* **API Changes**:
-  * Normalized functions (i.e. `max()`) to return strings, instead of strong types.
-  * Normalized filters (i.e. `eq()`) to accept objects, instead of strong types.
-  * `Query.of(Account.SobjectType)` => `Query.of('Account')`
-  * `Query.filterBy()` => `Query.whereBy()`
-  * Rename functions with 'camel case' instead of uppercase, literals remains in uppercase. for example:
-    * `CONVERT_CURRENCY()` => `convertCurrency()`
-    * `MAX()` => `max()`
-    * `YESTERDAY()` is still in uppercase.
-
-* **New Features**:
-  * Parent query chaining (`Query.selectParent()`). 
-  * Child query chaining (`Query.selectChild()`). This is not new but also get enhanced.
-
+- **Key Updates**
+  - Performance is improved by 30%. This isn't much compared a 7 vs 10 CPU time difference.
+  - Strings become first class citizens. Most of the functions only return and accept strings now.
+  - Rarely used features are removed, such as value objects concepts.
+- **New Features**:
+  - [Query Chaining](#22-query-chaining)
+  - [Query Template](#23-query-template)
+- **Removed Features**
+  - Removed `TYPEOF` statement, use a manually built long string instead.
+  - Removed input parameter types of `SObjectType` and `SObjectField`, use `String` names instead.
+  - Removed filter composition style: `andx(filter1, filter2)`, use `andx().add(filter1).add(filter2)` instead.
+  - Removed currency literals such as `USD(100)`, use `CURRENCY('USD', 100)` instead.
+- **API Changes**:
+  - Normalized functions (i.e. `max()`) to return strings, instead of strong types.
+  - Normalized filters (i.e. `eq()`) to accept objects, instead of strong types.
+  - `eqNull` and `neNull` operators are removed, use `eq('Field', null)` and `ne('Field', null)` directly.
+  - `Query.of(Account.SobjectType)` => `Query.of('Account')`
+  - `Query.filterBy()` => `Query.whereBy()`
+  - Rename functions with **camel case** instead of uppercase. for example:
+    - `CONVERT_CURRENCY()` => `convertCurrency()`
+    - `MAX()` => `max()`
 
 ---
 
 ## Table of Contents
 
-- [2. Naming Conventions](#2-naming-conventions)
-  - [2.1 Naming Readability](#21-naming-readability)
-  - [2.2 Naming Confliction](#22-naming-confliction)
-- [3. Overview](#3-overview)
-  - [3.1 Query Class](#31-query-class)
-  - [3.2 Query Execution](#32-query-execution)
-- [4. Keywords](#4-keywords)
-  - [4.1 From Statement](#41-from-statement)
-  - [4.2 Select Statement](#42-select-statement)
-  - [4.3 Where Statement](#43-where-statement)
-  - [4.4 Order By Statement](#44-order-by-statement)
-  - [4.5 Group By Statement](#45-group-by-statement)
-- [5. Operators](#5-operators)
-  - [5.1 Logical Operators](#51-logical-operators)
-  - [5.2 Comparison Operators](#52-comparison-operators)
-- [6. Functions](#6-functions)
-  - [6.1 Aggregate Functions](#61-aggregate-functions)
-  - [6.2 Date/Time Functions](#62-date-time-functions)
-  - [6.3 Other Functions](#63-other-functions)
-- [7. Literals](#7-literals)
-  - [7.1 Date Literals](#71-date-literals)
-  - [7.2 Currency Literals](#72-currency-literals)
-- [8. License](#8-license)
+- [1. Naming Conventions](#1-naming-conventions)
+  - [1.1 Naming Readability](#11-naming-readability)
+  - [1.2 Naming Confliction](#12-naming-confliction)
+- [2. Overview](#2-overview)
+  - [2.1 Query Class](#21-query-class)
+  - [2.2 Query Chaining](#22-query-chaining)
+  - [2.3 Query Template](#23-query-template)
+  - [2.4 Query Execution](#24-query-execution)
+- [3. Keywords](#3-keywords)
+  - [3.1 From Statement](#31-from-statement)
+  - [3.2 Select Statement](#32-select-statement)
+  - [3.3 Where Statement](#33-where-statement)
+  - [3.4 Order By Statement](#34-order-by-statement)
+  - [3.5 Group By Statement](#35-group-by-statement)
+  - [3.6 Other Keywords](#36-other-keywords)
+- [4. Filters](#4-filters)
+  - [4.1 Comparison Filter](#41-comparison-filter)
+  - [4.2 Logical Filter](#42-logical-filter)
+- [5. Functions](#5-functions)
+  - [5.1 Aggregate Functions](#51-aggregate-functions)
+  - [5.2 Date/Time Functions](#52-date-time-functions)
+  - [5.3 Other Functions](#53-other-functions)
+- [6. Literals](#6-literals)
+  - [6.1 Date Literals](#61-date-literals)
+  - [6.2 Currency Literals](#62-currency-literals)
+- [7. License](#7-license)
 
-## 2. Naming Conventions
+## 1. Naming Conventions
 
-### 2.1 Naming Readability
+### 1.1 Naming Readability
 
 Here are the naming conventions used to increase query readability:
 
-|               | Description                                                  | Naming Convention | Reasoning                                                    | Example                                                      |
-| ------------- | ------------------------------------------------------------ | ----------------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
-| **Keywords**  | These are backbone structures of a SOQL.                     | camelCase         | Keywords should easily remind users to their SOQL counterparts. | `selectBy`, `whereBy`, `groupBy`, `havingBy`, `orderBy`      |
-| **Operators** | These are mainly logical and comparison operators.           | lowercase         | Operators should be small and short to be operator-like, abbreviation is used when appropriate. | `eq`, `ne`, `gt`, `gte`, `lt`, `lte`, `inx`, `nin`           |
-| **Functions** | These are used to perform aggregation, formatting, and date accessing etc. | camelCase         | Camel cases are easy to type.                                | `count`, `max`, `toLabel`, `format`, `calendarMonth`, `fiscalYear` |
-| **Literals**  | There are only date and currency literals.                   | UPPER_CASE        | Those are constant-like values, so static constant variable naming convention is preferred. | `LAST_90_DAYS()`, `LAST_N_DAYS(30)`, `CURRENCY('USD', 100)`  |
+|               | Description                                                                | Naming Convention | Reasoning                                                                                       | Example                                                            |
+| ------------- | -------------------------------------------------------------------------- | ----------------- | ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| **Keywords**  | These are backbone structures of a SOQL.                                   | camelCase         | Keywords should easily remind users to their SOQL counterparts.                                 | `selectBy`, `whereBy`, `groupBy`, `havingBy`, `orderBy`            |
+| **Operators** | These are mainly logical and comparison operators.                         | lowercase         | Operators should be small and short to be operator-like, abbreviation is used when appropriate. | `eq`, `ne`, `gt`, `gte`, `lt`, `lte`, `inx`, `nin`                 |
+| **Functions** | These are used to perform aggregation, formatting, and date accessing etc. | camelCase         | Camel cases are align with Apex method names, and easy to type.                                 | `count`, `max`, `toLabel`, `format`, `calendarMonth`, `fiscalYear` |
+| **Literals**  | There are only date and currency literals.                                 | UPPER_CASE        | Those are constant-like values, so static constant variable naming convention is preferred.     | `LAST_90_DAYS()`, `LAST_N_DAYS(30)`, `CURRENCY('USD', 100)`        |
 
-### 2.2 Naming Confliction
+### 1.2 Naming Confliction
 
 Here are the naming conventions to avoid conflictions with existing keywords or operators.
 
 1.  Use `<keyword>By()` format for SOQL keywords, such as `selectBy`, `whereBy`, `groupBy`, `havingBy`, `orderBy`.
 2.  Use `<operator>x()` format for conflicted operators only, such as `orx()`, `andx()`, `inx()`, `likex()`.
 
-## 3. Overview
+## 2. Overview
 
-### 3.1 Query Class
+### 2.1 Query Class
 
-All operators and functions are built as static methods of the Query class, to reference them with a `Query` dot every time is tedious. When possible, please extend the `Query` class, where all static methods can be referenced directly. All examples in this README are written in such context.
+All operators and functions are built as static methods of the Query class, to reference them with a `Query` dot every time is tedious. When possible, please extend the `Query` class, then all static methods can be referenced directly.
 
 ```java
 public with sharing class AccountQuery extends Query {
     public List<Account> listAccount() {
-        return (List<Account>) Query.of(Account.SObjectType)
-            .selectBy(Account.Name, Account.BillingCountry, Account.BillingState)
-            .selectBy(FORMAT(CONVERT_CURRENCY(Account.AnnualRevenue)))
-            .selectBy('Contacts', Query.of(Contact.SObjectType).selectBy(Contact.Name))
-            .filterBy(orx()
+        return (List<Account>) Query.of('Account')
+            .selectBy('Name', toLabel('Industry'))
+            .whereBy(orx()
                 .add(andx()
-                    .add(gt(Account.AnnualRevenue, 1000))
-                    .add(eq(Account.BillingCountry, 'China'))
-                    .add(eq(Account.BillingState, 'Beijing'))
-                )
+                    .add(gt('AnnualRevenue', 1000))
+                    .add(eq('BillingState', 'Beijing')))
                 .add(andx()
-                    .add(lt(Account.AnnualRevenue, 1000))
-                    .add(eq(Account.BillingCountry, 'China'))
-                    .add(eq(Account.BillingState, 'Shanghai'))
-                )
+                    .add(lt('AnnualRevenue', 1000))
+                    .add(eq('BillingState', 'Shanghai')))
             )
-            .orderBy(Account.AnnualRevenue).descending().nullsLast()
+            .orderBy(orderBy('AnnualRevenue').descending().nullsLast())
             .run();
     }
 }
 ```
 
-### 3.2 Query Execution
+Equivalent to the following SOQL:
 
-There are three ways to invoke a `Query`. And by default they are running in system mode, `AccessLevel` can be supplied to change their running mode, i.e. `run(AccessLevel.USER_MODE)`.
-
-|       | API            | API with Access Level     | Description                                                                              |
-| ----- | -------------- | ------------------------- | ---------------------------------------------------------------------------------------- |
-| **1** | `run()`        | `run(AccessLevel)`        | Return a `List<SObject>` from Salesforce database.                                       |
-| **2** | `getLocator()` | `getLocator(AccessLevel)` | Return a `Database.QueryLocator` to be used by a batch class start method.               |
-| **3** | `getCount()`   | `getCount(AccessLevel)`   | Return an integer of the number of records, must be used together with `SELECT COUNT()`. |
-
-```java
-List<Account> accounts = (List<Account>) Query.of(Account.SObjectType)
-    .run();        // #1
-
-Database.QueryLocator locator = Query.of(Account.SObjectType)
-    .selectBy(Account.Name, Account.AnnualRevenue)
-    .getLocator(); // #2
-
-Integer count = Query.of(Account.SObjectType).selectBy(COUNT())
-    .getCount();   // #3
+```sql
+SELECT Name, toLabel(Industry)
+FROM Account
+WHERE ((AnnualRevenue > 1000 AND BillingState = 'Beijing')
+    OR (AnnualRevenue < 1000 AND BillingState = 'Shanghai'))
+ORDER BY AnnualRevenue DESC NULLS LAST
 ```
 
-## 4. Keywords
+### 2.2 Query Chaining
 
-### 4.1 From Statement
-
-All queries are created with a simple call to `Query.of(sobjectType)` API. A default `Id` field is used if no other fields are selected.
+The `Query` class can chain existing ones to compose their fields or statements together. However query composition doesn't support queries with group by clause.
 
 ```java
-// SELECT Id FROM Account
-Query accountQuery = Query.of(Account.SOBjectType);
+public with sharing class AccountQuery extends Query {
+    public List<Account> listAccount() {
+        Query parentQuery = Query.of('Account')
+            .selectBy('Name', format(convertCurrency('AnnualRevenue')));
+        Query childQuery = Query.of('Contact').selectBy('Name', 'Email');
+
+        return (List<Account>) Query.of('Account')
+            .selectBy('Name', toLabel('Industry'))
+            .selectParent('Parent', parentQuery) // Parent Chaining
+            .selectChild('Contacts', childQuery) // Child Chaining
+            .run();
+    }
+}
 ```
 
-### 4.2 Select Statement
+Equivalent to the following SOQL:
 
-#### Inline Select
-
-There are five types of `selectBy()` statements, each accept different input types. They can chain from one after another, so developers can select as many fields as they want.
-
-|       | API                                                  | Description                                                                            |
-| ----- | ---------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| **1** | `selectBy(SObjectField ... )`                        | Select `SObjectField`, up to 5 params are supported                                    |
-| **2** | `selectBy(Function ... )`                            | Select functions, up to 5 params are supported.                                        |
-| **3** | `selectBy(String ... )`                              | Select strings, up to 5 params are supported. Mainly used for parent field references. |
-| **4** | `selectBy(String childRelationName, Query subQuery)` | Select subquery, a subquery is built in the same way as a standard query.              |
-| **5** | `selectBy(List<Object>)`                             | Select a `List<Object>` mixing of fields, functions and strings, but not queries.      |
-
-```java
-Query accountQuery = Query.of(Account.SObjectType)
-    // #1. all params are sobject fields
-    .selectBy(Account.Name, Account.BillingCountry, Account.BillingState)
-    // #2. all params are functions
-    .selectBy(FORMAT(CONVERT_CURRENCY(Account.AnnualRevenue)), TO_LABEL('Owner.LocaleSidKey'))
-    // #3. all params are strings
-    .selectBy('Owner.Profile.Id', 'TOLABEL(Owner.EmailEncodingKey)')
-    // #4. one subquery for child relationship "Contacts"
-    .selectBy('Contacts', Query.of(Contact.SObjectType).selectBy(Contact.Name))
-    // #5. a list of objects mixing with sobject fields, funcitons and strings
-    .selectBy(new List<Object> { Account.Description, FORMAT(Account.CreatedDate), 'Owner.Name' });
+```sql
+SELECT Name, toLabel(Industry),
+    Parent.Name, FORMAT(convertCurrency(Parent.AnnualRevenue)) -- Parent Chaining
+    (SELECT Name, Email FROM Contacts)                         -- Child Chaining
+FROM Account
 ```
 
-#### Compose with SelectBy
-
-Use a `selectBy()` to compose the field selection outside of a query. And one `SelectBy` can be added to another one for reuse.
+Without query chaining, the following code can also achieve the same result.
 
 ```java
-Query.SelectBy selectBy = Query.selectBy()
-    .add(Account.Name, Account.BillingCountry, Account.BillingState)
-    .add(FORMAT(CONVERT_CURRENCY(Account.AnnualRevenue)))
-    .add('Contacts', Query.of(Contact.SObjectType).selectBy(Contact.Name));
-
-Query.SelectBy anotherSelectBy = Query.selectBy()
-    .add(Account.Description, Account.NumberOfEmployees)
-    .add(selectBy);             // selectBy can be consumed by another selectBy
-
-Query accountQuery = Query.of(Account.SObjectType)
-    .selectBy(anotherSelectBy); // selectBy can be comsumed by a query
+public with sharing class AccountQuery extends Query {
+    public List<Account> listAccount() {
+        return (List<Account>) Query.of('Account')
+            .selectBy('Name', toLabel('Industry'),
+                'Parent.Name', format(convertCurrency('Parent.AnnualRevenue')),
+                '(SELECT Name, Email FROM Contacts)')
+            .run();
+    }
+}
 ```
 
-**Note**: If variable `selectBy` is modified later, it won't impact the `SelectBy` or queries composed earlier.
+### 2.3 Query Template
+
+When the same `Query` is intended to be run with different binding variables, the following pattern can be used. **Note**: Query template must be built with `var()` with binding var names.
 
 ```java
-selectBy.add(Account.CreatedDate);
-// both anotherSelectBy and accountQuery are not impacted.
+public with sharing class AccountQuery extends Query {
+    public static Query accQuery {
+        get {
+            if (accQuery == null) {
+                accQuery = Query.of('Account')
+                    .selectBy('Name', toLabel('Industry'))
+                    .selectChild('Contacts', Query.of('Contact')
+                        .selectBy('Name', 'Email')
+                        .whereBy(likex('Email', var('emailSuffix')))
+                    )
+                    .whereBy(andx()
+                        .add(gt('AnnualRevenue', var('revenue')))
+                        .add(eq('BillingState', var('state')))
+                    );
+            }
+            return accQuery;
+    	}
+        set;
+    }
+
+    public List<Account> listAccount(String state, Decimal revenue) {
+        System.debug(accQuery.buildSOQL());
+        return (List<Account>) accQuery.run(new Map<String, Object> {
+            'revenue' => revenue,
+            'state' => state,
+            'emailSuffix' => '%gmail.com'
+        });
+    }
+}
 ```
 
-#### TYPEOF Select
+Equivalent to the following SOQL:
 
-Use `typeof()` to construct a SOQL TYPEOF statement.
+```sql
+SELECT Name, toLabel(Industry)
+    (SELECT Name, Email FROM Contacts WHERE Email LIKE :emailSuffix)
+FROM Account
+WHERE (AnnualRevenue > :revenue AND BillingState = :state)
+```
 
-1. Multiple `then()` methods can be chained to add more fields.
-2. Multiple `when()` methods can be used for the same `SObjectType`.
-3. Multiple `elsex()` methods can be chained to add more fields.
-4. The `typeof()` can be create standalone outside of a query.
+### 2.4 Query Execution
+
+Execute with default `AccessLevel.SYSTEM_MODE`:
+
+|       | API            | API with Binding Variables | Return Types                                            |
+| ----- | -------------- | -------------------------- | ------------------------------------------------------- |
+| **1** | `run()`        | `run(bindingVars)`         | `List<SObject>`                                         |
+| **2** | `getLocator()` | `getLocator(bindingVars)`  | `Database.QueryLocator`                                 |
+| **3** | `getCount()`   | `getCount(bindingVars)`    | `Integer`, must be used together with `SELECT COUNT()`. |
+
+Execute with any `AccessLevel`, such as `AccessLevel.USER_MODE`:
+| | API | API with Access Level | Return Types |
+| ----- | ------------------------- | -------------------------------------- | ------------------------------------------------------- |
+| **1** | `run(AccessLevel)` | `run(bindingVars, AccessLevel)` | `List<SObject>` |
+| **2** | `getLocator(AccessLevel)` | `getLocator(bindingVars, AccessLevel)` | `Database.QueryLocator` |
+| **3** | `getCount(AccessLevel)` | `getCount(bindingVars, AccessLevel)` | `Integer`, must be used together with `SELECT COUNT()`. |
+
+## 3. Keywords
+
+### 3.1 From Statement
+
+All queries are created with a simple call to `Query.of(String objectName)` API. A default `Id` field is used if no other fields are selected.
 
 ```java
-Query accountQuery = Query.of(Task.SObjecType)
-    .selectBy(typeof('What')
-        .when(Account.SObjectType)
-              .then(Account.Phone, Account.NumberOfEmployees)
-        .when(Opportunity.SObjectType) // #1 multiple then methods can be chained
-              .then(Opportunity.Amount, Opportunity.CloseDate)
-              .then('ExpectedRevenue', 'Description')
-        .when(Account.SObjectType)     // #2 previously used SObjectType can be used again
-              .then(Account.BillingCountry, Account.BillingState)
-        .elsex(Task.Id, Task.Status)
-        .elsex('Email', 'Phone')       // #3 multiple elsex methods can be chained
+Query accountQuery = Query.of('Account');
+```
+
+Equivalent to the following SOQL:
+
+```sql
+SELECT Id FROM Account
+```
+
+### 3.2 Select Statement
+
+|       | API                                                     | Description                                              |
+| ----- | ------------------------------------------------------- | -------------------------------------------------------- |
+| **1** | `selectBy(Object ... )`                                 | Select up to 10 field names or functions.                |
+| **2** | `selectBy(List<Object>)`                                | Select a `List<Object>` of any field names or functions. |
+| **3** | `selectParent(String relationshipName, Query subQuery)` | Parent chaining.                                         |
+| **4** | `selectChild(String relationshipName, Query subQuery)`  | Child chaining.                                          |
+
+```java
+Query accountQuery = Query.of('Account')
+    .selectBy('Name', toLabel('Industry'))
+    .selectBy(new List<Object> { 'Owner.Name', FORMAT('CreatedDate') })
+    .selectParent('Parent', Query.of('Account')
+        .selectBy('Name', format(convertCurrency('AnnualRevenue'))))
+    .selectChild('Contacts', Query.of('Contact').selectBy('Name', 'Email'));
+```
+
+Equivalent to the following SOQL:
+
+```sql
+SELECT Name, toLabel(Industry),
+    Owner.Name, FORMAT(CreatedDate)
+    Parent.Name, FORMAT(convertCurrency(Parent.AnnualRevenue)) -- Parent Chaining
+    (SELECT Name, Email FROM Contacts)                         -- Child Chaining
+FROM Account
+```
+
+### 3.3 Where Statement
+
+`whereBy(Filter filter)` API accepts either a comparison expression or a logical statement.
+
+```java
+Query accountQuery = Query.of('Account')
+    .selectBy('Name')
+    .whereBy(gt('AnnualRevenue', 2000)); // #1. comparison filter
+
+Query accountQuery = Query.of('Account')
+    .selectBy('Name')
+    .whereBy(andx()                      // #2. logical filter
+        .add(gt('AnnualRevenue', 2000))
+        .add(lt('AnnualRevenue', 6000))
     );
-
-Query.TypeOf typeOfWhat = typeof(Task.SObjecType)
-    .when().then().elsex() ... ;      // #4 TypeOf can be created standalone
 ```
 
-| API                        | API with String      | Description                   |
-| -------------------------- | -------------------- | ----------------------------- |
-| `typeof(SObjectField)`     | `typeof(String)`     |                               |
-| `when(SObjectType)`        |                      |                               |
-| `then(SObjectField ... )`  | `then(String ... )`  | Up to 5 params are supported. |
-| `elsex(SObjectField ... )` | `elsex(String ... )` | Up to 5 params are supported. |
+### 3.4 Order By Statement
 
-### 4.3 Where Statement
-
-The where statement method is called `filterBy()` but not ~~whereBy~~. Both comparison expression and logical statement are `Query.Filter` types, which can be supplied to the `filterBy(Filter filter)` API.
+|       | API                           | Description                       |
+| ----- | ----------------------------- | --------------------------------- |
+| **1** | `orderBy(OrderByField...)`    | Order by up to 10 `OrderByField`. |
+| **2** | `orderBy(List<OrderByField>)` | Order by `List<OrderByField>`.    |
 
 ```java
-Query accountQuery = Query.of(Account.SObjectType)
-    .selectBy(Account.Name)
-    .filterBy(gt(Account.AnnualRevenue, 2000)); // #1. a single comparison expression
-
-Query accountQuery = Query.of(Account.SObjectType)
-    .selectBy(Account.Name)
-    .filterBy(andx()                            // #2. a single logical statement
-        .add(gt(Account.AnnualRevenue, 2000))
-        .add(lt(Account.AnnualRevenue, 6000))
-    );
-```
-
-Each `Query` only supports a single method call to `filterBy()`. If there are multiple calls to `filterBy()` are made, the latter will override the former. This is because the filters used by where statement is a tree structure with a single root. Filters can be created and composed outside of the `Query` natively, and the following sections are going introduce two styles to compose them.
-
-#### Traditional Composition
-
-Many existing libraries use this kind of filter composition. One thing should take a note, if you prefer to use this style. The `orx`, `andx` only support adding 2 to 10 filters out of the box. When more filters need to be added, please use `orx(List<Filter> filters)` and `andx(List<Filter> filters)` APIs instead.
-
-```java
-Query.Filter filter = orx(
-    andx( // only support up to 10 filters
-        gt(Account.AnnualRevenue, 1000),
-        eq(Account.BillingCountry, 'China'),
-        eq(Account.BillingState, 'Beijing')
-    ),
-    andx(new List<Filter> {
-        lt(Account.AnnualRevenue, 1000),
-        eq(Account.BillingCountry, 'China'),
-        eq(Account.BillingState, 'Shanghai')
-    }));
-```
-
-#### Comma-free Composition
-
-The above traditional composition style is more compact, while the following style gives one advantage: no trailing commas. So developers don't need to worry about when to add/remove them.
-
-```java
-Query.Filter filter = orx()
-    .add(andx()
-        .add(gt(Account.AnnualRevenue, 1000))
-        .add(eq(Account.BillingCountry, 'China'))
-        .add(eq(Account.BillingState, 'Beijing'))
+Query accountQuery = Query.of('Account')
+    .selectBy('Name', toLabel('Industry'))
+    .orderBy(
+        orderBy('BillingCountry').descending().nullsLast(), // OrderByField
+        orderBy(DISTANCE('ShippingAddress',
+            Location.newInstance(37.775000, -122.41800), 'km'))
     )
-    .add(andx()
-        .add(lt(Account.AnnualRevenue, 1000))
-        .add(eq(Account.BillingCountry, 'China'))
-        .add(eq(Account.BillingState, 'Shanghai'))
-    );
+    .orderBy(new List<OrderByField>{ orderBy('Owner.Profile.Name') });
 ```
 
-#### Compare with Null
+Equivalent to the following SOQL:
 
-We can compare a field against null with `eqNull()` and `neNull()` operators. They are invented due to `eq()` and `ne()` only support strongly typed parameters, and cannot pass null values. And the `inx()` and `nin()` operators also support null checking.
-
-```java
-Query.Filter filter = andx()
-    .add(eqNull(Account.BillingCountry))
-    .add(neNull(Account.AnnualRevenue))
-    .add(inx(Account.BillingState, new List<String> { 'Beijing', null }))
-    .add(nin(Account.BillingState, new List<String> { 'Shanghai', null }))
-);
+```sql
+SELECT Name, toLabel(Industry)
+FROM Account
+ORDER BY BillingCountry DESC NULLS LAST,
+    (DISTANCE(ShippingAddress, GEOLOCATION(37.775001, -122.41801), 'km'),
+    Owner.Profile.Name
 ```
 
-#### Compare with List
+### 3.5 Group By Statement
 
-In Apex Query, only `inx()`, `nin()` operators can be used to compare Id field against `List<SObject>`, but not `eq()` and `ne()`.
+|       | API                     | Description                     |
+| ----- | ----------------------- | ------------------------------- |
+| **1** | `groupBy(String ...)`   | Group by up to 10 field names.  |
+| **2** | `groupBy(List<String>)` | Group by `List` of field names. |
 
 ```java
-List<Account> accounts = ... ; // some accounts queried elsewhere
-List<Contact> contacts = List<Contact> Query.of(Contact.SObjectType)
-    .selectBy(Contact.Id, Contact.Name)
-    .filterBy(inx(Contact.AccountId, accounts))
-    .run();
+Query accountQuery = Query.of('Account')
+    .selectBy(avg('AnnualRevenue'))
+    .selectBy(sum('AnnualRevenue', 'RevenueSUM')) // optional alias
+    .groupBy('BillingCountry', calendarYear('CreatedDate'))
+    .groupBy(new List<String>{ calendarMonth('CreatedDate') });
 ```
 
-### 4.4 Order By Statement
+Equivalent to the following SOQL:
 
-#### Inline Order By
-
-There are four types of `orderBy()` statements, each accepts different input types:
-
-|       | API                         | Description                                                                                         |
-| ----- | --------------------------- | --------------------------------------------------------------------------------------------------- |
-| **1** | `orderBy(SObjectField ...)` | Accept only `SObjectField` as parameters. The number of params is from 1 to 5.                      |
-| **2** | `orderBy(String ...)`       | Accept only `String` as parameters. The number of params is from 1 to 5.                            |
-| **3** | `orderBy(Function ...)`     | Accept only functions as parameters, such as: `DISTANCE(...)`. The number of params is from 1 to 5. |
-| **4** | `orderBy(List<Object>)`     | Accept a `List<Object>` mixing of fields, strings and functions.                                    |
-
-**Note**: These `orderBy()` methods can chain from one to another, so developers can order by as many fields as they want.
-
-```java
-Query accountQuery = Query.of(Account.SObjectType)
-    .selectBy(Account.Name)
-    // #1. all params are fields
-    .orderBy(Account.BillingCountry, Account.BillingState)
-    // #2. all params are strings
-    .orderBy('Owner.Profile.Name')
-    // #3. all params are functions
-    .orderBy(DISTANCE(Account.ShippingAddress, Location.newInstance(37.775000, -122.41800), 'km'))
-    // #4. a list of objects mixing of fields, strings and funcitons
-    .orderBy(new List<Object>{ Account.BillingCountry, 'Owner.Profile.Name' });
+```sql
+SELECT AVG(AnnualRevenue), SUM(AnnualRevenue) RevenueSUM
+FROM Account
+GROUP BY BillingCountry, CALENDAR_YEAR(CreatedDate), CALENDAR_MONTH(CreatedDate)
 ```
 
-Every `orderBy()` supports an optional trailing call to `descending()` and `nullsLast()`. Ordering fields are default to `ascending()` and `nullsFirst()` behaviors, you can but not necessarily to declare them explicitly. The ascending and nulls logic will be applied to all the fields or functions used by the previous `orderBy()` next to them. If different sorting logics need to be applied to each field, just separate them into different `orderBy()` methods.
+#### Having Clause
+
+The aggregate results can be filtered and ordered with `havingBy()` and `orderBy()`. `havingBy(Filter filter)` can be used in the same way as `whereBy()`.
 
 ```java
-Query accountQuery = Query.of(Account.SObjectType)
-    .selectBy(Account.Name)
-    // fields are in the same ordering behavior
-    .orderBy(Account.BillingCountry, Account.BillingState).descending().nullsLast();
-
-Query accountQuery = Query.of(Account.SObjectType)
-    .selectBy(Account.Name)
-    // fields are in different ordering behaviors
-    .orderBy(Account.BillingCountry).descending().nullsLast()
-    .orderBy(Account.BillingState).ascending().nullsFirst();
+Query accountQuery = Query.of('Account')
+    .selectBy(avg('AnnualRevenue'), sum('AnnualRevenue'))
+    .groupBy('BillingCountry', 'BillingState')
+    .rollup()
+    .havingBy(gt(sum('AnnualRevenue'), 2000))
+    .orderBy(orderBy(avg('AnnualRevenue')), orderBy(sum('AnnualRevenue')));
 ```
 
-#### Compose with OrderBy
+Equivalent to the following SOQL:
 
-Use a `orderBy()` to compose the field ordering logic outside of a query. And one `OrderBy` can be added to another one for reuse.
-
-```java
-Query.OrderBy orderBy = Query.orderBy()
-    .add(DISTANCE(Account.ShippingAddress, Location.newInstance(37.775000, -122.41800), 'km'));
-
-Query.OrderBy anotherOrderBy = Query.orderBy()
-    .add(Account.BillingCountry, Account.BillingState).descending().nullsLast()
-    .add(orderBy);            // orderBy can be consumed by another orderBy
-
-Query accountQuery = Query.of(Account.SObjectType)
-    .selectBy(Account.Name)
-    .orderBy(anotherOrderBy); // orderBy can be comsumed by a query
+```sql
+SELECT AVG(AnnualRevenue), SUM(AnnualRevenue)
+FROM Account
+GROUP BY ROLLUP(BillingCountry, BillingState)
+HAVING SUM(AnnualRevenue) > 2000
+ORDER BY AVG(AnnualRevenue), SUM(AnnualRevenue)
 ```
 
-**Note**: If variable `orderBy` is modified later, it won't impact the `OrderBy` or queries composed earlier.
+#### Rollup Summary
+
+Optional `rollup()` or `cube()` methods can be invoked on the query to generate sub totals or grand totals.
 
 ```java
-orderBy.add(Account.CreatedDate);
-// both anotherOrderBy and accountQuery are not impacted.
-```
-
-### 4.5 Group By Statement
-
-#### Inline Group By
-
-There are four types of `groupBy()` statements, each accepts different input types:
-
-|       | API                         | Description                                                                                              |
-| ----- | --------------------------- | -------------------------------------------------------------------------------------------------------- |
-| **1** | `groupBy(SObjectField ...)` | Accept only `SObjectField` as parameters. The number of params is from 1 to 5.                           |
-| **2** | `groupBy(String ...)`       | Accept only `String` as parameters. The number of params is from 1 to 5.                                 |
-| **3** | `groupBy(Function ...)`     | Accept only functions as parameters, such as: `CALENDAR_YEAR(...)`. The number of params is from 1 to 5. |
-| **4** | `groupBy(List<Object>)`     | Accept a `List<Object>` mixing of fields, strings and functions.                                         |
-
-**Note**: These `groupBy()` methods can chain from one to another, so developers can group by as many fields as they want.
-
-```java
-Query accountQuery = Query.of(Account.SObjectType)
-    .selectBy(AVG(Account.AnnualRevenue))
-    .selectBy(SUM(Account.AnnualRevenue, 'summary')) // optional alias
-    // #1. group by fields
-    .groupBy(Account.BillingCountry, Account.BillingState)
-    // #2. group by strings
-    .groupBy('Owner.Profile.Name')
-    // #3. group by date functions
-    .groupBy(CALENDAR_YEAR(Account.CreatedDate))
-    // #3. a list of objects mixing of fields, strings and functions
-    .groupBy(new List<Object>{ Account.BillingCountry, 'Owner.Profile.Name' });
-```
-
-The aggregate results can be filtered and ordered with `havingBy()`. The `havingBy(Filter filter)` can be used in the same way as `filterBy()`, just supply a comparison expression or logical statement inside it.
-
-```java
-Query accountQuery = Query.of(Account.SObjectType)
-    .selectBy(AVG(Account.AnnualRevenue), SUM(Account.AnnualRevenue))
-    .groupBy(Account.BillingCountry, Account.BillingState).rollup()
-    // aggerate result can be filtered
-    .havingBy(gt(SUM(Account.AnnualRevenue), 2000))
-    // aggerate result can be ordered
-    .orderBy(AVG(Account.AnnualRevenue), SUM(Account.AnnualRevenue));
-```
-
-Optional `rollup()` or `cube()` methods can be invoked on the query to generate sub totals and grand totals.
-
-```java
-Query accountQuery = Query.of(Account.SObjectType)
-    .selectBy(AVG(Account.AnnualRevenue), SUM(Account.AnnualRevenue))
-    .groupBy(Account.BillingCountry, Account.BillingState)
+Query accountQuery = Query.of('Account')
+    .selectBy(AVG('AnnualRevenue'), SUM('AnnualRevenue'))
+    .groupBy('BillingCountry', 'BillingState')
     .rollup();
 ```
 
-#### Compose with GroupBy
-
-Use a `groupBy()` to compose the the field grouping outside of a query. And one `GroupBy` can be added to another one for reuse.
-
-```java
-Query.GroupBy groupBy = Query.groupBy()
-    .add(CALENDAR_YEAR(Account.CreatedDate));
-
-Query.GroupBy anotherGroupBy = Query.groupBy()
-	.add(Account.BillingCountry, Account.BillingState)
-    .add(groupBy);            // groupBy can be consumed by another groupBy
-
-Query accountQuery = Query.of(Account.SObjectType)
-    .selectBy(AVG(Account.AnnualRevenue), SUM(Account.AnnualRevenue))
-    .groupBy(anotherGroupBy); // groupBy can be comsumed by a query
-```
-
-**Note**: If variable `groupBy` is modified later, it won't impact the `GroupBy` or queries composed earlier.
-
-```java
-groupBy.add(DAY_ONLY(CONVERT_TIMEZONE(Account.CreatedDate)));
-// both anotherGroupBy and accountQuery are not impacted.
-```
-
-### 4.6 Other Statement
+### 3.6 Other Keywords
 
 | API                 | Generated Format  |
 | ------------------- | ----------------- |
@@ -473,134 +386,176 @@ groupBy.add(DAY_ONLY(CONVERT_TIMEZONE(Account.CreatedDate)));
 | `updateTracking()`  | `UPDATE TRACKING` |
 | `updateViewstat()`  | `UPDATE VIEWSTAT` |
 
-## 5. Operators
+## 4. Filters
 
-### 5.1 Logical Operators
-
-There are three logical operators, each function the same as their SOQL counterparts.
-
-```java
-// traditional composition style
-andx(filter1, filter2, filter3, filter4);
-andx(new List<Filter> { filter1, filter2, filter3, filter4 });
-// comma-free composition style
-andx().add(filter1, filter2, filter3, filter4);
-andx().add(filter1, filter2).add(filter3, filter4);
-```
-
-| AND                                                         | Generated Format                         |
-| ----------------------------------------------------------- | ---------------------------------------- |
-| `andx(Filter filter1, Filter filter2)`                      | `(filter1 AND filter2)`                  |
-| `andx(Filter filter1, Filter filter2, ... Filter filter10)` | `(filter1 AND filter2 ... AND filter10)` |
-| `andx(List<Filter> filters)`                                | `(filter1 AND filter2 ...)`              |
-| `andx().add(Filter filter1).add(Filter filter2) ...`        | `(filter1 AND filter2 ...)`              |
-| **OR**                                                      |                                          |
-| `orx(Filter filter1, Filter filter2)`                       | `(filter1 OR filter2)`                   |
-| `orx(Filter filter1, Filter filter2, ... Filter filter10)`  | `(filter1 OR filter2 ... OR filter10)`   |
-| `orx(List<Filter> filters)`                                 | `(filter1 OR filter2 ...)`               |
-| `orx().add(Filter filter1).add(Filter filter2) ...`         | `(filter1 OR filter2 ...)`               |
-| **NOT**                                                     |                                          |
-| `notx(Filter filter)`                                       | `NOT(filter)`                            |
-
-### 5.2 Comparison Operators
-
-As a rule of thumb, there are three different types can be used for `param`:
-
-1. An `SObjectField` such as `Account.AnnualRevenue`.
-2. An function for picklist label, date, distance and aggregation, i.e. `TO_LABEL(Account.AccountSource)`, `CALENDAR_MONTH(CreatedDate)`.
-3. A string such as `'Owner.Profile.Name'`. This is mainly used for parent field referencing.
+### 4.1 Comparison Filter
 
 | SOQL Operators | Apex Query Operators                   | Generated Format                          |
 | -------------- | -------------------------------------- | ----------------------------------------- |
 | **=**          | `eq(param, value)`                     | `param = value`                           |
-|                | `eqNull(param)`                        | `param = NULL`                            |
 | **!=**         | `ne(param, value)`                     | `param != value`                          |
-|                | `neNull(param)`                        | `param != NULL`                           |
 | **\<**         | `lt(param, value)`                     | `param < value`                           |
 | **\<=**        | `lte(param, value)`                    | `param <= value`                          |
 | **\>**         | `gt(param, value)`                     | `param > value`                           |
 | **\>=**        | `gte(param, value)`                    | `param >= value`                          |
-|                | `between(param, minValue, maxValue)`   | `param >= minValue AND param <= maxValue` |
-| **LIKE**       | `likex(param, value)`                  | `param LIKE value`                        |
-| **NOT LIKE**   | `nlike(param, value)`                  | `(NOT param LIKE value)`                  |
+| **BETWEEN**    | `between(param, minValue, maxValue)`   | `param >= minValue AND param <= maxValue` |
+| **LIKE**       | `likex(param, String value)`           | `param LIKE value`                        |
+| **NOT LIKE**   | `nlike(param, String value)`           | `(NOT param LIKE value)`                  |
 | **IN**         | `inx(param, List<Object> values)`      | `param IN :values`                        |
 | **NOT IN**     | `nin(param, List<Object> values)`      | `param NOT IN :values`                    |
 | **INCLUDES**   | `includes(param, List<String> values)` | `param INCLUDES (:value1, :value2)`       |
 | **EXCLUDES**   | `excludes(param, List<String> values)` | `param EXCLUDES (:value1, :value2)`       |
 
-## 6. Functions
+As a rule of thumb, the first param can be:
 
-### 6.1 Aggregate Functions
+1. Field names such as `AnnualRevenue`, `'Owner.Profile.Name'`.
+2. Functions returning `String` such as
+   - date function `calendarMonth('CreatedDate')`
+   - distance function `distance('ShippingAddress', Location.newInstance(37.775001, -122.41801), 'km')`
+   - aggregate function `sum('AnnualRevenue')`
 
-| Static Methods                 | Generated Format              |
-| ------------------------------ | ----------------------------- |
-| `COUNT(field)`                 | `COUNT(field)`                |
-| `COUNT(field, alias)`          | `COUNT(field) alias`          |
-| `COUNT_DISTINCT(field)`        | `COUNT_DISTINCT(field)`       |
-| `COUNT_DISTINCT(field, alias)` | `COUNT_DISTINCT(field) alias` |
-| `GROUPING(field)`              | `GROUPING(field)`             |
-| `GROUPING(field, alias)`       | `GROUPING(field) alias`       |
-| `SUM(field)`                   | `SUM(field)`                  |
-| `SUM(field, alias)`            | `SUM(field) alias`            |
-| `AVG(field)`                   | `AVG(field)`                  |
-| `AVG(field, alias)`            | `AVG(field) alias`            |
-| `MAX(field)`                   | `MAX(field)`                  |
-| `MAX(field, alias)`            | `MAX(field) alias`            |
-| `MIN(field)`                   | `MIN(field)`                  |
-| `MIN(field, alias)`            | `MIN(field) alias`            |
+And it cannot be `toLabel()` function, instead use `eq('toLabel(Industry)', 'Algriculture')` directly.
 
-### 6.2 Date/Time Functions
+#### Compare with sObject List
 
-The following functions operating on Date, Time and Datetime fields. **Note**: Date functions can only be used in where conditions, and group by statements. When used in group by, of course it can appear in select and having as well. Date functions cannot be used inside any other functions, as well as the above aggregate functions.
+`inx()`, `nin()` operators can also be used to compare an Id field against `List<SObject>`.
 
 ```java
-Query accountQuery = Query.of(Opportunity.SObjectType)
-    .selectBy(CALENDAR_YEAR(Opportunity.CreatedDate), SUM(Opportunity.Amount))
-    .groupBy(CALENDAR_YEAR(Opportunity.CreatedDate));
+List<Account> accounts = ... ; // some accounts queried elsewhere
+List<Contact> contacts = List<Contact> Query.of('Contact')
+    .selectBy('Name', toLabel('Account.Industry'))
+    .whereBy(inx('AccountId', accounts))
+    .run();
 ```
 
-| Static Methods            | Description                                                                                                          |
-| ------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `CONVERT_TIMEZONE(field)` | Convert datetime fields to the user’s time zone. **Note**: You can only use `CONVERT_TIMEZONE()` in a date function. |
-| `CALENDAR_MONTH(field)`   | Returns a number representing the calendar month of a date field.                                                    |
-| `CALENDAR_QUARTER(field)` | Returns a number representing the calendar quarter of a date field.                                                  |
-| `CALENDAR_YEAR(field)`    | Returns a number representing the calendar year of a date field.                                                     |
-| `DAY_IN_MONTH(field)`     | Returns a number representing the day in the month of a date field.                                                  |
-| `DAY_IN_WEEK(field)`      | Returns a number representing the day of the week for a date field.                                                  |
-| `DAY_IN_YEAR(field)`      | Returns a number representing the day in the year for a date field.                                                  |
-| `DAY_ONLY(field)`         | Returns a date representing the day portion of a datetime field.                                                     |
-| `FISCAL_MONTH(field)`     | Returns a number representing the fiscal month of a date field.                                                      |
-| `FISCAL_QUARTER(field)`   | Returns a number representing the fiscal quarter of a date field.                                                    |
-| `FISCAL_YEAR(field)`      | Returns a number representing the fiscal year of a date field.                                                       |
-| `HOUR_IN_DAY(field)`      | Returns a number representing the hour in the day for a datetime field.                                              |
-| `WEEK_IN_MONTH(field)`    | Returns a number representing the week in the month for a date field.                                                |
-| `WEEK_IN_YEAR(field)`     | Returns a number representing the week in the year for a date field.                                                 |
+Equivalent to the following SOQL:
 
-### 6.3 Other Functions
+```sql
+SELECT Name, toLabel(Account.Industry)
+FROM Contact
+WHERE AccountId IN :accounts
+```
+
+### 4.2 Logical Filter
+
+| AND                                                  | Generated Format            |
+| ---------------------------------------------------- | --------------------------- |
+| `andx().add(Filter filter1).add(Filter filter2) ...` | `(filter1 AND filter2 ...)` |
+| `andx().addAll(List<Filter> filters)`                | `(filter1 AND filter2 ...)` |
+| **OR**                                               |                             |
+| `orx().add(Filter filter1).add(Filter filter2) ...`  | `(filter1 OR filter2 ...)`  |
+| `orx().addAll(List<Filter> filters)`                 | `(filter1 OR filter2 ...)`  |
+| **NOT**                                              |                             |
+| `notx(Filter filter)`                                | `NOT(filter)`               |
+
+The following codes demonstrate various ways to compose a filter.
+
+```java
+Query.Filter revenueGreaterThan = gt('AnnualRevenue', 1000);
+
+Query.LogicalFilter shanghaiRevenueLessThan = andx().addAll(new List<Filter> {
+        lt('AnnualRevenue', 1000),
+        eq('BillingState', 'Shanghai')
+    });
+
+Query.LogicalFilter orFilter = orx()
+    .add(andx()
+        .add(revenueGreaterThan)
+        .add(eq('BillingState', 'Beijing'))
+    )
+    .add(shanghaiRevenueLessThan));
+```
+
+Equivalent to the following SOQL:
+
+```sql
+(AnnualRevenue > 1000 AND BillingState = 'Beijing')
+OR (AnnualRevenue < 1000 AND BillingState = 'Shanghai')
+```
+
+## 5. Functions
+
+### 5.1 Aggregate Functions
+
+| Static Methods                | Generated Format              |
+| ----------------------------- | ----------------------------- |
+| `count(field)`                | `COUNT(field)`                |
+| `count(field, alias)`         | `COUNT(field) alias`          |
+| `countDistinct(field)`        | `COUNT_DISTINCT(field)`       |
+| `countDistinct(field, alias)` | `COUNT_DISTINCT(field) alias` |
+| `grouping(field)`             | `GROUPING(field)`             |
+| `grouping(field, alias)`      | `GROUPING(field) alias`       |
+| `sum(field)`                  | `SUM(field)`                  |
+| `sum(field, alias)`           | `SUM(field) alias`            |
+| `avg(field)`                  | `AVG(field)`                  |
+| `avg(field, alias)`           | `AVG(field) alias`            |
+| `max(field)`                  | `MAX(field)`                  |
+| `max(field, alias)`           | `MAX(field) alias`            |
+| `min(field)`                  | `MIN(field)`                  |
+| `min(field, alias)`           | `MIN(field) alias`            |
+
+### 5.2 Date/Time Functions
+
+The following functions operating on Date, Time and Datetime fields.
+
+```java
+Query.of('Opportunity')
+    .selectBy(calendarYear('CreatedDate'), SUM('Amount'))
+    .whereBy(gt(calendarYear('CreatedDate'), 2000))
+    .groupBy(calendarYear('CreatedDate'));
+```
+
+Equivalent to the following SOQL:
+
+```sql
+SELECT CALENDAR_YEAR(CreatedDate), SUM(Amount)
+FROM Opportunity
+WHERE CALENDAR_YEAR(CreatedDate) > 2000
+GROUP BY CALENDAR_YEAR(CreatedDate)
+```
+
+| Static Methods           | Description                                                                                                                          |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `convertTimezone(field)` | Convert datetime fields to the user’s time zone. **Note**: You can only use `convertTimezone()` inside the following date functions. |
+| `calendarMonth(field)`   | Returns a number representing the calendar month of a date field.                                                                    |
+| `calendarQuarter(field)` | Returns a number representing the calendar quarter of a date field.                                                                  |
+| `calendarYear(field)`    | Returns a number representing the calendar year of a date field.                                                                     |
+| `dayInMonth(field)`      | Returns a number representing the day in the month of a date field.                                                                  |
+| `dayInWeek(field)`       | Returns a number representing the day of the week for a date field.                                                                  |
+| `dayInYear(field)`       | Returns a number representing the day in the year for a date field.                                                                  |
+| `dayOnly(field)`         | Returns a date representing the day portion of a datetime field.                                                                     |
+| `fiscalMonth(field)`     | Returns a number representing the fiscal month of a date field.                                                                      |
+| `fiscalQuarter(field)`   | Returns a number representing the fiscal quarter of a date field.                                                                    |
+| `fiscalYear(field)`      | Returns a number representing the fiscal year of a date field.                                                                       |
+| `hourInDay(field)`       | Returns a number representing the hour in the day for a datetime field.                                                              |
+| `weekInMonth(field)`     | Returns a number representing the week in the month for a date field.                                                                |
+| `weekInYear(field)`      | Returns a number representing the week in the year for a date field.                                                                 |
+
+### 5.3 Other Functions
 
 Here is an example how to generate a location-based comparison expression.
 
 ```java
-Query.Filter filter = lt(DISTANCE(Account.ShippingAddreess, Location.newInstance(37.775000, -122.41800)), 20, 'km');
+Query.Filter filter = lt(distance('ShippingAddreess', Location.newInstance(37.775000, -122.41800)), 20, 'km');
 ```
 
-| Static Methods                               | Generated Format                                                |
-| -------------------------------------------- | --------------------------------------------------------------- |
-| `TO_LABEL(field) `                           | `TOLABEL(field)`                                                |
-| `FORMAT(field)`                              | `FORMAT(field)`                                                 |
-| `CONVERT_CURRENCY(field)`                    | `CONVERTCURRENCY(field)`                                        |
-| `DISTANCE(field, Location geo, string unit)` | `DISTANCE(ShippingAddress, GEOLOCATION(37.775,-122.418), 'km')` |
+| Static Methods                               | Generated Format                                                           |
+| -------------------------------------------- | -------------------------------------------------------------------------- |
+| `toLabel(field) `                            | `toLabel(field)`                                                           |
+| `format(field)`                              | `FORMAT(field)`                                                            |
+| `convertCurrency(field)`                     | `convertCurrency(field)`. **Note**: It can also be used inside `format()`. |
+| `distance(field, Location geo, string unit)` | `DISTANCE(ShippingAddress, GEOLOCATION(37.775,-122.418), 'km')`            |
 
-## 7. Literals
+## 6. Literals
 
-### 7.1 Date Literals
+### 6.1 Date Literals
 
 Here are all the available date literals referenced from Salesforce ([link](https://developer.salesforce.com/docs/atlas.en-us.soql_sosl.meta/soql_sosl/sforce_api_calls_soql_select_dateformats.htm)). They can be created with corresponding methods, and passed into comparison operators working with them.
 
 ```java
-Query.Filter filter = orx()
-    .add(eq(Account.CreatedDate, YESTERDAY()))
-    .add(eq(Account.AnnualRevenual, LAST_N_DAYS(5)))
+Query.Filter filter = andx()
+    .add(eq('LastModifiedDate', YESTERDAY()))
+    .add(gt('CreatedDate', LAST_N_DAYS(5)))
 );
 ```
 
@@ -608,22 +563,16 @@ Query.Filter filter = orx()
 >
 > `LAST_N_DAYS(Integer n)`, `NEXT_N_DAYS(Integer n)`, `N_DAYS_AGO(Integer n)`, `NEXT_N_WEEKS(Integer n)`, `LAST_N_WEEKS(Integer n)`, `N_WEEKS_AGO(Integer n)`, `NEXT_N_MONTHS(Integer n)`, `LAST_N_MONTHS(Integer n)`, `N_MONTHS_AGO(Integer n)`, `NEXT_N_QUARTERS(Integer n)`, `LAST_N_QUARTERS(Integer n)`, `N_QUARTERS_AGO(Integer n)`, `NEXT_N_YEARS(Integer n)`, `LAST_N_YEARS(Integer n)`, `N_YEARS_AGO(Integer n)`, `NEXT_N_FISCAL_QUARTERS(Integer n)`, `N_FISCAL_QUARTERS_AGO(Integer n)`, `NEXT_N_FISCAL_YEARS(Integer n)`, `LAST_N_FISCAL_YEARS(Integer n)`, `N_FISCAL_YEARS_AGO(Integer n)`
 
-### 7.2 Currency Literals
-
-Here are all the available currency ISO codes referenced from Salesforce ([link](https://help.salesforce.com/s/articleView?language=en_US&id=sf.admin_supported_currencies.htm)). They can be created with corresponding methods, and passed into comparison operators working with them.
+### 6.2 Currency Literals
 
 ```java
 Query.Filter filter = orx()
-    .add(eq(Account.AnnualRevenual, USD(2000)))
-    .add(eq(Account.AnnualRevenual, CNY(2000)))
-    .add(eq(Account.AnnualRevenual, CURRENCY('TRY', 2000)))
+    .add(eq('AnnualRevenual', CURRENCY('USD', 2000)))
+    .add(eq('AnnualRevenual', CURRENCY('CNY', 2000)))
+    .add(eq('AnnualRevenual', CURRENCY('TRY', 2000)))
 );
 ```
 
-**NOTE**: TRY is an Apex keyword, so it can not have a corresponding method, instead TRY currency can be generated with a general `CURRENCY` method. In case Salesforce is introducing new currencies, which are not ported into the library, `CURRENCY` method can be used temporarily as well.
-
-> AED, AFN, ALL, AMD, ANG, AOA, ARS, AUD, AWG, AZN, BAM, BBD, BDT, BGN, BHD, BIF, BMD, BND, BOB, BRL, BSD, BTN, BWP, BYN, BZD, CAD, CDF, CHF, CLP, CNY, COP, CRC, CSD, CUP, CVE, CZK, DJF, DKK, DOP, DZD, EGP, ERN, ETB, EUR, FJD, FKP, GBP, GEL, GHS, GIP, GMD, GNF, GTQ, GYD, HKD, HNL, HRK, HTG, HUF, IDR, ILS, INR, IQD, IRR, ISK, JMD, JOD, JPY, KES, KGS, KHR, KMF, KPW, KRW, KWD, KYD, KZT, LAK, LBP, LKR, LRD, LYD, MAD, MDL, MGA, MKD, MMK, MOP, MRU, MUR, MWK, MXN, MYR, MZN, NAD, NGN, NIO, NOK, NPR, NZD, OMR, PAB, PEN, PGK, PHP, PKR, PLN, PYG, QAR, RON, RSD, RUB, RWF, SAR, SBD, SCR, SDG, SEK, SGD, SHP, SLE, SLL, SOS, SRD, STN, SYP, SZL, THB, TJS, TND, TOP, ~~TRY~~, TTD, TWD, TZS, UAH, UGX, USD, UYU, UZS, VES, VND, VUV, WST, XAF, XCD, XOF, XPF, YER, ZAR
-
-## 8. **License**
+## 7. **License**
 
 Apache 2.0

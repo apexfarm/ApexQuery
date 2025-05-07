@@ -1,32 +1,39 @@
 class QueryTest extends Query {
     public void test() {
         // prettier-ignore
-        Query q = Query.of(Account.SObjectType)
-            .selectBy(selectBy()
-                .add(Account.Name, Account.AnnualRevenue, Account.BillingState)
-                .add('Contacts', Query.of(Contact.SObjectType).selectBy(Contact.Name))
-            )
-            .filterBy(orx()
+        Query parentAccount = Query.of('Account')
+            .selectBy('Name', format(convertCurrency('AnnualRevenue')), 'BillingState')
+            .selectParent('Parent', Query.of('Account').selectBy('Name', 'AnnualRevenue', 'BillingState'));
+
+        // prettier-ignore
+        Query q = Query.of('Account')
+            .selectBy('Name', convertCurrency('AnnualRevenue'), 'BillingState')
+            .selectParent('Parent', parentAccount)
+            .selectChild('Contacts', Query.of('Contact').selectBy('Name'))
+            .whereBy(orx()
                 .add(andx()
-                    .add(gt(Account.AnnualRevenue, 1000))
-                    .add(eq(Account.BillingCountry, 'China'))
-                    .add(eq(Account.BillingState, 'Beijing'))
+                    .add(gt('AnnualRevenue', CURRENCY('CNY', 1000)))
+                    .add(eq('BillingCountry', 'China'))
+                    .add(eq('BillingState', 'Beijing'))
                 )
                 .add(andx()
-                    .add(lt(Account.AnnualRevenue, 1000))
-                    .add(eq(Account.BillingCountry, 'China'))
-                    .add(eq(Account.BillingState, 'Shanghai'))
+                    .add(lt('AnnualRevenue', CURRENCY('CNY', 1000)))
+                    .add(eq('BillingCountry', 'China'))
+                    .add(eq('BillingState', 'Shanghai'))
                 )
             )
-            .orderBy(Account.AnnualRevenue).descending().nullsLast()
+            // .groupBy('Name', calendarMonth('createdDate'), 'BillingState')
+            // .havingBy(gt(SUM('AnnualRevenue'), CURRENCY('CNY', 1000)))
+            .orderBy(orderBy('Name').ascending().nullsLast(), orderBy('AnnualRevenue').descending())
             .limitx(10)
             .forView();
-        q.run();
+        System.debug(q.buildSOQL());
+        System.debug(q.run());
     }
 }
 
 Integer startCPU = Limits.getCpuTime();
-for (Integer i = 0; i < 100; i++) {
+for (Integer i = 0; i < 1; i++) {
     QueryTest test = new QueryTest();
     test.test();
 }

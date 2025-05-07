@@ -19,10 +19,16 @@ public virtual class Query implements Querable {
     public interface Querable extends Groupable {
         Integer getCount();
         Integer getCount(AccessLevel accessLevel);
+        Integer getCount(Map<String, Object> bindingVars);
+        Integer getCount(Map<String, Object> bindingVars, AccessLevel accessLevel);
         List<SObject> run();
         List<SObject> run(AccessLevel accessLevel);
+        List<SObject> run(Map<String, Object> bindingVars);
+        List<SObject> run(Map<String, Object> bindingVars, AccessLevel accessLevel);
         Database.QueryLocator getLocator();
         Database.QueryLocator getLocator(AccessLevel accessLevel);
+        Database.QueryLocator getLocator(Map<String, Object> bindingVars);
+        Database.QueryLocator getLocator(Map<String, Object> bindingVars, AccessLevel accessLevel);
 
         Query whereBy(Filter whereClause);
         Query havingBy(Filter havingClause);
@@ -41,11 +47,12 @@ public virtual class Query implements Querable {
         void buildSOQL_Filter(List<String> fragments, TmpVars tmpVars);
     }
 
-    public interface CompositeFilter extends Filter {
-        CompositeFilter add(Filter filter);
+    public interface LogicalFilter extends Filter {
+        LogicalFilter add(Filter filter);
+        LogicalFilter addAll(List<Filter> filters);
     }
 
-    public class Literal {
+    public virtual class Literal {
         public String literal { get; set; }
 
         private Literal(String literal) {
@@ -63,7 +70,7 @@ public virtual class Query implements Querable {
         }
     }
 
-    public class TmpVars {
+    private class TmpVars {
         Map<String, Object> bindingVars = new Map<String, Object>();
         Integer tmpVarCount = 0;
 
@@ -74,6 +81,9 @@ public virtual class Query implements Querable {
             return ':' + tmpVar;
         }
     }
+
+    private String soql { get; set; }
+    private TmpVars tmpVars { get; set; }
 
     private String objectName { get; set; }
     private List<Object> selectFields = new List<Object>();
@@ -94,15 +104,15 @@ public virtual class Query implements Querable {
     private Boolean updateViewstat { get; set; }
     private Boolean forUpdate { get; set; }
 
-    public static Query of(String objectName) {
-        return new Query(objectName);
-    }
-
-    public Query() {
+    protected Query() {
     }
 
     private Query(String objectName) {
         this.objectName = objectName;
+    }
+
+    public static Query of(String objectName) {
+        return new Query(objectName);
     }
 
     public Query whereBy(Filter whereClause) {
@@ -155,8 +165,24 @@ public virtual class Query implements Querable {
     }
 
     public Integer getCount(AccessLevel accessLevel) {
-        TmpVars tmpVars = new TmpVars();
-        return Database.countQueryWithBinds(this.buildSOQL(tmpVars), tmpVars.bindingVars, accessLevel);
+        return this.getCount(null, accessLevel);
+    }
+
+    public Integer getCount(Map<String, Object> bindingVars) {
+        return this.getCount(bindingVars, AccessLevel.SYSTEM_MODE);
+    }
+
+    public Integer getCount(Map<String, Object> bindingVars, AccessLevel accessLevel) {
+        buildSOQL();
+        if (bindingVars == null) {
+            bindingVars = new Map<String, Object>();
+        }
+        bindingVars.putAll(this.tmpVars.bindingVars);
+
+        if (Test.isRunningTest()) {
+            return 0;
+        }
+        return Database.countQueryWithBinds(this.soql, bindingVars, accessLevel);
     }
 
     public List<SObject> run() {
@@ -164,8 +190,24 @@ public virtual class Query implements Querable {
     }
 
     public List<SObject> run(AccessLevel accessLevel) {
-        TmpVars tmpVars = new TmpVars();
-        return Database.queryWithBinds(this.buildSOQL(tmpVars), tmpVars.bindingVars, accessLevel);
+        return this.run(null, accessLevel);
+    }
+
+    public List<SObject> run(Map<String, Object> bindingVars) {
+        return this.run(bindingVars, AccessLevel.SYSTEM_MODE);
+    }
+
+    public List<SObject> run(Map<String, Object> bindingVars, AccessLevel accessLevel) {
+        buildSOQL();
+        if (bindingVars == null) {
+            bindingVars = new Map<String, Object>();
+        }
+        bindingVars.putAll(this.tmpVars.bindingVars);
+
+        if (Test.isRunningTest()) {
+            return new List<SObject>();
+        }
+        return Database.queryWithBinds(this.soql, bindingVars, accessLevel);
     }
 
     public Database.QueryLocator getLocator() {
@@ -173,22 +215,37 @@ public virtual class Query implements Querable {
     }
 
     public Database.QueryLocator getLocator(AccessLevel accessLevel) {
-        TmpVars tmpVars = new TmpVars();
-        return Database.getQueryLocatorWithBinds(this.buildSOQL(tmpVars), tmpVars.bindingVars, accessLevel);
+        return this.getLocator(null, accessLevel);
+    }
+
+    public Database.QueryLocator getLocator(Map<String, Object> bindingVars) {
+        return this.getLocator(bindingVars, AccessLevel.SYSTEM_MODE);
+    }
+
+    public Database.QueryLocator getLocator(Map<String, Object> bindingVars, AccessLevel accessLevel) {
+        buildSOQL();
+        if (bindingVars == null) {
+            bindingVars = new Map<String, Object>();
+        }
+        bindingVars.putAll(this.tmpVars.bindingVars);
+
+        if (Test.isRunningTest()) {
+            return null;
+        }
+        return Database.getQueryLocatorWithBinds(this.soql, tmpVars.bindingVars, accessLevel);
     }
 
     // ====================
     // #region SOQL Builder
 
-    public String build() {
-        TmpVars tmpVars = new TmpVars();
-        return buildSOQL(tmpVars);
-    }
-
-    private String buildSOQL(TmpVars tmpVars) {
-        List<String> fragments = new List<String>();
-        this.buildSOQL(fragments, tmpVars, this.objectName, 0);
-        return String.join(fragments, '');
+    public String buildSOQL() {
+        if (this.soql == null) {
+            this.tmpVars = new TmpVars();
+            List<String> fragments = new List<String>();
+            this.buildSOQL(fragments, this.tmpVars, this.objectName, 0);
+            this.soql = String.join(fragments, '');
+        }
+        return this.soql;
     }
 
     private void buildSOQL(List<String> fragments, TmpVars tmpVars, String fromName, Integer level) {
@@ -342,18 +399,23 @@ public virtual class Query implements Querable {
     // ====================
 
     // =====================
-    // #region Logical Filter
-    private virtual class LogicalFilter implements CompositeFilter {
+    // #region Logic Filter
+    private virtual class LogicalFilterImpl implements LogicalFilter {
         private List<Filter> filters { get; set; }
         private String operator { get; set; }
 
-        private LogicalFilter(String operator, List<Filter> filters) {
+        private LogicalFilterImpl(String operator, List<Filter> filters) {
             this.operator = operator;
             this.filters = filters;
         }
 
-        public CompositeFilter add(Filter filter) {
+        public LogicalFilter add(Filter filter) {
             this.filters.add(filter);
+            return this;
+        }
+
+        public LogicalFilter addAll(List<Filter> filters) {
+            this.filters.addAll(filters);
             return this;
         }
 
@@ -376,7 +438,7 @@ public virtual class Query implements Querable {
         }
     }
 
-    private class NotLogicalFilter extends LogicalFilter {
+    private class NotLogicalFilter extends LogicalFilterImpl {
         private NotLogicalFilter(Filter filter) {
             super('NOT', new List<Filter>{ filter });
         }
@@ -384,7 +446,7 @@ public virtual class Query implements Querable {
         public override void buildSOQL_Filter(List<String> fragments, TmpVars tmpVars) {
             Filter filter = this.filters[0];
             fragments.add(this.operator);
-            if (filter instanceof CompositeFilter) {
+            if (filter instanceof LogicalFilter) {
                 filter.buildSOQL_Filter(fragments, tmpVars);
             } else {
                 fragments.add('(');
@@ -398,20 +460,12 @@ public virtual class Query implements Querable {
         return new NotLogicalFilter(filter);
     }
 
-    public static CompositeFilter orx() {
-        return new LogicalFilter(' OR ', new List<Filter>());
+    public static LogicalFilter orx() {
+        return new LogicalFilterImpl(' OR ', new List<Filter>());
     }
 
-    public static CompositeFilter orx(List<Filter> filters) {
-        return new LogicalFilter(' OR ', filters);
-    }
-
-    public static CompositeFilter andx() {
-        return new LogicalFilter(' AND ', new List<Filter>());
-    }
-
-    public static CompositeFilter andx(List<Filter> filters) {
-        return new LogicalFilter(' AND ', filters);
+    public static LogicalFilter andx() {
+        return new LogicalFilterImpl(' AND ', new List<Filter>());
     }
 
     // #endregion
@@ -468,7 +522,7 @@ public virtual class Query implements Querable {
     }
 
     private class NotLikeFilter extends ComparisonFilter {
-        private NotLikeFilter(String fieldOrFunc, String value) {
+        private NotLikeFilter(String fieldOrFunc, Object value) {
             super(fieldOrFunc, ' LIKE ', value);
         }
 
@@ -505,16 +559,9 @@ public virtual class Query implements Querable {
     public static Filter eq(String fieldOrFunc, Object value) {
         return new ComparisonFilter(fieldOrFunc, ' = ', value);
     }
-    public static Filter eqNull(String fieldOrFunc) {
-        return new ComparisonFilter(fieldOrFunc, ' = ', null);
-    }
 
     public static Filter ne(String fieldOrFunc, Object value) {
         return new ComparisonFilter(fieldOrFunc, ' != ', value);
-    }
-
-    public static Filter neNull(String fieldOrFunc) {
-        return new ComparisonFilter(fieldOrFunc, ' != ', null);
     }
 
     public static Filter gt(String fieldOrFunc, Object value) {
@@ -531,6 +578,10 @@ public virtual class Query implements Querable {
 
     public static Filter lte(String fieldOrFunc, Object value) {
         return new ComparisonFilter(fieldOrFunc, ' <= ', value);
+    }
+
+    public static Filter between(String fieldOrFunc, Object minValue, Object maxValue) {
+        return andx().add(gte(fieldOrFunc, minValue)).add(lte(fieldOrFunc, maxValue));
     }
 
     public static Filter likex(String field, String value) {
@@ -557,8 +608,21 @@ public virtual class Query implements Querable {
         return new MultiComparisonFilter(field, ' EXCLUDES ', values);
     }
 
-    public static Filter between(String fieldOrFunc, Object minValue, Object maxValue) {
-        return andx().add(gte(fieldOrFunc, minValue)).add(lte(fieldOrFunc, maxValue));
+    // VarLiteral
+    public static Filter likex(String field, VarLiteral value) {
+        return new ComparisonFilter(field, ' LIKE ', value);
+    }
+
+    public static Filter nlike(String field, VarLiteral value) {
+        return new NotLikeFilter(field, value);
+    }
+
+    public static Filter inx(String fieldOrFunc, VarLiteral values) {
+        return new ComparisonFilter(fieldOrFunc, ' IN ', values);
+    }
+
+    public static Filter nin(String fieldOrFunc, VarLiteral values) {
+        return new ComparisonFilter(fieldOrFunc, ' NOT IN ', values);
     }
 
     // #endregion
@@ -1141,6 +1205,9 @@ public virtual class Query implements Querable {
     public interface CurrencyFunction extends SelectFunction {
     }
 
+    public interface TimezoneFunction {
+    }
+
     public virtual class FunctionImpl implements Function {
         private String function { get; set; }
         private Object fieldOrFunc { get; set; }
@@ -1357,6 +1424,22 @@ public virtual class Query implements Querable {
 
     // #endregion
     // ===============================
+
+    // ====================
+    // #region VAR Literal
+
+    public class VarLiteral extends Literal {
+        public VarLiteral(String literal) {
+            super(literal);
+        }
+    }
+
+    public static VarLiteral var(String name) {
+        return new VarLiteral(':' + name);
+    }
+
+    // #endregion
+    // ====================
 
     // ====================
     // #region Date Literal
