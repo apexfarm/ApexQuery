@@ -125,7 +125,7 @@ ORDER BY AnnualRevenue DESC NULLS LAST
 
 ### 2.2 Query Chaining
 
-The `Query` class can chain existing ones to compose their fields or statements together. However query composition doesn't support queries with group by clause.
+The `Query` class can chain existing ones to compose them together. Multiple levels of parent and child chaining are supported. And child chaining can even mix with its own parent chaining. However query composition doesn't support queries with group by clause.
 
 ```java
 public with sharing class AccountQuery extends Query {
