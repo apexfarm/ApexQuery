@@ -18,7 +18,7 @@ v2.0 was too complex to maintain and use. v3.0 was trying to be simple, and by f
 - **Key Updates**
   - Performance is improved by 30%. This isn't much compared a 7 vs 10 CPU time difference.
   - Strings become first class citizens. Most of the functions only return and accept strings now.
-  - Rarely used features are removed, such as value objects concepts.
+  - Rarely used features are removed, such as value object concepts.
 - **New Features**:
   - [Query Chaining](#22-query-chaining)
   - [Query Template](#23-query-template)
@@ -61,7 +61,7 @@ v2.0 was too complex to maintain and use. v3.0 was trying to be simple, and by f
   - [4.2 Logical Filter](#42-logical-filter)
 - [5. Functions](#5-functions)
   - [5.1 Aggregate Functions](#51-aggregate-functions)
-  - [5.2 Date/Time Functions](#52-date-time-functions)
+  - [5.2 Date/Time Functions](#52-datetime-functions)
   - [5.3 Other Functions](#53-other-functions)
 - [6. Literals](#6-literals)
   - [6.1 Date Literals](#61-date-literals)
