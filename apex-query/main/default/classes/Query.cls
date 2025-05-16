@@ -88,12 +88,12 @@ public virtual class Query implements Querable {
     private String objectName { get; set; }
     private List<Object> selectFields = new List<Object>();
     private Map<String, Query> selectParent = new Map<String, Query>();
-    private Map<String, Query> selectChild = new Map<String, Query>();
+    private Map<String, Query> selectChildren = new Map<String, Query>();
 
     private Filter whereClause;
     private Filter havingClause;
     private GroupBy groupByClause = new GroupBy();
-    private List<OrderByField> orderClause = new List<OrderByField>();
+    private List<Object> orderClause = new List<Object>();
 
     private Integer offset { get; set; }
     private Integer limitx { get; set; }
@@ -259,9 +259,9 @@ public virtual class Query implements Querable {
             }
         }
 
-        if (level < 5 && !this.selectChild.isEmpty()) {
-            for (String relationshipName : this.selectChild.keySet()) {
-                Query childQuery = this.selectChild.get(relationshipName);
+        if (level < 6 && !this.selectChildren.isEmpty()) {
+            for (String relationshipName : this.selectChildren.keySet()) {
+                Query childQuery = this.selectChildren.get(relationshipName);
                 fragments.add(', ');
                 fragments.add('(');
                 childQuery.buildSOQL(fragments, tmpVars, relationshipName, level + 1);
@@ -290,18 +290,24 @@ public virtual class Query implements Querable {
         if (!this.orderClause.isEmpty()) {
             fragments.add(' ORDER BY ');
             Boolean isNotFirst = false;
-            for (OrderByField field : this.orderClause) {
+            for (Object field : this.orderClause) {
                 if (isNotFirst) {
                     fragments.add(', ');
                 } else {
                     isNotFirst = true;
                 }
-                fragments.add(field.fieldOrFunc);
-                if (field.ascending == false) {
-                    fragments.add(' DESC');
-                }
-                if (field.nullsFist == false) {
-                    fragments.add(' NULLS LAST');
+
+                if (field instanceof OrderByField) {
+                    OrderByField fieldObj = (OrderByField) field;
+                    fragments.add(fieldObj.fieldOrFunc);
+                    if (fieldObj.ascending == false) {
+                        fragments.add(' DESC');
+                    }
+                    if (fieldObj.nullsFist == false) {
+                        fragments.add(' NULLS LAST');
+                    }
+                } else {
+                    fragments.add(String.valueOf(field));
                 }
             }
         }
@@ -383,7 +389,7 @@ public virtual class Query implements Querable {
     private void buildSOQL_SelectParent(List<String> fragments, String parentRelationshipName, Integer level) {
         this.buildSOQL_SelectFields(fragments, parentRelationshipName);
 
-        if (level < 5 && !this.selectParent.isEmpty()) {
+        if (level < 6 && !this.selectParent.isEmpty()) {
             for (String relationshipName : this.selectParent.keySet()) {
                 Query parentQuery = this.selectParent.get(relationshipName);
                 parentQuery.buildSOQL_SelectParent(
@@ -548,12 +554,12 @@ public virtual class Query implements Querable {
         }
     }
 
-    public static Filter inx(String field, Query query) {
-        return new InQueryFilter(field, ' IN ', query);
+    public static Filter inx(String IdField, Query query) {
+        return new InQueryFilter(IdField, ' IN ', query);
     }
 
-    public static Filter nin(String field, Query query) {
-        return new InQueryFilter(field, ' NOT IN ', query);
+    public static Filter nin(String IdField, Query query) {
+        return new InQueryFilter(IdField, ' NOT IN ', query);
     }
 
     public static Filter eq(String fieldOrFunc, Object value) {
@@ -608,7 +614,79 @@ public virtual class Query implements Querable {
         return new MultiComparisonFilter(field, ' EXCLUDES ', values);
     }
 
-    // VarLiteral
+    // #endregion
+    // =========================
+
+    // =============================
+    // #region Comparison Filter Ext
+
+    // Special Cases for ToLabelFunction
+    public static Filter eq(ToLabelFunction func, String value) {
+        String funcStr = func.buildSOQL_Function();
+        return new ComparisonFilter(funcStr, ' = ', value);
+    }
+
+    public static Filter ne(ToLabelFunction func, String value) {
+        String funcStr = func.buildSOQL_Function();
+        return new ComparisonFilter(funcStr, ' != ', value);
+    }
+
+    public static Filter gt(ToLabelFunction func, String value) {
+        String funcStr = func.buildSOQL_Function();
+        return new ComparisonFilter(funcStr, ' > ', value);
+    }
+
+    public static Filter gte(ToLabelFunction func, String value) {
+        String funcStr = func.buildSOQL_Function();
+        return new ComparisonFilter(funcStr, ' >= ', value);
+    }
+
+    public static Filter lt(ToLabelFunction func, String value) {
+        String funcStr = func.buildSOQL_Function();
+        return new ComparisonFilter(funcStr, ' < ', value);
+    }
+
+    public static Filter lte(ToLabelFunction func, String value) {
+        String funcStr = func.buildSOQL_Function();
+        return new ComparisonFilter(funcStr, ' <= ', value);
+    }
+
+    public static Filter between(ToLabelFunction func, String minValue, String maxValue) {
+        String funcStr = func.buildSOQL_Function();
+        return andx().add(gte(funcStr, minValue)).add(lte(funcStr, maxValue));
+    }
+
+    public static Filter likex(ToLabelFunction func, String value) {
+        String funcStr = func.buildSOQL_Function();
+        return new ComparisonFilter(funcStr, ' LIKE ', value);
+    }
+
+    public static Filter nlike(ToLabelFunction func, String value) {
+        String funcStr = func.buildSOQL_Function();
+        return new NotLikeFilter(funcStr, value);
+    }
+
+    public static Filter inx(ToLabelFunction func, List<String> values) {
+        String funcStr = func.buildSOQL_Function();
+        return new ComparisonFilter(funcStr, ' IN ', values);
+    }
+
+    public static Filter nin(ToLabelFunction func, List<String> values) {
+        String funcStr = func.buildSOQL_Function();
+        return new ComparisonFilter(funcStr, ' NOT IN ', values);
+    }
+
+    public static Filter includes(ToLabelFunction func, List<String> values) {
+        String funcStr = func.buildSOQL_Function();
+        return new MultiComparisonFilter(funcStr, ' INCLUDES ', values);
+    }
+
+    public static Filter excludes(ToLabelFunction func, List<String> values) {
+        String funcStr = func.buildSOQL_Function();
+        return new MultiComparisonFilter(funcStr, ' EXCLUDES ', values);
+    }
+
+    // Special Cases for VarLiteral
     public static Filter likex(String field, VarLiteral value) {
         return new ComparisonFilter(field, ' LIKE ', value);
     }
@@ -625,8 +703,28 @@ public virtual class Query implements Querable {
         return new ComparisonFilter(fieldOrFunc, ' NOT IN ', values);
     }
 
+    public static Filter likex(ToLabelFunction func, VarLiteral value) {
+        String funcStr = func.buildSOQL_Function();
+        return new ComparisonFilter(funcStr, ' LIKE ', value);
+    }
+
+    public static Filter nlike(ToLabelFunction func, VarLiteral value) {
+        String funcStr = func.buildSOQL_Function();
+        return new NotLikeFilter(funcStr, value);
+    }
+
+    public static Filter inx(ToLabelFunction func, VarLiteral values) {
+        String funcStr = func.buildSOQL_Function();
+        return new ComparisonFilter(funcStr, ' IN ', values);
+    }
+
+    public static Filter nin(ToLabelFunction func, VarLiteral values) {
+        String funcStr = func.buildSOQL_Function();
+        return new ComparisonFilter(funcStr, ' NOT IN ', values);
+    }
+
     // #endregion
-    // =========================
+    // =============================
 
     // =====================
     // #region Select Clause
@@ -682,7 +780,7 @@ public virtual class Query implements Querable {
         Query selectBy(List<Object> fields);
 
         Query selectParent(String relationshipName, Query query);
-        Query selectChild(String relationshipName, Query query);
+        Query selectChildren(String relationshipName, Query query);
     }
 
     public Query selectBy(Object field) {
@@ -790,8 +888,8 @@ public virtual class Query implements Querable {
         return this;
     }
 
-    public Query selectChild(String relationshipName, Query query) {
-        this.selectChild.put(relationshipName.trim(), query);
+    public Query selectChildren(String relationshipName, Query query) {
+        this.selectChildren.put(relationshipName.trim(), query);
         return this;
     }
     // #endregion
@@ -801,68 +899,55 @@ public virtual class Query implements Querable {
     // #region Order By Clause
 
     public interface Orderable extends Selectable {
-        Query orderBy(OrderByField field);
-        Query orderBy(OrderByField field1, OrderByField field2);
-        Query orderBy(OrderByField field1, OrderByField field2, OrderByField field3);
-        Query orderBy(OrderByField field1, OrderByField field2, OrderByField field3, OrderByField field4);
+        Query orderBy(Object field);
+        Query orderBy(Object field1, Object field2);
+        Query orderBy(Object field1, Object field2, Object field3);
+        Query orderBy(Object field1, Object field2, Object field3, Object field4);
+        Query orderBy(Object field1, Object field2, Object field3, Object field4, Object field5);
+        Query orderBy(Object field1, Object field2, Object field3, Object field4, Object field5, Object field6);
         Query orderBy(
-            OrderByField field1,
-            OrderByField field2,
-            OrderByField field3,
-            OrderByField field4,
-            OrderByField field5
+            Object field1,
+            Object field2,
+            Object field3,
+            Object field4,
+            Object field5,
+            Object field6,
+            Object field7
         );
         Query orderBy(
-            OrderByField field1,
-            OrderByField field2,
-            OrderByField field3,
-            OrderByField field4,
-            OrderByField field5,
-            OrderByField field6
+            Object field1,
+            Object field2,
+            Object field3,
+            Object field4,
+            Object field5,
+            Object field6,
+            Object field7,
+            Object field8
         );
         Query orderBy(
-            OrderByField field1,
-            OrderByField field2,
-            OrderByField field3,
-            OrderByField field4,
-            OrderByField field5,
-            OrderByField field6,
-            OrderByField field7
+            Object field1,
+            Object field2,
+            Object field3,
+            Object field4,
+            Object field5,
+            Object field6,
+            Object field7,
+            Object field8,
+            Object field9
         );
         Query orderBy(
-            OrderByField field1,
-            OrderByField field2,
-            OrderByField field3,
-            OrderByField field4,
-            OrderByField field5,
-            OrderByField field6,
-            OrderByField field7,
-            OrderByField field8
+            Object field1,
+            Object field2,
+            Object field3,
+            Object field4,
+            Object field5,
+            Object field6,
+            Object field7,
+            Object field8,
+            Object field9,
+            Object field10
         );
-        Query orderBy(
-            OrderByField field1,
-            OrderByField field2,
-            OrderByField field3,
-            OrderByField field4,
-            OrderByField field5,
-            OrderByField field6,
-            OrderByField field7,
-            OrderByField field8,
-            OrderByField field9
-        );
-        Query orderBy(
-            OrderByField field1,
-            OrderByField field2,
-            OrderByField field3,
-            OrderByField field4,
-            OrderByField field5,
-            OrderByField field6,
-            OrderByField field7,
-            OrderByField field8,
-            OrderByField field9,
-            OrderByField field10
-        );
-        Query orderBy(List<OrderByField> fields);
+        Query orderBy(List<Object> fields);
     }
 
     public class OrderByField {
@@ -901,117 +986,102 @@ public virtual class Query implements Querable {
         return new OrderByField(fieldOrFunc);
     }
 
-    public Query orderBy(OrderByField field) {
+    public Query orderBy(Object field) {
         this.orderClause.add(field);
         return this;
     }
 
-    public Query orderBy(OrderByField field1, OrderByField field2) {
+    public Query orderBy(Object field1, Object field2) {
         this.orderClause.add(field1);
         this.orderClause.add(field2);
         return this;
     }
 
-    public Query orderBy(OrderByField field1, OrderByField field2, OrderByField field3) {
+    public Query orderBy(Object field1, Object field2, Object field3) {
         this.orderClause.add(field1);
         this.orderClause.add(field2);
         this.orderClause.add(field3);
         return this;
     }
 
-    public Query orderBy(OrderByField field1, OrderByField field2, OrderByField field3, OrderByField field4) {
-        this.orderClause.addAll(new List<OrderByField>{ field1, field2, field3, field4 });
+    public Query orderBy(Object field1, Object field2, Object field3, Object field4) {
+        this.orderClause.addAll(new List<Object>{ field1, field2, field3, field4 });
+        return this;
+    }
+
+    public Query orderBy(Object field1, Object field2, Object field3, Object field4, Object field5) {
+        this.orderClause.addAll(new List<Object>{ field1, field2, field3, field4, field5 });
+        return this;
+    }
+
+    public Query orderBy(Object field1, Object field2, Object field3, Object field4, Object field5, Object field6) {
+        this.orderClause.addAll(new List<Object>{ field1, field2, field3, field4, field5, field6 });
         return this;
     }
 
     public Query orderBy(
-        OrderByField field1,
-        OrderByField field2,
-        OrderByField field3,
-        OrderByField field4,
-        OrderByField field5
+        Object field1,
+        Object field2,
+        Object field3,
+        Object field4,
+        Object field5,
+        Object field6,
+        Object field7
     ) {
-        this.orderClause.addAll(new List<OrderByField>{ field1, field2, field3, field4, field5 });
+        this.orderClause.addAll(new List<Object>{ field1, field2, field3, field4, field5, field6, field7 });
         return this;
     }
 
     public Query orderBy(
-        OrderByField field1,
-        OrderByField field2,
-        OrderByField field3,
-        OrderByField field4,
-        OrderByField field5,
-        OrderByField field6
+        Object field1,
+        Object field2,
+        Object field3,
+        Object field4,
+        Object field5,
+        Object field6,
+        Object field7,
+        Object field8
     ) {
-        this.orderClause.addAll(new List<OrderByField>{ field1, field2, field3, field4, field5, field6 });
+        this.orderClause.addAll(new List<Object>{ field1, field2, field3, field4, field5, field6, field7, field8 });
         return this;
     }
 
     public Query orderBy(
-        OrderByField field1,
-        OrderByField field2,
-        OrderByField field3,
-        OrderByField field4,
-        OrderByField field5,
-        OrderByField field6,
-        OrderByField field7
-    ) {
-        this.orderClause.addAll(new List<OrderByField>{ field1, field2, field3, field4, field5, field6, field7 });
-        return this;
-    }
-
-    public Query orderBy(
-        OrderByField field1,
-        OrderByField field2,
-        OrderByField field3,
-        OrderByField field4,
-        OrderByField field5,
-        OrderByField field6,
-        OrderByField field7,
-        OrderByField field8
+        Object field1,
+        Object field2,
+        Object field3,
+        Object field4,
+        Object field5,
+        Object field6,
+        Object field7,
+        Object field8,
+        Object field9
     ) {
         this.orderClause.addAll(
-            new List<OrderByField>{ field1, field2, field3, field4, field5, field6, field7, field8 }
+            new List<Object>{ field1, field2, field3, field4, field5, field6, field7, field8, field9 }
         );
         return this;
     }
 
     public Query orderBy(
-        OrderByField field1,
-        OrderByField field2,
-        OrderByField field3,
-        OrderByField field4,
-        OrderByField field5,
-        OrderByField field6,
-        OrderByField field7,
-        OrderByField field8,
-        OrderByField field9
+        Object field1,
+        Object field2,
+        Object field3,
+        Object field4,
+        Object field5,
+        Object field6,
+        Object field7,
+        Object field8,
+        Object field9,
+        Object field10
     ) {
         this.orderClause.addAll(
-            new List<OrderByField>{ field1, field2, field3, field4, field5, field6, field7, field8, field9 }
+            new List<Object>{ field1, field2, field3, field4, field5, field6, field7, field8, field9, field10 }
         );
         return this;
     }
 
-    public Query orderBy(
-        OrderByField field1,
-        OrderByField field2,
-        OrderByField field3,
-        OrderByField field4,
-        OrderByField field5,
-        OrderByField field6,
-        OrderByField field7,
-        OrderByField field8,
-        OrderByField field9,
-        OrderByField field10
-    ) {
-        this.orderClause.addAll(
-            new List<OrderByField>{ field1, field2, field3, field4, field5, field6, field7, field8, field9, field10 }
-        );
-        return this;
-    }
-
-    public Query orderBy(List<OrderByField> fields) {
+    public Query orderBy(List<Object> fields) {
         this.orderClause.addAll(fields);
         return this;
     }
@@ -1197,9 +1267,16 @@ public virtual class Query implements Querable {
     // #region SELECT Function
     public interface Function {
         void buildSOQL_Function(List<String> fragments, String parentRelationshipName);
+        String buildSOQL_Function();
     }
 
     public interface SelectFunction extends Function {
+    }
+
+    public interface FormatFunction extends SelectFunction {
+    }
+
+    public interface ToLabelFunction extends SelectFunction {
     }
 
     public interface CurrencyFunction extends SelectFunction {
@@ -1237,14 +1314,20 @@ public virtual class Query implements Querable {
                 fragments.add(this.alias);
             }
         }
+
+        public String buildSOQL_Function() {
+            return this.function + '(' + this.fieldOrFunc + ')';
+        }
     }
 
-    public class SelectFunctionImpl extends FunctionImpl implements SelectFunction {
-        private SelectFunctionImpl(String function, String fieldOrFunc, String alias) {
+    public class FormatFunctionImpl extends FunctionImpl implements FormatFunction {
+        private FormatFunctionImpl(String function, Object fieldOrFunc, String alias) {
             super(function, fieldOrFunc, alias);
         }
+    }
 
-        private SelectFunctionImpl(String function, CurrencyFunction fieldOrFunc, String alias) {
+    public class ToLabelFunctionImpl extends FunctionImpl implements ToLabelFunction {
+        private ToLabelFunctionImpl(String function, String fieldOrFunc, String alias) {
             super(function, fieldOrFunc, alias);
         }
     }
@@ -1255,28 +1338,28 @@ public virtual class Query implements Querable {
         }
     }
 
-    public static SelectFunction toLabel(String field) {
-        return new SelectFunctionImpl('toLabel', field, null);
+    public static ToLabelFunction toLabel(String field) {
+        return new ToLabelFunctionImpl('toLabel', field, null);
     }
 
-    public static SelectFunction toLabel(String field, String alias) {
-        return new SelectFunctionImpl('toLabel', field, alias);
+    public static ToLabelFunction toLabel(String field, String alias) {
+        return new ToLabelFunctionImpl('toLabel', field, alias);
     }
 
-    public static SelectFunction format(String field) {
-        return new SelectFunctionImpl('FORMAT', field, null);
+    public static FormatFunction format(String field) {
+        return new FormatFunctionImpl('FORMAT', field, null);
     }
 
-    public static SelectFunction format(String field, String alias) {
-        return new SelectFunctionImpl('FORMAT', field, alias);
+    public static FormatFunction format(String field, String alias) {
+        return new FormatFunctionImpl('FORMAT', field, alias);
     }
 
-    public static SelectFunction format(CurrencyFunction field) {
-        return new SelectFunctionImpl('FORMAT', field, null);
+    public static FormatFunction format(CurrencyFunction field) {
+        return new FormatFunctionImpl('FORMAT', field, null);
     }
 
-    public static SelectFunction format(CurrencyFunction field, String alias) {
-        return new SelectFunctionImpl('FORMAT', field, alias);
+    public static FormatFunction format(CurrencyFunction field, String alias) {
+        return new FormatFunctionImpl('FORMAT', field, alias);
     }
 
     public static CurrencyFunction convertCurrency(String field) {

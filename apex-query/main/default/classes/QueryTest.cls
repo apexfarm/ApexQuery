@@ -59,6 +59,7 @@ public with sharing class QueryTest extends Query {
     @isTest
     static void testRun_VAR_SpecialOperators() {
         Query.Filter filter;
+        // Field Name
         filter = likex('BillingCountry', var('country'));
         Assert.areEqual(
             'SELECT Id FROM Account WHERE BillingCountry LIKE :country',
@@ -80,6 +81,31 @@ public with sharing class QueryTest extends Query {
         filter = nin('BillingCountry', var('countries'));
         Assert.areEqual(
             'SELECT Id FROM Account WHERE BillingCountry NOT IN :countries',
+            Query.of('Account').whereBy(filter).buildSOQL()
+        );
+
+        // ToLabelFunction
+        filter = likex(toLabel('BillingCountry'), var('country'));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE toLabel(BillingCountry) LIKE :country',
+            Query.of('Account').whereBy(filter).buildSOQL()
+        );
+
+        filter = nlike(toLabel('BillingCountry'), var('country'));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE (NOT toLabel(BillingCountry) LIKE :country)',
+            Query.of('Account').whereBy(filter).buildSOQL()
+        );
+
+        filter = inx(toLabel('BillingCountry'), var('countries'));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE toLabel(BillingCountry) IN :countries',
+            Query.of('Account').whereBy(filter).buildSOQL()
+        );
+
+        filter = nin(toLabel('BillingCountry'), var('countries'));
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE toLabel(BillingCountry) NOT IN :countries',
             Query.of('Account').whereBy(filter).buildSOQL()
         );
     }
@@ -276,7 +302,7 @@ public with sharing class QueryTest extends Query {
             Query.of('Account').whereBy(filter).buildSOQL()
         );
 
-        filter = eq('toLabel(AccountSource)', 'Advertisement');
+        filter = eq(toLabel('AccountSource'), 'Advertisement');
         Assert.areEqual(
             'SELECT Id FROM Account WHERE toLabel(AccountSource) = :tmpVar1',
             Query.of('Account').whereBy(filter).buildSOQL()
@@ -359,7 +385,7 @@ public with sharing class QueryTest extends Query {
             Query.of('Account').whereBy(filter).buildSOQL()
         );
 
-        filter = ne('toLabel(AccountSource)', 'Advertisement');
+        filter = ne(toLabel('AccountSource'), 'Advertisement');
         Assert.areEqual(
             'SELECT Id FROM Account WHERE toLabel(AccountSource) != :tmpVar1',
             Query.of('Account').whereBy(filter).buildSOQL()
@@ -438,14 +464,14 @@ public with sharing class QueryTest extends Query {
             Query.of('Account').whereBy(filter).buildSOQL()
         );
 
-        filter = between('toLabel(AccountSource)', 'Advertisement', 'Advertisement');
+        filter = between(toLabel('AccountSource'), 'Advertisement', 'Advertisement');
         Assert.areEqual(
             'SELECT Id FROM Account WHERE (toLabel(AccountSource) >= :tmpVar1 AND toLabel(AccountSource) <= :tmpVar2)',
             Query.of('Account').whereBy(filter).buildSOQL()
         );
     }
 
-    @isTest // prettier-ignore
+    @isTest
     static void testComparison_LT_GT() {
         // param1 are Strings
         Query.Filter filter = lt('BillingCountry', 'China');
@@ -471,6 +497,30 @@ public with sharing class QueryTest extends Query {
             'SELECT Id FROM Account WHERE BillingCountry >= :tmpVar1',
             Query.of('Account').whereBy(filter).buildSOQL()
         );
+
+        filter = lt(toLabel('BillingCountry'), 'China');
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE toLabel(BillingCountry) < :tmpVar1',
+            Query.of('Account').whereBy(filter).buildSOQL()
+        );
+
+        filter = lte(toLabel('BillingCountry'), 'China');
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE toLabel(BillingCountry) <= :tmpVar1',
+            Query.of('Account').whereBy(filter).buildSOQL()
+        );
+
+        filter = gt(toLabel('BillingCountry'), 'China');
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE toLabel(BillingCountry) > :tmpVar1',
+            Query.of('Account').whereBy(filter).buildSOQL()
+        );
+
+        filter = gte(toLabel('BillingCountry'), 'China');
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE toLabel(BillingCountry) >= :tmpVar1',
+            Query.of('Account').whereBy(filter).buildSOQL()
+        );
     }
 
     @isTest // prettier-ignore
@@ -488,7 +538,7 @@ public with sharing class QueryTest extends Query {
             Query.of('Account').havingBy(filter).buildSOQL()
         );
 
-        filter = likex('toLabel(BillingCountry)', '%China%');
+        filter = likex(toLabel('BillingCountry'), '%China%');
         Assert.areEqual(
             'SELECT Id FROM Account WHERE toLabel(BillingCountry) LIKE :tmpVar1',
             Query.of('Account').whereBy(filter).buildSOQL()
@@ -510,7 +560,7 @@ public with sharing class QueryTest extends Query {
             Query.of('Account').havingBy(filter).buildSOQL()
         );
 
-        filter = nlike('toLabel(BillingCountry)', '%China%');
+        filter = nlike(toLabel('BillingCountry'), '%China%');
         Assert.areEqual(
             'SELECT Id FROM Account WHERE (NOT toLabel(BillingCountry) LIKE :tmpVar1)',
             Query.of('Account').whereBy(filter).buildSOQL()
@@ -531,6 +581,18 @@ public with sharing class QueryTest extends Query {
             'SELECT Id FROM Account WHERE BillingCountry EXCLUDES (:tmpVar1, :tmpVar2, :tmpVar3, :tmpVar4, :tmpVar5)',
             Query.of('Account').whereBy(filter).buildSOQL()
         );
+
+        filter = includes(toLabel('BillingCountry'), new List<String>{ 'AAA', 'BBB', 'CCC', 'DDD', 'EEE' });
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE toLabel(BillingCountry) INCLUDES (:tmpVar1, :tmpVar2, :tmpVar3, :tmpVar4, :tmpVar5)',
+            Query.of('Account').whereBy(filter).buildSOQL()
+        );
+
+        filter = excludes(toLabel('BillingCountry'), new List<String>{ 'AAA', 'BBB', 'CCC', 'DDD', 'EEE' });
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE toLabel(BillingCountry) EXCLUDES (:tmpVar1, :tmpVar2, :tmpVar3, :tmpVar4, :tmpVar5)',
+            Query.of('Account').whereBy(filter).buildSOQL()
+        );
     }
 
     @isTest // prettier-ignore
@@ -539,6 +601,12 @@ public with sharing class QueryTest extends Query {
         Query.Filter filter = inx('BillingCountry', new List<String>{ 'AAA', 'BBB', null });
         Assert.areEqual(
             'SELECT Id FROM Account WHERE BillingCountry IN :tmpVar1',
+            Query.of('Account').whereBy(filter).buildSOQL()
+        );
+
+        filter = inx(toLabel('BillingCountry'), new List<String>{ 'AAA', 'BBB', null });
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE toLabel(BillingCountry) IN :tmpVar1',
             Query.of('Account').whereBy(filter).buildSOQL()
         );
 
@@ -555,6 +623,12 @@ public with sharing class QueryTest extends Query {
         Query.Filter filter = nin('BillingCountry', new List<String>{ 'AAA', 'BBB', null });
         Assert.areEqual(
             'SELECT Id FROM Account WHERE BillingCountry NOT IN :tmpVar1',
+            Query.of('Account').whereBy(filter).buildSOQL()
+        );
+
+        filter = nin(toLabel('BillingCountry'), new List<String>{ 'AAA', 'BBB', null });
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE toLabel(BillingCountry) NOT IN :tmpVar1',
             Query.of('Account').whereBy(filter).buildSOQL()
         );
 
@@ -679,11 +753,11 @@ public with sharing class QueryTest extends Query {
         Query parentAccountQuery = Query.of('Account')
             .selectBy('Name', format(convertCurrency('AnnualRevenue')), toLabel('Industry'));
         Query opprotunityQuery = Query.of('Opportunity').selectParent('Account', parentAccountQuery);
-        Query contactQuery = Query.of('Contact').selectChild('Opportunities', opprotunityQuery);
+        Query contactQuery = Query.of('Contact').selectChildren('Opportunities', opprotunityQuery);
 
         Query accountQuery = Query.of('Account')
             .selectParent('Parent', parentAccountQuery)
-            .selectChild('Contacts', contactQuery);
+            .selectChildren('Contacts', contactQuery);
         Assert.areEqual(
             'SELECT Id, ' +
                 'Parent.Name, FORMAT(convertCurrency(Parent.AnnualRevenue)), toLabel(Parent.Industry), ' +
@@ -925,6 +999,57 @@ public with sharing class QueryTest extends Query {
         Assert.areEqual('SELECT Id FROM Account ORDER BY Name, MAX(Name)', accountQuery.buildSOQL());
     }
 
+    @isTest // prettier-ignore
+    static void testOrderBy_StringInputs() {
+        // String
+        String orderByField = 'Name';
+        Query accountQuery = Query.of('Account').orderBy(orderByField);
+        Assert.areEqual('SELECT Id FROM Account ORDER BY Name', accountQuery.buildSOQL());
+
+        accountQuery = Query.of('Account').orderBy(orderByField, orderByField);
+        Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name', accountQuery.buildSOQL());
+
+        accountQuery = Query.of('Account').orderBy(orderByField, orderByField, orderByField);
+        Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name, Name', accountQuery.buildSOQL());
+
+        accountQuery = Query.of('Account').orderBy(orderByField, orderByField, orderByField, orderByField);
+        Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name, Name, Name', accountQuery.buildSOQL());
+
+        accountQuery = Query.of('Account').orderBy(orderByField, orderByField, orderByField, orderByField, orderByField);
+        Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name, Name, Name, Name', accountQuery.buildSOQL());
+
+        accountQuery = Query.of('Account').orderBy(orderByField, orderByField, orderByField, orderByField, orderByField,
+            orderByField);
+        Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name, Name, Name, Name, Name', accountQuery.buildSOQL());
+
+        accountQuery = Query.of('Account').orderBy(orderByField, orderByField, orderByField, orderByField, orderByField,
+            orderByField, orderByField);
+        Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name, Name, Name, Name, Name, Name', accountQuery.buildSOQL());
+
+        accountQuery = Query.of('Account').orderBy(orderByField, orderByField, orderByField, orderByField, orderByField,
+            orderByField, orderByField, orderByField);
+        Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name, Name, Name, Name, Name, Name, Name', accountQuery.buildSOQL());
+
+        accountQuery = Query.of('Account').orderBy(orderByField, orderByField, orderByField, orderByField, orderByField,
+            orderByField, orderByField, orderByField, orderByField);
+        Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name, Name, Name, Name, Name, Name, Name, Name', accountQuery.buildSOQL());
+
+        accountQuery = Query.of('Account').orderBy(orderByField, orderByField, orderByField, orderByField, orderByField,
+            orderByField, orderByField, orderByField, orderByField, orderByField);
+        Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name, Name, Name, Name, Name, Name, Name, Name, Name', accountQuery.buildSOQL());
+
+        accountQuery = Query.of('Account').orderBy(new List<Object>{ orderByField, orderByField, orderByField });
+        Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name, Name', accountQuery.buildSOQL());
+
+        // Function
+        accountQuery = Query.of('Account').orderBy(max('Name'));
+        Assert.areEqual('SELECT Id FROM Account ORDER BY MAX(Name)', accountQuery.buildSOQL());
+
+        // Mixing
+        accountQuery = Query.of('Account').orderBy(new List<Object>{ orderByField, max('Name') });
+        Assert.areEqual('SELECT Id FROM Account ORDER BY Name, MAX(Name)', accountQuery.buildSOQL());
+    }
+
     @isTest
     static void testOrderBy_Options() {
         Query.OrderByField orderByField = orderBy('Name').ascending().nullsFirst();
@@ -943,6 +1068,20 @@ public with sharing class QueryTest extends Query {
         );
 
         orderByField = orderBy('Name').ascending().nullsFirst().descending().nullsLast();
+        accountQuery = Query.of('Account').orderBy(orderByField, orderByField);
+        Assert.areEqual(
+            'SELECT Id FROM Account ORDER BY Name DESC NULLS LAST, Name DESC NULLS LAST',
+            accountQuery.buildSOQL()
+        );
+    }
+
+    @isTest
+    static void testOrderBy_Options_StringInputs() {
+        String orderByField = 'Name';
+        Query accountQuery = Query.of('Account').orderBy(orderByField, orderByField);
+        Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name', accountQuery.buildSOQL());
+
+        orderByField = 'Name DESC NULLS LAST';
         accountQuery = Query.of('Account').orderBy(orderByField, orderByField);
         Assert.areEqual(
             'SELECT Id FROM Account ORDER BY Name DESC NULLS LAST, Name DESC NULLS LAST',

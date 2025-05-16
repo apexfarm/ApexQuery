@@ -1,19 +1,19 @@
 # Apex Query
 
-![](https://img.shields.io/badge/version-3.0.0-brightgreen.svg) ![](https://img.shields.io/badge/build-passing-brightgreen.svg) ![](https://img.shields.io/badge/coverage-99%25-brightgreen.svg)
+![](https://img.shields.io/badge/version-3.0.1-brightgreen.svg) ![](https://img.shields.io/badge/build-passing-brightgreen.svg) ![](https://img.shields.io/badge/coverage-99%25-brightgreen.svg)
 
 A query builder to build SOQL dynamically.
 
-| Environment           | Installation Link                                                                                                                                         | Version |
-| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
-| Production, Developer | <a target="_blank" href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04tGC000007TLzwYAG"><img src="docs/images/deploy-button.png"></a> | ver 3.0 |
-| Sandbox               | <a target="_blank" href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04tGC000007TLzwYAG"><img src="docs/images/deploy-button.png"></a>  | ver 3.0 |
+| Environment           | Installation Link                                                                                                                                         | Version   |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
+| Production, Developer | <a target="_blank" href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04tGC000007TMKKYA4"><img src="docs/images/deploy-button.png"></a> | ver 3.0.1 |
+| Sandbox               | <a target="_blank" href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04tGC000007TMKKYA4"><img src="docs/images/deploy-button.png"></a>  | ver 3.0.1 |
 
 ---
 
 ### Release v3.0.0
 
-v2.0 was too complex to maintain and use. v3.0 was trying to be simple, and by far it's the best outcome I can have. During the remake, I am getting started to feel string concatenations are also good options in some cases.
+v2.0 was too complex to maintain and use. v3.0 was trying to be simple, although not much can be improved. During the remake, I also had a question in mind, would it be simple enough to just use string concatenation?
 
 - **Key Updates**
   - Performance is improved by 30%. This isn't much compared a 7 vs 10 CPU time difference.
@@ -130,14 +130,13 @@ The `Query` class can chain existing ones to compose them together. Multiple lev
 ```java
 public with sharing class AccountQuery extends Query {
     public List<Account> listAccount() {
-        Query parentQuery = Query.of('Account')
-            .selectBy('Name', format(convertCurrency('AnnualRevenue')));
+        Query parentQuery = Query.of('Account')selectBy('Name', format(convertCurrency('AnnualRevenue')));
         Query childQuery = Query.of('Contact').selectBy('Name', 'Email');
 
         return (List<Account>) Query.of('Account')
             .selectBy('Name', toLabel('Industry'))
-            .selectParent('Parent', parentQuery) // Parent Chaining
-            .selectChild('Contacts', childQuery) // Child Chaining
+            .selectParent('Parent', parentQuery)    // Parent Chaining
+            .selectChildren('Contacts', childQuery) // Child Chaining
             .run();
     }
 }
@@ -152,7 +151,7 @@ SELECT Name, toLabel(Industry),
 FROM Account
 ```
 
-Without query chaining, the following code can also achieve the same result.
+Without query chaining, the following code can achieve the same result.
 
 ```java
 public with sharing class AccountQuery extends Query {
@@ -177,7 +176,7 @@ public with sharing class AccountQuery extends Query {
             if (accQuery == null) {
                 accQuery = Query.of('Account')
                     .selectBy('Name', toLabel('Industry'))
-                    .selectChild('Contacts', Query.of('Contact')
+                    .selectChildren('Contacts', Query.of('Contact')
                         .selectBy('Name', 'Email')
                         .whereBy(likex('Email', var('emailSuffix')))
                     )
@@ -246,20 +245,19 @@ SELECT Id FROM Account
 
 ### 3.2 Select Statement
 
-|       | API                                                     | Description                                              |
-| ----- | ------------------------------------------------------- | -------------------------------------------------------- |
-| **1** | `selectBy(Object ... )`                                 | Select up to 10 field names or functions.                |
-| **2** | `selectBy(List<Object>)`                                | Select a `List<Object>` of any field names or functions. |
-| **3** | `selectParent(String relationshipName, Query subQuery)` | Parent chaining.                                         |
-| **4** | `selectChild(String relationshipName, Query subQuery)`  | Child chaining.                                          |
+|       | API                                                       | Description                                              |
+| ----- | --------------------------------------------------------- | -------------------------------------------------------- |
+| **1** | `selectBy(Object ... )`                                   | Select up to 10 field names or functions.                |
+| **2** | `selectBy(List<Object>)`                                  | Select a `List<Object>` of any field names or functions. |
+| **3** | `selectParent(String relationshipName, Query subQuery)`   | Parent chaining.                                         |
+| **4** | `selectChildren(String relationshipName, Query subQuery)` | Child chaining.                                          |
 
 ```java
 Query accountQuery = Query.of('Account')
     .selectBy('Name', toLabel('Industry'))
     .selectBy(new List<Object> { 'Owner.Name', FORMAT('CreatedDate') })
-    .selectParent('Parent', Query.of('Account')
-        .selectBy('Name', format(convertCurrency('AnnualRevenue'))))
-    .selectChild('Contacts', Query.of('Contact').selectBy('Name', 'Email'));
+    .selectParent('Parent', Query.of('Account').selectBy('Name', format(convertCurrency('AnnualRevenue'))))
+    .selectChildren('Contacts', Query.of('Contact').selectBy('Name', 'Email'));
 ```
 
 Equivalent to the following SOQL:
@@ -291,20 +289,33 @@ Query accountQuery = Query.of('Account')
 
 ### 3.4 Order By Statement
 
-|       | API                           | Description                       |
-| ----- | ----------------------------- | --------------------------------- |
-| **1** | `orderBy(OrderByField...)`    | Order by up to 10 `OrderByField`. |
-| **2** | `orderBy(List<OrderByField>)` | Order by `List<OrderByField>`.    |
+|       | API                     | Description                        |
+| ----- | ----------------------- | ---------------------------------- |
+| **1** | `orderBy(Object...)`    | Order by up to 10 fields.          |
+| **2** | `orderBy(List<Object>)` | Order by `List<Object>` of fields. |
+
+Parameter can either be string representation or functions.
 
 ```java
 Query accountQuery = Query.of('Account')
     .selectBy('Name', toLabel('Industry'))
     .orderBy(
-        orderBy('BillingCountry').descending().nullsLast(), // OrderByField
-        orderBy(DISTANCE('ShippingAddress',
-            Location.newInstance(37.775000, -122.41800), 'km'))
+        'BillingCountry DESC NULLS LAST',
+        DISTANCE('ShippingAddress', Location.newInstance(37.775000, -122.41800), 'km')
     )
-    .orderBy(new List<OrderByField>{ orderBy('Owner.Profile.Name') });
+    .orderBy(new List<Object>{ 'Owner.Profile.Name' });
+```
+
+Parameter can also be `OrderByField` created by `orderBy()`. Equivalent to the above SOQL:
+
+```java
+Query accountQuery = Query.of('Account')
+    .selectBy('Name', toLabel('Industry'))
+    .orderBy(
+        orderBy('BillingCountry').descending().nullsLast(),
+        orderBy(DISTANCE('ShippingAddress', Location.newInstance(37.775000, -122.41800), 'km'))
+    )
+    .orderBy(new List<Object>{ orderBy('Owner.Profile.Name') });
 ```
 
 Equivalent to the following SOQL:
@@ -409,12 +420,11 @@ Query accountQuery = Query.of('Account')
 As a rule of thumb, the first param can be:
 
 1. Field names such as `AnnualRevenue`, `'Owner.Profile.Name'`.
-2. Functions returning `String` such as
+2. Functions such as
+   - `toLabel()` function
    - date function `calendarMonth('CreatedDate')`
    - distance function `distance('ShippingAddress', Location.newInstance(37.775001, -122.41801), 'km')`
-   - aggregate function `sum('AnnualRevenue')`
-
-And it cannot be `toLabel()` function, instead use `eq('toLabel(Industry)', 'Algriculture')` directly.
+   - aggregate function `sum('AnnualRevenue')` in having statement
 
 #### Compare with sObject List
 
@@ -564,6 +574,8 @@ Query.Filter filter = andx()
 > `LAST_N_DAYS(Integer n)`, `NEXT_N_DAYS(Integer n)`, `N_DAYS_AGO(Integer n)`, `NEXT_N_WEEKS(Integer n)`, `LAST_N_WEEKS(Integer n)`, `N_WEEKS_AGO(Integer n)`, `NEXT_N_MONTHS(Integer n)`, `LAST_N_MONTHS(Integer n)`, `N_MONTHS_AGO(Integer n)`, `NEXT_N_QUARTERS(Integer n)`, `LAST_N_QUARTERS(Integer n)`, `N_QUARTERS_AGO(Integer n)`, `NEXT_N_YEARS(Integer n)`, `LAST_N_YEARS(Integer n)`, `N_YEARS_AGO(Integer n)`, `NEXT_N_FISCAL_QUARTERS(Integer n)`, `N_FISCAL_QUARTERS_AGO(Integer n)`, `NEXT_N_FISCAL_YEARS(Integer n)`, `LAST_N_FISCAL_YEARS(Integer n)`, `N_FISCAL_YEARS_AGO(Integer n)`
 
 ### 6.2 Currency Literals
+
+Here are all the available currency ISO codes referenced from Salesforce ([link](https://help.salesforce.com/s/articleView?language=en_US&id=sf.admin_supported_currencies.htm)).
 
 ```java
 Query.Filter filter = orx()
