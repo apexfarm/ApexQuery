@@ -9,7 +9,7 @@ class QueryTest extends Query {
         Query q = Query.of('Account')
             .selectBy('Name', convertCurrency('AnnualRevenue'), 'BillingState')
             .selectParent('Parent', parentAccount)
-            .selectChildren('Contacts', Query.of('Contact').selectBy('Name'))
+            .selectChild('Contacts', Query.of('Contact').selectBy('Name'))
             .whereBy(orx()
                 .add(andx()
                     .add(gt('AnnualRevenue', CURRENCY('CNY', 1000)))

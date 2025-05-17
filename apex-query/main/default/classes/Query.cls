@@ -88,7 +88,7 @@ public virtual class Query implements Querable {
     private String objectName { get; set; }
     private List<Object> selectFields = new List<Object>();
     private Map<String, Query> selectParent = new Map<String, Query>();
-    private Map<String, Query> selectChildren = new Map<String, Query>();
+    private Map<String, Query> selectChild = new Map<String, Query>();
 
     private Filter whereClause;
     private Filter havingClause;
@@ -259,9 +259,9 @@ public virtual class Query implements Querable {
             }
         }
 
-        if (level < 6 && !this.selectChildren.isEmpty()) {
-            for (String relationshipName : this.selectChildren.keySet()) {
-                Query childQuery = this.selectChildren.get(relationshipName);
+        if (level < 6 && !this.selectChild.isEmpty()) {
+            for (String relationshipName : this.selectChild.keySet()) {
+                Query childQuery = this.selectChild.get(relationshipName);
                 fragments.add(', ');
                 fragments.add('(');
                 childQuery.buildSOQL(fragments, tmpVars, relationshipName, level + 1);
@@ -780,7 +780,7 @@ public virtual class Query implements Querable {
         Query selectBy(List<Object> fields);
 
         Query selectParent(String relationshipName, Query query);
-        Query selectChildren(String relationshipName, Query query);
+        Query selectChild(String relationshipName, Query query);
     }
 
     public Query selectBy(Object field) {
@@ -888,8 +888,8 @@ public virtual class Query implements Querable {
         return this;
     }
 
-    public Query selectChildren(String relationshipName, Query query) {
-        this.selectChildren.put(relationshipName.trim(), query);
+    public Query selectChild(String relationshipName, Query query) {
+        this.selectChild.put(relationshipName.trim(), query);
         return this;
     }
     // #endregion

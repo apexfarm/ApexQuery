@@ -2,8 +2,8 @@
   "packageDirectories": [
     {
       "path": "apex-query",
-      "versionName": "ver 3.0.1",
-      "versionNumber": "3.0.1.NEXT",
+      "versionName": "ver 3.0.2",
+      "versionNumber": "3.0.2.NEXT",
       "default": true,
       "package": "ApexQuery"
     }
@@ -26,6 +26,8 @@
     "ApexQuery@1.1.0-1": "04t2v000007Oim9AAC",
     "ApexQuery@2.0.0-1": "04t2v000007OimYAAS",
     "ApexQuery@3.0.0-1": "04tGC000007TLzwYAG",
-    "ApexQuery@3.0.1-1": "04tGC000007TMKKYA4"
+    "ApexQuery@3.0.1-1": "04tGC000007TMKKYA4",
+    "ApexQuery@3.0.1-2": "04tGC000007TMKPYA4",
+    "ApexQuery@3.0.2-1": "04tGC000007TMKUYA4"
   }
 }

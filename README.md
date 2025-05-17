@@ -1,13 +1,13 @@
 # Apex Query
 
-![](https://img.shields.io/badge/version-3.0.1-brightgreen.svg) ![](https://img.shields.io/badge/build-passing-brightgreen.svg) ![](https://img.shields.io/badge/coverage-99%25-brightgreen.svg)
+![](https://img.shields.io/badge/version-3.0.2-brightgreen.svg) ![](https://img.shields.io/badge/build-passing-brightgreen.svg) ![](https://img.shields.io/badge/coverage-99%25-brightgreen.svg)
 
 A query builder to build SOQL dynamically.
 
 | Environment           | Installation Link                                                                                                                                         | Version   |
 | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
-| Production, Developer | <a target="_blank" href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04tGC000007TMKKYA4"><img src="docs/images/deploy-button.png"></a> | ver 3.0.1 |
-| Sandbox               | <a target="_blank" href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04tGC000007TMKKYA4"><img src="docs/images/deploy-button.png"></a>  | ver 3.0.1 |
+| Production, Developer | <a target="_blank" href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04tGC000007TMKUYA4"><img src="docs/images/deploy-button.png"></a> | ver 3.0.2 |
+| Sandbox               | <a target="_blank" href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04tGC000007TMKUYA4"><img src="docs/images/deploy-button.png"></a>  | ver 3.0.2 |
 
 ---
 
@@ -136,7 +136,7 @@ public with sharing class AccountQuery extends Query {
         return (List<Account>) Query.of('Account')
             .selectBy('Name', toLabel('Industry'))
             .selectParent('Parent', parentQuery)    // Parent Chaining
-            .selectChildren('Contacts', childQuery) // Child Chaining
+            .selectChild('Contacts', childQuery) // Child Chaining
             .run();
     }
 }
@@ -176,7 +176,7 @@ public with sharing class AccountQuery extends Query {
             if (accQuery == null) {
                 accQuery = Query.of('Account')
                     .selectBy('Name', toLabel('Industry'))
-                    .selectChildren('Contacts', Query.of('Contact')
+                    .selectChild('Contacts', Query.of('Contact')
                         .selectBy('Name', 'Email')
                         .whereBy(likex('Email', var('emailSuffix')))
                     )
@@ -245,19 +245,19 @@ SELECT Id FROM Account
 
 ### 3.2 Select Statement
 
-|       | API                                                       | Description                                              |
-| ----- | --------------------------------------------------------- | -------------------------------------------------------- |
-| **1** | `selectBy(Object ... )`                                   | Select up to 10 field names or functions.                |
-| **2** | `selectBy(List<Object>)`                                  | Select a `List<Object>` of any field names or functions. |
-| **3** | `selectParent(String relationshipName, Query subQuery)`   | Parent chaining.                                         |
-| **4** | `selectChildren(String relationshipName, Query subQuery)` | Child chaining.                                          |
+|       | API                                                     | Description                                              |
+| ----- | ------------------------------------------------------- | -------------------------------------------------------- |
+| **1** | `selectBy(Object ... )`                                 | Select up to 10 field names or functions.                |
+| **2** | `selectBy(List<Object>)`                                | Select a `List<Object>` of any field names or functions. |
+| **3** | `selectParent(String relationshipName, Query subQuery)` | Parent chaining.                                         |
+| **4** | `selectChild(String relationshipName, Query subQuery)`  | Child chaining.                                          |
 
 ```java
 Query accountQuery = Query.of('Account')
     .selectBy('Name', toLabel('Industry'))
     .selectBy(new List<Object> { 'Owner.Name', FORMAT('CreatedDate') })
     .selectParent('Parent', Query.of('Account').selectBy('Name', format(convertCurrency('AnnualRevenue'))))
-    .selectChildren('Contacts', Query.of('Contact').selectBy('Name', 'Email'));
+    .selectChild('Contacts', Query.of('Contact').selectBy('Name', 'Email'));
 ```
 
 Equivalent to the following SOQL:

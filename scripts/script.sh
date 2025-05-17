@@ -2,5 +2,5 @@
 # sfdx force:package:create -n ApexQuery -t Unlocked -r apex-query
 sfdx force:package:version:create -p ApexQuery -x -c --wait 10 --code-coverage
 sfdx force:package:version:list
-sfdx force:package:version:promote -p 04tGC000007TMKKYA4
-sfdx force:package:version:report -p 04tGC000007TMKKYA4
+sfdx force:package:version:promote -p 04tGC000007TMKUYA4
+sfdx force:package:version:report -p 04tGC000007TMKUYA4

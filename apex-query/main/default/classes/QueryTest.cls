@@ -753,11 +753,11 @@ public with sharing class QueryTest extends Query {
         Query parentAccountQuery = Query.of('Account')
             .selectBy('Name', format(convertCurrency('AnnualRevenue')), toLabel('Industry'));
         Query opprotunityQuery = Query.of('Opportunity').selectParent('Account', parentAccountQuery);
-        Query contactQuery = Query.of('Contact').selectChildren('Opportunities', opprotunityQuery);
+        Query contactQuery = Query.of('Contact').selectChild('Opportunities', opprotunityQuery);
 
         Query accountQuery = Query.of('Account')
             .selectParent('Parent', parentAccountQuery)
-            .selectChildren('Contacts', contactQuery);
+            .selectChild('Contacts', contactQuery);
         Assert.areEqual(
             'SELECT Id, ' +
                 'Parent.Name, FORMAT(convertCurrency(Parent.AnnualRevenue)), toLabel(Parent.Industry), ' +
