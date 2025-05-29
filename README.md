@@ -130,7 +130,7 @@ The `Query` class can chain existing ones to compose them together. Multiple lev
 ```java
 public with sharing class AccountQuery extends Query {
     public List<Account> listAccount() {
-        Query parentQuery = Query.of('Account')selectBy('Name', format(convertCurrency('AnnualRevenue')));
+        Query parentQuery = Query.of('Account').selectBy('Name', format(convertCurrency('AnnualRevenue')));
         Query childQuery = Query.of('Contact').selectBy('Name', 'Email');
 
         return (List<Account>) Query.of('Account')
@@ -510,7 +510,7 @@ The following functions operating on Date, Time and Datetime fields.
 
 ```java
 Query.of('Opportunity')
-    .selectBy(calendarYear('CreatedDate'), SUM('Amount'))
+    .selectBy(calendarYear('CreatedDate'), sum('Amount'))
     .whereBy(gt(calendarYear('CreatedDate'), 2000))
     .groupBy(calendarYear('CreatedDate'));
 ```
