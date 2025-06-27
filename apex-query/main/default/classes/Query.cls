@@ -85,10 +85,10 @@ public virtual class Query implements Querable {
     private String soql { get; set; }
     private TmpVars tmpVars { get; set; }
 
-    private String objectName { get; set; }
+    public String objectName { get; private set; }
     private List<Object> selectFields = new List<Object>();
-    private Map<String, Query> selectParent = new Map<String, Query>();
-    private Map<String, Query> selectChild = new Map<String, Query>();
+    public Map<String, Query> selectParent { get; private set; }
+    public Map<String, Query> selectChild { get; private set; }
 
     private Filter whereClause;
     private Filter havingClause;
@@ -105,9 +105,12 @@ public virtual class Query implements Querable {
     private Boolean forUpdate { get; set; }
 
     protected Query() {
+        this.selectParent = new Map<String, Query>();
+        this.selectChild = new Map<String, Query>();
     }
 
     private Query(String objectName) {
+        this();
         this.objectName = objectName;
     }
 
@@ -297,8 +300,8 @@ public virtual class Query implements Querable {
                     isNotFirst = true;
                 }
 
-                if (field instanceof OrderByField) {
-                    OrderByField fieldObj = (OrderByField) field;
+                if (field instanceof OrderField) {
+                    OrderField fieldObj = (OrderField) field;
                     fragments.add(fieldObj.fieldOrFunc);
                     if (fieldObj.ascending == false) {
                         fragments.add(' DESC');
@@ -950,40 +953,40 @@ public virtual class Query implements Querable {
         Query orderBy(List<Object> fields);
     }
 
-    public class OrderByField {
+    public class OrderField {
         private String fieldOrFunc { get; set; }
         private Boolean ascending { get; set; }
         private Boolean nullsFist { get; set; }
 
-        public OrderByField(String fieldOrFunc) {
+        public OrderField(String fieldOrFunc) {
             this.fieldOrFunc = fieldOrFunc;
             this.ascending = true;
             this.nullsFist = true;
         }
 
-        public OrderByField ascending() {
+        public OrderField ascending() {
             this.ascending = true;
             return this;
         }
 
-        public OrderByField descending() {
+        public OrderField descending() {
             this.ascending = false;
             return this;
         }
 
-        public OrderByField nullsFirst() {
+        public OrderField nullsFirst() {
             this.nullsFist = true;
             return this;
         }
 
-        public OrderByField nullsLast() {
+        public OrderField nullsLast() {
             this.nullsFist = false;
             return this;
         }
     }
 
-    public static OrderByField orderBy(String fieldOrFunc) {
-        return new OrderByField(fieldOrFunc);
+    public static OrderField orderField(String fieldOrFunc) {
+        return new OrderField(fieldOrFunc);
     }
 
     public Query orderBy(Object field) {

@@ -951,94 +951,94 @@ public with sharing class QueryTest extends Query {
     @isTest // prettier-ignore
     static void testOrderBy() {
         // String
-        Query.OrderByField orderByField = orderBy('Name');
-        Query accountQuery = Query.of('Account').orderBy(orderByField);
+        Query.OrderField orderField = orderField('Name');
+        Query accountQuery = Query.of('Account').orderBy(orderField);
         Assert.areEqual('SELECT Id FROM Account ORDER BY Name', accountQuery.buildSOQL());
 
-        accountQuery = Query.of('Account').orderBy(orderByField, orderByField);
+        accountQuery = Query.of('Account').orderBy(orderField, orderField);
         Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name', accountQuery.buildSOQL());
 
-        accountQuery = Query.of('Account').orderBy(orderByField, orderByField, orderByField);
+        accountQuery = Query.of('Account').orderBy(orderField, orderField, orderField);
         Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name, Name', accountQuery.buildSOQL());
 
-        accountQuery = Query.of('Account').orderBy(orderByField, orderByField, orderByField, orderByField);
+        accountQuery = Query.of('Account').orderBy(orderField, orderField, orderField, orderField);
         Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name, Name, Name', accountQuery.buildSOQL());
 
-        accountQuery = Query.of('Account').orderBy(orderByField, orderByField, orderByField, orderByField, orderByField);
+        accountQuery = Query.of('Account').orderBy(orderField, orderField, orderField, orderField, orderField);
         Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name, Name, Name, Name', accountQuery.buildSOQL());
 
-        accountQuery = Query.of('Account').orderBy(orderByField, orderByField, orderByField, orderByField, orderByField,
-            orderByField);
+        accountQuery = Query.of('Account').orderBy(orderField, orderField, orderField, orderField, orderField,
+            orderField);
         Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name, Name, Name, Name, Name', accountQuery.buildSOQL());
 
-        accountQuery = Query.of('Account').orderBy(orderByField, orderByField, orderByField, orderByField, orderByField,
-            orderByField, orderByField);
+        accountQuery = Query.of('Account').orderBy(orderField, orderField, orderField, orderField, orderField,
+            orderField, orderField);
         Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name, Name, Name, Name, Name, Name', accountQuery.buildSOQL());
 
-        accountQuery = Query.of('Account').orderBy(orderByField, orderByField, orderByField, orderByField, orderByField,
-            orderByField, orderByField, orderByField);
+        accountQuery = Query.of('Account').orderBy(orderField, orderField, orderField, orderField, orderField,
+            orderField, orderField, orderField);
         Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name, Name, Name, Name, Name, Name, Name', accountQuery.buildSOQL());
 
-        accountQuery = Query.of('Account').orderBy(orderByField, orderByField, orderByField, orderByField, orderByField,
-            orderByField, orderByField, orderByField, orderByField);
+        accountQuery = Query.of('Account').orderBy(orderField, orderField, orderField, orderField, orderField,
+            orderField, orderField, orderField, orderField);
         Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name, Name, Name, Name, Name, Name, Name, Name', accountQuery.buildSOQL());
 
-        accountQuery = Query.of('Account').orderBy(orderByField, orderByField, orderByField, orderByField, orderByField,
-            orderByField, orderByField, orderByField, orderByField, orderByField);
+        accountQuery = Query.of('Account').orderBy(orderField, orderField, orderField, orderField, orderField,
+            orderField, orderField, orderField, orderField, orderField);
         Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name, Name, Name, Name, Name, Name, Name, Name, Name', accountQuery.buildSOQL());
 
-        accountQuery = Query.of('Account').orderBy(new List<Query.OrderByField>{ orderByField, orderByField, orderByField });
+        accountQuery = Query.of('Account').orderBy(new List<Query.OrderField>{ orderField, orderField, orderField });
         Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name, Name', accountQuery.buildSOQL());
 
         // Function
-        accountQuery = Query.of('Account').orderBy(orderBy(max('Name')));
+        accountQuery = Query.of('Account').orderBy(orderField(max('Name')));
         Assert.areEqual('SELECT Id FROM Account ORDER BY MAX(Name)', accountQuery.buildSOQL());
 
         // Mixing
-        accountQuery = Query.of('Account').orderBy(new List<OrderByField>{ orderByField, orderBy(max('Name')) });
+        accountQuery = Query.of('Account').orderBy(new List<OrderField>{ orderField, orderField(max('Name')) });
         Assert.areEqual('SELECT Id FROM Account ORDER BY Name, MAX(Name)', accountQuery.buildSOQL());
     }
 
     @isTest // prettier-ignore
     static void testOrderBy_StringInputs() {
         // String
-        String orderByField = 'Name';
-        Query accountQuery = Query.of('Account').orderBy(orderByField);
+        String orderField = 'Name';
+        Query accountQuery = Query.of('Account').orderBy(orderField);
         Assert.areEqual('SELECT Id FROM Account ORDER BY Name', accountQuery.buildSOQL());
 
-        accountQuery = Query.of('Account').orderBy(orderByField, orderByField);
+        accountQuery = Query.of('Account').orderBy(orderField, orderField);
         Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name', accountQuery.buildSOQL());
 
-        accountQuery = Query.of('Account').orderBy(orderByField, orderByField, orderByField);
+        accountQuery = Query.of('Account').orderBy(orderField, orderField, orderField);
         Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name, Name', accountQuery.buildSOQL());
 
-        accountQuery = Query.of('Account').orderBy(orderByField, orderByField, orderByField, orderByField);
+        accountQuery = Query.of('Account').orderBy(orderField, orderField, orderField, orderField);
         Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name, Name, Name', accountQuery.buildSOQL());
 
-        accountQuery = Query.of('Account').orderBy(orderByField, orderByField, orderByField, orderByField, orderByField);
+        accountQuery = Query.of('Account').orderBy(orderField, orderField, orderField, orderField, orderField);
         Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name, Name, Name, Name', accountQuery.buildSOQL());
 
-        accountQuery = Query.of('Account').orderBy(orderByField, orderByField, orderByField, orderByField, orderByField,
-            orderByField);
+        accountQuery = Query.of('Account').orderBy(orderField, orderField, orderField, orderField, orderField,
+            orderField);
         Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name, Name, Name, Name, Name', accountQuery.buildSOQL());
 
-        accountQuery = Query.of('Account').orderBy(orderByField, orderByField, orderByField, orderByField, orderByField,
-            orderByField, orderByField);
+        accountQuery = Query.of('Account').orderBy(orderField, orderField, orderField, orderField, orderField,
+            orderField, orderField);
         Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name, Name, Name, Name, Name, Name', accountQuery.buildSOQL());
 
-        accountQuery = Query.of('Account').orderBy(orderByField, orderByField, orderByField, orderByField, orderByField,
-            orderByField, orderByField, orderByField);
+        accountQuery = Query.of('Account').orderBy(orderField, orderField, orderField, orderField, orderField,
+            orderField, orderField, orderField);
         Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name, Name, Name, Name, Name, Name, Name', accountQuery.buildSOQL());
 
-        accountQuery = Query.of('Account').orderBy(orderByField, orderByField, orderByField, orderByField, orderByField,
-            orderByField, orderByField, orderByField, orderByField);
+        accountQuery = Query.of('Account').orderBy(orderField, orderField, orderField, orderField, orderField,
+            orderField, orderField, orderField, orderField);
         Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name, Name, Name, Name, Name, Name, Name, Name', accountQuery.buildSOQL());
 
-        accountQuery = Query.of('Account').orderBy(orderByField, orderByField, orderByField, orderByField, orderByField,
-            orderByField, orderByField, orderByField, orderByField, orderByField);
+        accountQuery = Query.of('Account').orderBy(orderField, orderField, orderField, orderField, orderField,
+            orderField, orderField, orderField, orderField, orderField);
         Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name, Name, Name, Name, Name, Name, Name, Name, Name', accountQuery.buildSOQL());
 
-        accountQuery = Query.of('Account').orderBy(new List<Object>{ orderByField, orderByField, orderByField });
+        accountQuery = Query.of('Account').orderBy(new List<Object>{ orderField, orderField, orderField });
         Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name, Name', accountQuery.buildSOQL());
 
         // Function
@@ -1046,29 +1046,29 @@ public with sharing class QueryTest extends Query {
         Assert.areEqual('SELECT Id FROM Account ORDER BY MAX(Name)', accountQuery.buildSOQL());
 
         // Mixing
-        accountQuery = Query.of('Account').orderBy(new List<Object>{ orderByField, max('Name') });
+        accountQuery = Query.of('Account').orderBy(new List<Object>{ orderField, max('Name') });
         Assert.areEqual('SELECT Id FROM Account ORDER BY Name, MAX(Name)', accountQuery.buildSOQL());
     }
 
     @isTest
     static void testOrderBy_Options() {
-        Query.OrderByField orderByField = orderBy('Name').ascending().nullsFirst();
-        Query accountQuery = Query.of('Account').orderBy(orderByField, orderByField);
+        Query.OrderField orderField = orderField('Name').ascending().nullsFirst();
+        Query accountQuery = Query.of('Account').orderBy(orderField, orderField);
         Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name', accountQuery.buildSOQL());
 
-        orderByField = orderBy('Name').descending().nullsLast().ascending().nullsFirst();
-        accountQuery = Query.of('Account').orderBy(orderByField, orderByField);
+        orderField = orderField('Name').descending().nullsLast().ascending().nullsFirst();
+        accountQuery = Query.of('Account').orderBy(orderField, orderField);
         Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name', accountQuery.buildSOQL());
 
-        orderByField = orderBy('Name').descending().nullsLast();
-        accountQuery = Query.of('Account').orderBy(orderByField, orderByField);
+        orderField = orderField('Name').descending().nullsLast();
+        accountQuery = Query.of('Account').orderBy(orderField, orderField);
         Assert.areEqual(
             'SELECT Id FROM Account ORDER BY Name DESC NULLS LAST, Name DESC NULLS LAST',
             accountQuery.buildSOQL()
         );
 
-        orderByField = orderBy('Name').ascending().nullsFirst().descending().nullsLast();
-        accountQuery = Query.of('Account').orderBy(orderByField, orderByField);
+        orderField = orderField('Name').ascending().nullsFirst().descending().nullsLast();
+        accountQuery = Query.of('Account').orderBy(orderField, orderField);
         Assert.areEqual(
             'SELECT Id FROM Account ORDER BY Name DESC NULLS LAST, Name DESC NULLS LAST',
             accountQuery.buildSOQL()
@@ -1077,12 +1077,12 @@ public with sharing class QueryTest extends Query {
 
     @isTest
     static void testOrderBy_Options_StringInputs() {
-        String orderByField = 'Name';
-        Query accountQuery = Query.of('Account').orderBy(orderByField, orderByField);
+        String orderField = 'Name';
+        Query accountQuery = Query.of('Account').orderBy(orderField, orderField);
         Assert.areEqual('SELECT Id FROM Account ORDER BY Name, Name', accountQuery.buildSOQL());
 
-        orderByField = 'Name DESC NULLS LAST';
-        accountQuery = Query.of('Account').orderBy(orderByField, orderByField);
+        orderField = 'Name DESC NULLS LAST';
+        accountQuery = Query.of('Account').orderBy(orderField, orderField);
         Assert.areEqual(
             'SELECT Id FROM Account ORDER BY Name DESC NULLS LAST, Name DESC NULLS LAST',
             accountQuery.buildSOQL()

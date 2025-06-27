@@ -1,13 +1,13 @@
 # Apex Query
 
-![](https://img.shields.io/badge/version-3.0.2-brightgreen.svg) ![](https://img.shields.io/badge/build-passing-brightgreen.svg) ![](https://img.shields.io/badge/coverage-99%25-brightgreen.svg)
+![](https://img.shields.io/badge/version-3.0.3-brightgreen.svg) ![](https://img.shields.io/badge/build-passing-brightgreen.svg) ![](https://img.shields.io/badge/coverage-99%25-brightgreen.svg)
 
 A query builder to build SOQL dynamically.
 
 | Environment           | Installation Link                                                                                                                                         | Version   |
 | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
-| Production, Developer | <a target="_blank" href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04tGC000007TMKUYA4"><img src="docs/images/deploy-button.png"></a> | ver 3.0.2 |
-| Sandbox               | <a target="_blank" href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04tGC000007TMKUYA4"><img src="docs/images/deploy-button.png"></a>  | ver 3.0.2 |
+| Production, Developer | <a target="_blank" href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04tGC000007TOQEYA4"><img src="docs/images/deploy-button.png"></a> | ver 3.0.3 |
+| Sandbox               | <a target="_blank" href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04tGC000007TOQEYA4"><img src="docs/images/deploy-button.png"></a>  | ver 3.0.3 |
 
 ---
 
@@ -17,7 +17,7 @@ v2.0 was too complex to maintain and use. v3.0 was trying to be simple, although
 
 - **Key Updates**
   - Performance is improved by 30%. This isn't much compared a 7 vs 10 CPU time difference.
-  - Strings become first class citizens. Most of the functions only return and accept strings now.
+  - Strings become first class citizens, and strong type checking are removed.
   - Rarely used features are removed, such as value object concepts.
 - **New Features**:
   - [Query Chaining](#22-query-chaining)
@@ -107,7 +107,7 @@ public with sharing class AccountQuery extends Query {
                     .add(lt('AnnualRevenue', 1000))
                     .add(eq('BillingState', 'Shanghai')))
             )
-            .orderBy(orderBy('AnnualRevenue').descending().nullsLast())
+            .orderBy(orderField('AnnualRevenue').descending().nullsLast())
             .run();
     }
 }
@@ -125,18 +125,18 @@ ORDER BY AnnualRevenue DESC NULLS LAST
 
 ### 2.2 Query Chaining
 
-The `Query` class can chain existing ones to compose them together. Multiple levels of parent and child chaining are supported. And child chaining can even mix with its own parent chaining. However query composition doesn't support queries with group by clause.
+The `Query` class can chain existing ones to compose them together. Multiple levels of parent and child chaining are supported. And child chaining can even mix with its own parent chaining. But it doesn't support queries with group by clause.
 
 ```java
 public with sharing class AccountQuery extends Query {
     public List<Account> listAccount() {
-        Query parentQuery = Query.of('Account')selectBy('Name', format(convertCurrency('AnnualRevenue')));
+        Query parentQuery = Query.of('Account').selectBy('Name', format(convertCurrency('AnnualRevenue')));
         Query childQuery = Query.of('Contact').selectBy('Name', 'Email');
 
         return (List<Account>) Query.of('Account')
             .selectBy('Name', toLabel('Industry'))
-            .selectParent('Parent', parentQuery)    // Parent Chaining
-            .selectChild('Contacts', childQuery) // Child Chaining
+            .selectParent('Parent', parentQuery)               // Parent Chaining
+            .selectChild('Contacts', childQuery)               // Child Chaining
             .run();
     }
 }
@@ -167,7 +167,7 @@ public with sharing class AccountQuery extends Query {
 
 ### 2.3 Query Template
 
-When the same `Query` is intended to be run with different binding variables, the following pattern can be used. **Note**: Query template must be built with `var()` with binding var names.
+When the same `Query` is intended to be run with different binding variables, the following pattern can be used. **Note**: Query template supposed be built with `var()` with binding var names.
 
 ```java
 public with sharing class AccountQuery extends Query {
@@ -178,11 +178,11 @@ public with sharing class AccountQuery extends Query {
                     .selectBy('Name', toLabel('Industry'))
                     .selectChild('Contacts', Query.of('Contact')
                         .selectBy('Name', 'Email')
-                        .whereBy(likex('Email', var('emailSuffix')))
+                        .whereBy(likex('Email', var('emailSuffix'))) // var 1
                     )
                     .whereBy(andx()
-                        .add(gt('AnnualRevenue', var('revenue')))
-                        .add(eq('BillingState', var('state')))
+                        .add(gt('AnnualRevenue', var('revenue')))    // var 2
+                        .add(eq('BillingState', var('state')))       // var 3
                     );
             }
             return accQuery;
@@ -306,16 +306,16 @@ Query accountQuery = Query.of('Account')
     .orderBy(new List<Object>{ 'Owner.Profile.Name' });
 ```
 
-Parameter can also be `OrderByField` created by `orderBy()`. Equivalent to the above SOQL:
+Parameter can also be created by `orderField()`. Equivalent to the above SOQL:
 
 ```java
 Query accountQuery = Query.of('Account')
     .selectBy('Name', toLabel('Industry'))
     .orderBy(
-        orderBy('BillingCountry').descending().nullsLast(),
-        orderBy(DISTANCE('ShippingAddress', Location.newInstance(37.775000, -122.41800), 'km'))
+        orderField('BillingCountry').descending().nullsLast(),
+        orderField(DISTANCE('ShippingAddress', Location.newInstance(37.775000, -122.41800), 'km'))
     )
-    .orderBy(new List<Object>{ orderBy('Owner.Profile.Name') });
+    .orderBy(new List<Object>{ orderField('Owner.Profile.Name') });
 ```
 
 Equivalent to the following SOQL:
@@ -361,7 +361,7 @@ Query accountQuery = Query.of('Account')
     .groupBy('BillingCountry', 'BillingState')
     .rollup()
     .havingBy(gt(sum('AnnualRevenue'), 2000))
-    .orderBy(orderBy(avg('AnnualRevenue')), orderBy(sum('AnnualRevenue')));
+    .orderBy(avg('AnnualRevenue'), sum('AnnualRevenue'));
 ```
 
 Equivalent to the following SOQL:
@@ -510,7 +510,7 @@ The following functions operating on Date, Time and Datetime fields.
 
 ```java
 Query.of('Opportunity')
-    .selectBy(calendarYear('CreatedDate'), SUM('Amount'))
+    .selectBy(calendarYear('CreatedDate'), sum('Amount'))
     .whereBy(gt(calendarYear('CreatedDate'), 2000))
     .groupBy(calendarYear('CreatedDate'));
 ```
@@ -546,7 +546,8 @@ GROUP BY CALENDAR_YEAR(CreatedDate)
 Here is an example how to generate a location-based comparison expression.
 
 ```java
-Query.Filter filter = lt(distance('ShippingAddreess', Location.newInstance(37.775000, -122.41800)), 20, 'km');
+Query.Filter filter = lt(distance('ShippingAddreess',
+    Location.newInstance(37.775000, -122.41800)), 20, 'km');
 ```
 
 | Static Methods                               | Generated Format                                                           |
