@@ -340,17 +340,17 @@ Query accountQuery = Query.of('Account')
 Use `whereBy()` to access the root filter, so branch filters can be appended to the stem later.
 
 ```java
-// TYPE #1: to append existing filter with default AND logic
+// TYPE #1: a default AND logicical filter will applied
 Query accountQuery = Query.of('Account').selectBy('Name')
     .whereBy(gt('AnnualRevenue', 2000));
 accountQuery.whereBy().add(lt('AnnualRevenue', 6000));
 
-// TYPE #2: to append existing logical filter
+// TYPE #2: an existing logical filter will be reused
 Query accountQuery = Query.of('Account').selectBy('Name')
     .whereBy(andx().add(gt('AnnualRevenue', 2000)));
 accountQuery.whereBy().add(lt('AnnualRevenue', 6000));
 
-// TYPE #3: to append new filters with default AND logic
+// TYPE #3: a default AND logical filter will be applied
 Query accountQuery = Query.of('Account').selectBy('Name');
 accountQuery.whereBy().add(gt('AnnualRevenue', 2000));
 accountQuery.whereBy().add(lt('AnnualRevenue', 6000));
