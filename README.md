@@ -1,13 +1,13 @@
 # Apex Query
 
-![](https://img.shields.io/badge/version-3.0.3-brightgreen.svg) ![](https://img.shields.io/badge/build-passing-brightgreen.svg) ![](https://img.shields.io/badge/coverage-99%25-brightgreen.svg)
+![](https://img.shields.io/badge/version-3.0.4-brightgreen.svg) ![](https://img.shields.io/badge/build-passing-brightgreen.svg) ![](https://img.shields.io/badge/coverage-99%25-brightgreen.svg)
 
 A query builder to build SOQL dynamically.
 
 | Environment           | Installation Link                                                                                                                                         | Version   |
 | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
-| Production, Developer | <a target="_blank" href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04tGC000007TOQEYA4"><img src="docs/images/deploy-button.png"></a> | ver 3.0.3 |
-| Sandbox               | <a target="_blank" href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04tGC000007TOQEYA4"><img src="docs/images/deploy-button.png"></a>  | ver 3.0.3 |
+| Production, Developer | <a target="_blank" href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04tGC000007TORgYAO"><img src="docs/images/deploy-button.png"></a> | ver 3.0.3 |
+| Sandbox               | <a target="_blank" href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04tGC000007TORgYAO"><img src="docs/images/deploy-button.png"></a>  | ver 3.0.3 |
 
 ---
 
@@ -20,8 +20,9 @@ v2.0 was too complex to maintain and use. v3.0 was trying to be simple, although
   - Strings become first class citizens, and strong type checking are removed.
   - Rarely used features are removed, such as value object concepts.
 - **New Features**:
-  - [Query Chaining](#22-query-chaining)
-  - [Query Template](#23-query-template)
+  - [Query Composition](#22-query-composition)
+  - [Query Chaining](#23-query-chaining)
+  - [Query Template](#24-query-template)
 - **Removed Features**
   - Removed `TYPEOF` statement, use a manually built long string instead.
   - Removed input parameter types of `SObjectType` and `SObjectField`, use `String` names instead.
@@ -38,35 +39,6 @@ v2.0 was too complex to maintain and use. v3.0 was trying to be simple, although
     - `MAX()` => `max()`
 
 ---
-
-## Table of Contents
-
-- [1. Naming Conventions](#1-naming-conventions)
-  - [1.1 Naming Readability](#11-naming-readability)
-  - [1.2 Naming Confliction](#12-naming-confliction)
-- [2. Overview](#2-overview)
-  - [2.1 Query Class](#21-query-class)
-  - [2.2 Query Chaining](#22-query-chaining)
-  - [2.3 Query Template](#23-query-template)
-  - [2.4 Query Execution](#24-query-execution)
-- [3. Keywords](#3-keywords)
-  - [3.1 From Statement](#31-from-statement)
-  - [3.2 Select Statement](#32-select-statement)
-  - [3.3 Where Statement](#33-where-statement)
-  - [3.4 Order By Statement](#34-order-by-statement)
-  - [3.5 Group By Statement](#35-group-by-statement)
-  - [3.6 Other Keywords](#36-other-keywords)
-- [4. Filters](#4-filters)
-  - [4.1 Comparison Filter](#41-comparison-filter)
-  - [4.2 Logical Filter](#42-logical-filter)
-- [5. Functions](#5-functions)
-  - [5.1 Aggregate Functions](#51-aggregate-functions)
-  - [5.2 Date/Time Functions](#52-datetime-functions)
-  - [5.3 Other Functions](#53-other-functions)
-- [6. Literals](#6-literals)
-  - [6.1 Date Literals](#61-date-literals)
-  - [6.2 Currency Literals](#62-currency-literals)
-- [7. License](#7-license)
 
 ## 1. Naming Conventions
 
@@ -123,7 +95,50 @@ WHERE ((AnnualRevenue > 1000 AND BillingState = 'Beijing')
 ORDER BY AnnualRevenue DESC NULLS LAST
 ```
 
-### 2.2 Query Chaining
+### 2.2 Query Composition
+
+The key benefit of this library is to decompose the full query into various parts, and compose them together conditionally. Let's decompose the above SOQL into the following dynamic structure.
+
+```java
+public with sharing class AccountQuery extends Query {
+    public List<Account> runQuery(List<Object> additionalFields,
+        Decimal beijingRevenue,
+        Decimal shanghaiRevenue) {
+
+        Query q = baseQuery();
+        q.selectBy(additionalFields);
+        /**
+         *  Please don't worry about `andx()` or `orx()` set to where condition
+         *  having zero or only one filter, SOQL can always be built correctly.
+         */
+        q.whereBy(orx());
+        q.whereBy().add(beijingRevenueGreaterThan(beijingRevenue));
+        q.whereBy().add(shanghaiRevenueLessThan(shanghaiRevenue));
+        return q.run();
+    }
+
+    public Query baseQuery() {
+        Query q = Query.of('Account');
+        q.selectBy('Name');
+        q.selectBy(toLabel('Industry'));
+        return q.orderBy(orderField('AnnualRevenue').descending().nullsLast());
+    }
+
+    public Filter beijingRevenueGreaterThan(Decimal revenue) {
+        return andx()
+            .add(gt('AnnualRevenue', revenue))
+            .add(eq('BillingState', 'Beijing'));
+    }
+
+    public Filter shanghaiRevenueLessThan(Decimal revenue) {
+        return andx()
+            .add(lt('AnnualRevenue', revenue))
+            .add(eq('BillingState', 'Shanghai'));
+    }
+}
+```
+
+### 2.3 Query Chaining
 
 The `Query` class can chain existing ones to compose them together. Multiple levels of parent and child chaining are supported. And child chaining can even mix with its own parent chaining. But it doesn't support queries with group by clause.
 
@@ -165,7 +180,7 @@ public with sharing class AccountQuery extends Query {
 }
 ```
 
-### 2.3 Query Template
+### 2.4 Query Template
 
 When the same `Query` is intended to be run with different binding variables, the following pattern can be used. **Note**: Query template supposed be built with `var()` with binding var names.
 
@@ -191,7 +206,6 @@ public with sharing class AccountQuery extends Query {
     }
 
     public List<Account> listAccount(String state, Decimal revenue) {
-        System.debug(accQuery.buildSOQL());
         return (List<Account>) accQuery.run(new Map<String, Object> {
             'revenue' => revenue,
             'state' => state,
@@ -210,7 +224,7 @@ FROM Account
 WHERE (AnnualRevenue > :revenue AND BillingState = :state)
 ```
 
-### 2.4 Query Execution
+### 2.5 Query Execution
 
 Execute with default `AccessLevel.SYSTEM_MODE`:
 
@@ -272,6 +286,8 @@ FROM Account
 
 ### 3.3 Where Statement
 
+#### Set Root Filter
+
 `whereBy(Filter filter)` API accepts either a comparison expression or a logical statement.
 
 ```java
@@ -285,6 +301,31 @@ Query accountQuery = Query.of('Account')
         .add(gt('AnnualRevenue', 2000))
         .add(lt('AnnualRevenue', 6000))
     );
+```
+
+#### Get Root Filter
+
+Use `whereBy()` to access the root logical filter.
+
+```java
+// TYPE #1: to append existing filter with default AND logic
+Query accountQuery = Query.of('Account').selectBy('Name').whereBy(gt('AnnualRevenue', 2000));
+accountQuery.whereBy().add(lt('AnnualRevenue', 6000));
+
+// TYPE #2: to append existing logical filter
+Query accountQuery = Query.of('Account').selectBy('Name').whereBy(andx().add(gt('AnnualRevenue', 2000)));
+accountQuery.whereBy().add(lt('AnnualRevenue', 6000));
+
+// TYPE #3: to append new filters with default AND logic
+Query accountQuery = Query.of('Account').selectBy('Name');
+accountQuery.whereBy().add(gt('AnnualRevenue', 2000));
+accountQuery.whereBy().add(lt('AnnualRevenue', 6000));
+```
+
+All Equivalent to the following SOQL:
+
+```sql
+SELECT Name FROM Account Where AnnualRevenue > 2000 AND AnnualRevenue < 6000
 ```
 
 ### 3.4 Order By Statement

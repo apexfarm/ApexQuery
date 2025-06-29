@@ -45,7 +45,7 @@ public with sharing class QueryTest extends Query {
     static void testRun_VAR() {
         Query.Filter filter = eq('BillingCountry', var('country'));
         Query accountQuery = Query.of('Account').whereBy(filter);
-        Assert.areEqual('SELECT Id FROM Account WHERE BillingCountry = :country', accountQuery.buildSOQL());
+        Assert.areEqual('SELECT Id FROM Account WHERE (BillingCountry = :country)', accountQuery.buildSOQL());
 
         accountQuery.run(new Map<String, Object>{ 'country' => 'China' });
 
@@ -62,50 +62,50 @@ public with sharing class QueryTest extends Query {
         // Field Name
         filter = likex('BillingCountry', var('country'));
         Assert.areEqual(
-            'SELECT Id FROM Account WHERE BillingCountry LIKE :country',
+            'SELECT Id FROM Account WHERE (BillingCountry LIKE :country)',
             Query.of('Account').whereBy(filter).buildSOQL()
         );
 
         filter = nlike('BillingCountry', var('country'));
         Assert.areEqual(
-            'SELECT Id FROM Account WHERE (NOT BillingCountry LIKE :country)',
+            'SELECT Id FROM Account WHERE ((NOT BillingCountry LIKE :country))',
             Query.of('Account').whereBy(filter).buildSOQL()
         );
 
         filter = inx('BillingCountry', var('countries'));
         Assert.areEqual(
-            'SELECT Id FROM Account WHERE BillingCountry IN :countries',
+            'SELECT Id FROM Account WHERE (BillingCountry IN :countries)',
             Query.of('Account').whereBy(filter).buildSOQL()
         );
 
         filter = nin('BillingCountry', var('countries'));
         Assert.areEqual(
-            'SELECT Id FROM Account WHERE BillingCountry NOT IN :countries',
+            'SELECT Id FROM Account WHERE (BillingCountry NOT IN :countries)',
             Query.of('Account').whereBy(filter).buildSOQL()
         );
 
         // ToLabelFunction
         filter = likex(toLabel('BillingCountry'), var('country'));
         Assert.areEqual(
-            'SELECT Id FROM Account WHERE toLabel(BillingCountry) LIKE :country',
+            'SELECT Id FROM Account WHERE (toLabel(BillingCountry) LIKE :country)',
             Query.of('Account').whereBy(filter).buildSOQL()
         );
 
         filter = nlike(toLabel('BillingCountry'), var('country'));
         Assert.areEqual(
-            'SELECT Id FROM Account WHERE (NOT toLabel(BillingCountry) LIKE :country)',
+            'SELECT Id FROM Account WHERE ((NOT toLabel(BillingCountry) LIKE :country))',
             Query.of('Account').whereBy(filter).buildSOQL()
         );
 
         filter = inx(toLabel('BillingCountry'), var('countries'));
         Assert.areEqual(
-            'SELECT Id FROM Account WHERE toLabel(BillingCountry) IN :countries',
+            'SELECT Id FROM Account WHERE (toLabel(BillingCountry) IN :countries)',
             Query.of('Account').whereBy(filter).buildSOQL()
         );
 
         filter = nin(toLabel('BillingCountry'), var('countries'));
         Assert.areEqual(
-            'SELECT Id FROM Account WHERE toLabel(BillingCountry) NOT IN :countries',
+            'SELECT Id FROM Account WHERE (toLabel(BillingCountry) NOT IN :countries)',
             Query.of('Account').whereBy(filter).buildSOQL()
         );
     }
@@ -163,9 +163,6 @@ public with sharing class QueryTest extends Query {
                 'AND BillingCountry = :tmpVar3)',
             accountQuery.buildSOQL()
         );
-
-        accountQuery = Query.of('Account').whereBy(andx());
-        Assert.areEqual('SELECT Id FROM Account WHERE ', accountQuery.buildSOQL());
     }
 
     @isTest
@@ -197,9 +194,6 @@ public with sharing class QueryTest extends Query {
                 'OR BillingCountry = :tmpVar3)',
             accountQuery.buildSOQL()
         );
-
-        accountQuery = Query.of('Account').whereBy(orx());
-        Assert.areEqual('SELECT Id FROM Account WHERE ', accountQuery.buildSOQL());
     }
 
     @isTest
@@ -220,6 +214,111 @@ public with sharing class QueryTest extends Query {
         );
     }
 
+    @isTest // prettier-ignore
+    static void testLogical_Where() {
+        Filter filter = eq('BillingCountry', 'China');
+
+        // empty where clause
+        Query accountQuery = Query.of('Account').whereBy(orx());
+        Assert.areEqual('SELECT Id FROM Account', accountQuery.buildSOQL());
+
+        accountQuery = Query.of('Account').whereBy(andx());
+        Assert.areEqual('SELECT Id FROM Account', accountQuery.buildSOQL());
+
+        accountQuery = Query.of('Account');
+        accountQuery.whereBy();
+        Assert.areEqual('SELECT Id FROM Account', accountQuery.buildSOQL());
+
+
+        // single filter in logical operator
+        accountQuery = Query.of('Account').whereBy(orx());
+        accountQuery.whereBy().add(filter);
+        Assert.areEqual('SELECT Id FROM Account WHERE (BillingCountry = :tmpVar1)', accountQuery.buildSOQL());
+
+        accountQuery = Query.of('Account').whereBy(andx());
+        accountQuery.whereBy().add(filter);
+        Assert.areEqual('SELECT Id FROM Account WHERE (BillingCountry = :tmpVar1)', accountQuery.buildSOQL());
+
+        accountQuery = Query.of('Account');
+        accountQuery.whereBy().add(filter);
+        Assert.areEqual('SELECT Id FROM Account WHERE (BillingCountry = :tmpVar1)', accountQuery.buildSOQL());
+
+        // double filters in logical operator
+        accountQuery = Query.of('Account').whereBy(orx());
+        accountQuery.whereBy().add(filter);
+        accountQuery.whereBy().add(filter);
+        Assert.areEqual('SELECT Id FROM Account WHERE (BillingCountry = :tmpVar1 OR BillingCountry = :tmpVar2)', accountQuery.buildSOQL());
+
+        accountQuery = Query.of('Account').whereBy(andx());
+        accountQuery.whereBy().add(filter);
+        accountQuery.whereBy().add(filter);
+        Assert.areEqual('SELECT Id FROM Account WHERE (BillingCountry = :tmpVar1 AND BillingCountry = :tmpVar2)', accountQuery.buildSOQL());
+
+        accountQuery = Query.of('Account');
+        accountQuery.whereBy().add(filter);
+        accountQuery.whereBy().add(filter);
+        Assert.areEqual('SELECT Id FROM Account WHERE (BillingCountry = :tmpVar1 AND BillingCountry = :tmpVar2)', accountQuery.buildSOQL());
+
+        // double filters in logical operator
+        accountQuery = Query.of('Account').whereBy(orx().add(filter));
+        accountQuery.whereBy().add(filter);
+        Assert.areEqual('SELECT Id FROM Account WHERE (BillingCountry = :tmpVar1 OR BillingCountry = :tmpVar2)', accountQuery.buildSOQL());
+
+        accountQuery = Query.of('Account').whereBy(andx().add(filter));
+        accountQuery.whereBy().add(filter);
+        Assert.areEqual('SELECT Id FROM Account WHERE (BillingCountry = :tmpVar1 AND BillingCountry = :tmpVar2)', accountQuery.buildSOQL());
+
+        accountQuery = Query.of('Account').whereBy(filter);
+        accountQuery.whereBy().add(filter);
+        Assert.areEqual('SELECT Id FROM Account WHERE (BillingCountry = :tmpVar1 AND BillingCountry = :tmpVar2)', accountQuery.buildSOQL());
+    }
+
+    @isTest // prettier-ignore
+    static void testLogical_Having() {
+        Filter filter = eq('BillingCountry', 'China');
+
+        // empty where clause
+        Query accountQuery = Query.of('Account').havingBy(orx());
+        Assert.areEqual('SELECT Id FROM Account', accountQuery.buildSOQL());
+
+        accountQuery = Query.of('Account').havingBy(andx());
+        Assert.areEqual('SELECT Id FROM Account', accountQuery.buildSOQL());
+
+        accountQuery = Query.of('Account');
+        accountQuery.havingBy();
+        Assert.areEqual('SELECT Id FROM Account', accountQuery.buildSOQL());
+
+
+        // single filter in logical operator
+        accountQuery = Query.of('Account').havingBy(orx());
+        accountQuery.havingBy().add(filter);
+        Assert.areEqual('SELECT Id FROM Account HAVING (BillingCountry = :tmpVar1)', accountQuery.buildSOQL());
+
+        accountQuery = Query.of('Account').havingBy(andx());
+        accountQuery.havingBy().add(filter);
+        Assert.areEqual('SELECT Id FROM Account HAVING (BillingCountry = :tmpVar1)', accountQuery.buildSOQL());
+
+        accountQuery = Query.of('Account');
+        accountQuery.havingBy().add(filter);
+        Assert.areEqual('SELECT Id FROM Account HAVING (BillingCountry = :tmpVar1)', accountQuery.buildSOQL());
+
+        // double filters in logical operator
+        accountQuery = Query.of('Account').havingBy(orx());
+        accountQuery.havingBy().add(filter);
+        accountQuery.havingBy().add(filter);
+        Assert.areEqual('SELECT Id FROM Account HAVING (BillingCountry = :tmpVar1 OR BillingCountry = :tmpVar2)', accountQuery.buildSOQL());
+
+        accountQuery = Query.of('Account').havingBy(andx());
+        accountQuery.havingBy().add(filter);
+        accountQuery.havingBy().add(filter);
+        Assert.areEqual('SELECT Id FROM Account HAVING (BillingCountry = :tmpVar1 AND BillingCountry = :tmpVar2)', accountQuery.buildSOQL());
+
+        accountQuery = Query.of('Account');
+        accountQuery.havingBy().add(filter);
+        accountQuery.havingBy().add(filter);
+        Assert.areEqual('SELECT Id FROM Account HAVING (BillingCountry = :tmpVar1 AND BillingCountry = :tmpVar2)', accountQuery.buildSOQL());
+    }
+
     // #endregion
     // ======================
 
@@ -231,81 +330,81 @@ public with sharing class QueryTest extends Query {
         // param1 are Strings
         Query.Filter filter = eq('BillingCountry', 'China');
         Assert.areEqual(
-            'SELECT Id FROM Account WHERE BillingCountry = :tmpVar1',
+            'SELECT Id FROM Account WHERE (BillingCountry = :tmpVar1)',
             Query.of('Account').whereBy(filter).buildSOQL()
         );
 
         filter = eq('BillingCountry', true);
         Assert.areEqual(
-            'SELECT Id FROM Account WHERE BillingCountry = :tmpVar1',
+            'SELECT Id FROM Account WHERE (BillingCountry = :tmpVar1)',
             Query.of('Account').whereBy(filter).buildSOQL()
         );
 
         filter = eq('BillingCountry', 123.456);
         Assert.areEqual(
-            'SELECT Id FROM Account WHERE BillingCountry = :tmpVar1',
+            'SELECT Id FROM Account WHERE (BillingCountry = :tmpVar1)',
             Query.of('Account').whereBy(filter).buildSOQL()
         );
 
         filter = eq('BillingCountry', Datetime.newInstance(2023, 1, 1, 12, 12, 12));
         Assert.areEqual(
-            'SELECT Id FROM Account WHERE BillingCountry = :tmpVar1',
+            'SELECT Id FROM Account WHERE (BillingCountry = :tmpVar1)',
             Query.of('Account').whereBy(filter).buildSOQL()
         );
 
         filter = eq('BillingCountry', Date.newInstance(2023, 1, 1));
         Assert.areEqual(
-            'SELECT Id FROM Account WHERE BillingCountry = :tmpVar1',
+            'SELECT Id FROM Account WHERE (BillingCountry = :tmpVar1)',
             Query.of('Account').whereBy(filter).buildSOQL()
         );
 
         filter = eq('BillingCountry', Time.newInstance(12, 12, 12, 12));
         Assert.areEqual(
-            'SELECT Id FROM Account WHERE BillingCountry = :tmpVar1',
+            'SELECT Id FROM Account WHERE (BillingCountry = :tmpVar1)',
             Query.of('Account').whereBy(filter).buildSOQL()
         );
 
         filter = eq('BillingCountry', LAST_N_DAYS(2));
         Assert.areEqual(
-            'SELECT Id FROM Account WHERE BillingCountry = LAST_N_DAYS:2',
+            'SELECT Id FROM Account WHERE (BillingCountry = LAST_N_DAYS:2)',
             Query.of('Account').whereBy(filter).buildSOQL()
         );
 
         filter = eq('BillingCountry', CURRENCY('CNY', 2000));
         Assert.areEqual(
-            'SELECT Id FROM Account WHERE BillingCountry = CNY2000',
+            'SELECT Id FROM Account WHERE (BillingCountry = CNY2000)',
             Query.of('Account').whereBy(filter).buildSOQL()
         );
 
         filter = eq('BillingCountry', null);
         Assert.areEqual(
-            'SELECT Id FROM Account WHERE BillingCountry = NULL',
+            'SELECT Id FROM Account WHERE (BillingCountry = NULL)',
             Query.of('Account').whereBy(filter).buildSOQL()
         );
 
         // param1 are others
-        filter = eq(max('BillingCountry'), 'China');
-        Assert.areEqual(
-            'SELECT Id FROM Account HAVING MAX(BillingCountry) = :tmpVar1',
-            Query.of('Account').havingBy(filter).buildSOQL()
-        );
-
         filter = eq(distance('ShippingAddress', Location.newInstance(37.775001, -122.41801), 'km'), 12.3);
         Assert.areEqual(
-            'SELECT Id FROM Account WHERE DISTANCE(ShippingAddress, GEOLOCATION(37.775001, -122.41801), \'km\') = :tmpVar1',
+            'SELECT Id FROM Account WHERE (DISTANCE(ShippingAddress, GEOLOCATION(37.775001, -122.41801), \'km\') = :tmpVar1)',
             Query.of('Account').whereBy(filter).buildSOQL()
         );
 
         filter = eq(calendarMonth('CreatedDate'), 2);
         Assert.areEqual(
-            'SELECT Id FROM Account WHERE CALENDAR_MONTH(CreatedDate) = :tmpVar1',
+            'SELECT Id FROM Account WHERE (CALENDAR_MONTH(CreatedDate) = :tmpVar1)',
             Query.of('Account').whereBy(filter).buildSOQL()
         );
 
         filter = eq(toLabel('AccountSource'), 'Advertisement');
         Assert.areEqual(
-            'SELECT Id FROM Account WHERE toLabel(AccountSource) = :tmpVar1',
+            'SELECT Id FROM Account WHERE (toLabel(AccountSource) = :tmpVar1)',
             Query.of('Account').whereBy(filter).buildSOQL()
+        );
+
+        filter = eq(max('BillingCountry'), 'China');
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING (MAX(BillingCountry) = :tmpVar1)',
+            Query.of('Account').havingBy(filter).buildSOQL()
         );
     }
 
@@ -314,81 +413,81 @@ public with sharing class QueryTest extends Query {
         // param1 are Strings
         Query.Filter filter = ne('BillingCountry', 'China');
         Assert.areEqual(
-            'SELECT Id FROM Account WHERE BillingCountry != :tmpVar1',
+            'SELECT Id FROM Account WHERE (BillingCountry != :tmpVar1)',
             Query.of('Account').whereBy(filter).buildSOQL()
         );
 
         filter = ne('BillingCountry', true);
         Assert.areEqual(
-            'SELECT Id FROM Account WHERE BillingCountry != :tmpVar1',
+            'SELECT Id FROM Account WHERE (BillingCountry != :tmpVar1)',
             Query.of('Account').whereBy(filter).buildSOQL()
         );
 
         filter = ne('BillingCountry', 123.456);
         Assert.areEqual(
-            'SELECT Id FROM Account WHERE BillingCountry != :tmpVar1',
+            'SELECT Id FROM Account WHERE (BillingCountry != :tmpVar1)',
             Query.of('Account').whereBy(filter).buildSOQL()
         );
 
         filter = ne('BillingCountry', Datetime.newInstance(2023, 1, 1, 12, 12, 12));
         Assert.areEqual(
-            'SELECT Id FROM Account WHERE BillingCountry != :tmpVar1',
+            'SELECT Id FROM Account WHERE (BillingCountry != :tmpVar1)',
             Query.of('Account').whereBy(filter).buildSOQL()
         );
 
         filter = ne('BillingCountry', Date.newInstance(2023, 1, 1));
         Assert.areEqual(
-            'SELECT Id FROM Account WHERE BillingCountry != :tmpVar1',
+            'SELECT Id FROM Account WHERE (BillingCountry != :tmpVar1)',
             Query.of('Account').whereBy(filter).buildSOQL()
         );
 
         filter = ne('BillingCountry', Time.newInstance(12, 12, 12, 12));
         Assert.areEqual(
-            'SELECT Id FROM Account WHERE BillingCountry != :tmpVar1',
+            'SELECT Id FROM Account WHERE (BillingCountry != :tmpVar1)',
             Query.of('Account').whereBy(filter).buildSOQL()
         );
 
         filter = ne('BillingCountry', LAST_N_DAYS(2));
         Assert.areEqual(
-            'SELECT Id FROM Account WHERE BillingCountry != LAST_N_DAYS:2',
+            'SELECT Id FROM Account WHERE (BillingCountry != LAST_N_DAYS:2)',
             Query.of('Account').whereBy(filter).buildSOQL()
         );
 
         filter = ne('BillingCountry', CURRENCY('CNY', 2000));
         Assert.areEqual(
-            'SELECT Id FROM Account WHERE BillingCountry != CNY2000',
+            'SELECT Id FROM Account WHERE (BillingCountry != CNY2000)',
             Query.of('Account').whereBy(filter).buildSOQL()
         );
 
         filter = ne('BillingCountry', null);
         Assert.areEqual(
-            'SELECT Id FROM Account WHERE BillingCountry != NULL',
+            'SELECT Id FROM Account WHERE (BillingCountry != NULL)',
             Query.of('Account').whereBy(filter).buildSOQL()
         );
 
         // param1 are others
-        filter = ne(max('BillingCountry'), 'China');
-        Assert.areEqual(
-            'SELECT Id FROM Account HAVING MAX(BillingCountry) != :tmpVar1',
-            Query.of('Account').havingBy(filter).buildSOQL()
-        );
-
         filter = ne(distance('ShippingAddress', Location.newInstance(37.775001, -122.41801), 'km'), 12.3);
         Assert.areEqual(
-            'SELECT Id FROM Account WHERE DISTANCE(ShippingAddress, GEOLOCATION(37.775001, -122.41801), \'km\') != :tmpVar1',
+            'SELECT Id FROM Account WHERE (DISTANCE(ShippingAddress, GEOLOCATION(37.775001, -122.41801), \'km\') != :tmpVar1)',
             Query.of('Account').whereBy(filter).buildSOQL()
         );
 
         filter = ne(calendarMonth('CreatedDate'), 2);
         Assert.areEqual(
-            'SELECT Id FROM Account WHERE CALENDAR_MONTH(CreatedDate) != :tmpVar1',
+            'SELECT Id FROM Account WHERE (CALENDAR_MONTH(CreatedDate) != :tmpVar1)',
             Query.of('Account').whereBy(filter).buildSOQL()
         );
 
         filter = ne(toLabel('AccountSource'), 'Advertisement');
         Assert.areEqual(
-            'SELECT Id FROM Account WHERE toLabel(AccountSource) != :tmpVar1',
+            'SELECT Id FROM Account WHERE (toLabel(AccountSource) != :tmpVar1)',
             Query.of('Account').whereBy(filter).buildSOQL()
+        );
+
+        filter = ne(max('BillingCountry'), 'China');
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING (MAX(BillingCountry) != :tmpVar1)',
+            Query.of('Account').havingBy(filter).buildSOQL()
         );
     }
 
@@ -442,12 +541,6 @@ public with sharing class QueryTest extends Query {
         );
 
         // param1 are others
-        filter = between(max('BillingCountry'), 'China', 'China');
-        Assert.areEqual(
-            'SELECT Id FROM Account HAVING (MAX(BillingCountry) >= :tmpVar1 AND MAX(BillingCountry) <= :tmpVar2)',
-            Query.of('Account').havingBy(filter).buildSOQL()
-        );
-
         filter = between(
             DISTANCE('ShippingAddress', Location.newInstance(37.775001, -122.41801), 'km'),
             12.3,
@@ -469,6 +562,13 @@ public with sharing class QueryTest extends Query {
             'SELECT Id FROM Account WHERE (toLabel(AccountSource) >= :tmpVar1 AND toLabel(AccountSource) <= :tmpVar2)',
             Query.of('Account').whereBy(filter).buildSOQL()
         );
+
+        filter = between(max('BillingCountry'), 'China', 'China');
+        Assert.areEqual(
+            'SELECT Id FROM Account HAVING (MAX(BillingCountry) >= :tmpVar1 AND MAX(BillingCountry) <= :tmpVar2)',
+            Query.of('Account').havingBy(filter).buildSOQL()
+        );
+
     }
 
     @isTest
@@ -476,49 +576,49 @@ public with sharing class QueryTest extends Query {
         // param1 are Strings
         Query.Filter filter = lt('BillingCountry', 'China');
         Assert.areEqual(
-            'SELECT Id FROM Account WHERE BillingCountry < :tmpVar1',
+            'SELECT Id FROM Account WHERE (BillingCountry < :tmpVar1)',
             Query.of('Account').whereBy(filter).buildSOQL()
         );
 
         filter = lte('BillingCountry', 'China');
         Assert.areEqual(
-            'SELECT Id FROM Account WHERE BillingCountry <= :tmpVar1',
+            'SELECT Id FROM Account WHERE (BillingCountry <= :tmpVar1)',
             Query.of('Account').whereBy(filter).buildSOQL()
         );
 
         filter = gt('BillingCountry', 'China');
         Assert.areEqual(
-            'SELECT Id FROM Account WHERE BillingCountry > :tmpVar1',
+            'SELECT Id FROM Account WHERE (BillingCountry > :tmpVar1)',
             Query.of('Account').whereBy(filter).buildSOQL()
         );
 
         filter = gte('BillingCountry', 'China');
         Assert.areEqual(
-            'SELECT Id FROM Account WHERE BillingCountry >= :tmpVar1',
+            'SELECT Id FROM Account WHERE (BillingCountry >= :tmpVar1)',
             Query.of('Account').whereBy(filter).buildSOQL()
         );
 
         filter = lt(toLabel('BillingCountry'), 'China');
         Assert.areEqual(
-            'SELECT Id FROM Account WHERE toLabel(BillingCountry) < :tmpVar1',
+            'SELECT Id FROM Account WHERE (toLabel(BillingCountry) < :tmpVar1)',
             Query.of('Account').whereBy(filter).buildSOQL()
         );
 
         filter = lte(toLabel('BillingCountry'), 'China');
         Assert.areEqual(
-            'SELECT Id FROM Account WHERE toLabel(BillingCountry) <= :tmpVar1',
+            'SELECT Id FROM Account WHERE (toLabel(BillingCountry) <= :tmpVar1)',
             Query.of('Account').whereBy(filter).buildSOQL()
         );
 
         filter = gt(toLabel('BillingCountry'), 'China');
         Assert.areEqual(
-            'SELECT Id FROM Account WHERE toLabel(BillingCountry) > :tmpVar1',
+            'SELECT Id FROM Account WHERE (toLabel(BillingCountry) > :tmpVar1)',
             Query.of('Account').whereBy(filter).buildSOQL()
         );
 
         filter = gte(toLabel('BillingCountry'), 'China');
         Assert.areEqual(
-            'SELECT Id FROM Account WHERE toLabel(BillingCountry) >= :tmpVar1',
+            'SELECT Id FROM Account WHERE (toLabel(BillingCountry) >= :tmpVar1)',
             Query.of('Account').whereBy(filter).buildSOQL()
         );
     }
@@ -528,20 +628,20 @@ public with sharing class QueryTest extends Query {
         Query.Filter filter;
         filter = likex('BillingCountry', '%China%');
         Assert.areEqual(
-            'SELECT Id FROM Account WHERE BillingCountry LIKE :tmpVar1',
+            'SELECT Id FROM Account WHERE (BillingCountry LIKE :tmpVar1)',
+            Query.of('Account').whereBy(filter).buildSOQL()
+        );
+
+        filter = likex(toLabel('BillingCountry'), '%China%');
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE (toLabel(BillingCountry) LIKE :tmpVar1)',
             Query.of('Account').whereBy(filter).buildSOQL()
         );
 
         filter = likex(max('BillingCountry'), '%China%');
         Assert.areEqual(
-            'SELECT Id FROM Account HAVING MAX(BillingCountry) LIKE :tmpVar1',
+            'SELECT Id FROM Account HAVING (MAX(BillingCountry) LIKE :tmpVar1)',
             Query.of('Account').havingBy(filter).buildSOQL()
-        );
-
-        filter = likex(toLabel('BillingCountry'), '%China%');
-        Assert.areEqual(
-            'SELECT Id FROM Account WHERE toLabel(BillingCountry) LIKE :tmpVar1',
-            Query.of('Account').whereBy(filter).buildSOQL()
         );
     }
 
@@ -550,20 +650,20 @@ public with sharing class QueryTest extends Query {
         Query.Filter filter;
         filter = nlike('BillingCountry', '%China%');
         Assert.areEqual(
-            'SELECT Id FROM Account WHERE (NOT BillingCountry LIKE :tmpVar1)',
+            'SELECT Id FROM Account WHERE ((NOT BillingCountry LIKE :tmpVar1))',
+            Query.of('Account').whereBy(filter).buildSOQL()
+        );
+
+        filter = nlike(toLabel('BillingCountry'), '%China%');
+        Assert.areEqual(
+            'SELECT Id FROM Account WHERE ((NOT toLabel(BillingCountry) LIKE :tmpVar1))',
             Query.of('Account').whereBy(filter).buildSOQL()
         );
 
         filter = nlike(max('BillingCountry'), '%China%');
         Assert.areEqual(
-            'SELECT Id FROM Account HAVING (NOT MAX(BillingCountry) LIKE :tmpVar1)',
+            'SELECT Id FROM Account HAVING ((NOT MAX(BillingCountry) LIKE :tmpVar1))',
             Query.of('Account').havingBy(filter).buildSOQL()
-        );
-
-        filter = nlike(toLabel('BillingCountry'), '%China%');
-        Assert.areEqual(
-            'SELECT Id FROM Account WHERE (NOT toLabel(BillingCountry) LIKE :tmpVar1)',
-            Query.of('Account').whereBy(filter).buildSOQL()
         );
     }
 
@@ -572,25 +672,25 @@ public with sharing class QueryTest extends Query {
         Query.Filter filter;
         filter = includes('BillingCountry', new List<String>{ 'AAA', 'BBB', 'CCC', 'DDD', 'EEE' });
         Assert.areEqual(
-            'SELECT Id FROM Account WHERE BillingCountry INCLUDES (:tmpVar1, :tmpVar2, :tmpVar3, :tmpVar4, :tmpVar5)',
+            'SELECT Id FROM Account WHERE (BillingCountry INCLUDES (:tmpVar1, :tmpVar2, :tmpVar3, :tmpVar4, :tmpVar5))',
             Query.of('Account').whereBy(filter).buildSOQL()
         );
 
         filter = excludes('BillingCountry', new List<String>{ 'AAA', 'BBB', 'CCC', 'DDD', 'EEE' });
         Assert.areEqual(
-            'SELECT Id FROM Account WHERE BillingCountry EXCLUDES (:tmpVar1, :tmpVar2, :tmpVar3, :tmpVar4, :tmpVar5)',
+            'SELECT Id FROM Account WHERE (BillingCountry EXCLUDES (:tmpVar1, :tmpVar2, :tmpVar3, :tmpVar4, :tmpVar5))',
             Query.of('Account').whereBy(filter).buildSOQL()
         );
 
         filter = includes(toLabel('BillingCountry'), new List<String>{ 'AAA', 'BBB', 'CCC', 'DDD', 'EEE' });
         Assert.areEqual(
-            'SELECT Id FROM Account WHERE toLabel(BillingCountry) INCLUDES (:tmpVar1, :tmpVar2, :tmpVar3, :tmpVar4, :tmpVar5)',
+            'SELECT Id FROM Account WHERE (toLabel(BillingCountry) INCLUDES (:tmpVar1, :tmpVar2, :tmpVar3, :tmpVar4, :tmpVar5))',
             Query.of('Account').whereBy(filter).buildSOQL()
         );
 
         filter = excludes(toLabel('BillingCountry'), new List<String>{ 'AAA', 'BBB', 'CCC', 'DDD', 'EEE' });
         Assert.areEqual(
-            'SELECT Id FROM Account WHERE toLabel(BillingCountry) EXCLUDES (:tmpVar1, :tmpVar2, :tmpVar3, :tmpVar4, :tmpVar5)',
+            'SELECT Id FROM Account WHERE (toLabel(BillingCountry) EXCLUDES (:tmpVar1, :tmpVar2, :tmpVar3, :tmpVar4, :tmpVar5))',
             Query.of('Account').whereBy(filter).buildSOQL()
         );
     }
@@ -600,20 +700,20 @@ public with sharing class QueryTest extends Query {
         // String
         Query.Filter filter = inx('BillingCountry', new List<String>{ 'AAA', 'BBB', null });
         Assert.areEqual(
-            'SELECT Id FROM Account WHERE BillingCountry IN :tmpVar1',
+            'SELECT Id FROM Account WHERE (BillingCountry IN :tmpVar1)',
             Query.of('Account').whereBy(filter).buildSOQL()
         );
 
         filter = inx(toLabel('BillingCountry'), new List<String>{ 'AAA', 'BBB', null });
         Assert.areEqual(
-            'SELECT Id FROM Account WHERE toLabel(BillingCountry) IN :tmpVar1',
+            'SELECT Id FROM Account WHERE (toLabel(BillingCountry) IN :tmpVar1)',
             Query.of('Account').whereBy(filter).buildSOQL()
         );
 
         Query contactQuery = Query.of('Contact').selectBy('AccountId');
         filter = inx('Id', contactQuery);
         Assert.areEqual(
-            'SELECT Id FROM Account WHERE Id IN (SELECT AccountId FROM Contact)',
+            'SELECT Id FROM Account WHERE (Id IN (SELECT AccountId FROM Contact))',
             Query.of('Account').whereBy(filter).buildSOQL()
         );
     }
@@ -622,20 +722,20 @@ public with sharing class QueryTest extends Query {
     static void testOperator_Comparison_NIN() {
         Query.Filter filter = nin('BillingCountry', new List<String>{ 'AAA', 'BBB', null });
         Assert.areEqual(
-            'SELECT Id FROM Account WHERE BillingCountry NOT IN :tmpVar1',
+            'SELECT Id FROM Account WHERE (BillingCountry NOT IN :tmpVar1)',
             Query.of('Account').whereBy(filter).buildSOQL()
         );
 
         filter = nin(toLabel('BillingCountry'), new List<String>{ 'AAA', 'BBB', null });
         Assert.areEqual(
-            'SELECT Id FROM Account WHERE toLabel(BillingCountry) NOT IN :tmpVar1',
+            'SELECT Id FROM Account WHERE (toLabel(BillingCountry) NOT IN :tmpVar1)',
             Query.of('Account').whereBy(filter).buildSOQL()
         );
 
         Query contactQuery = Query.of('Contact').selectBy('AccountId');
         filter = nin('Id', contactQuery);
         Assert.areEqual(
-            'SELECT Id FROM Account WHERE Id NOT IN (SELECT AccountId FROM Contact)',
+            'SELECT Id FROM Account WHERE (Id NOT IN (SELECT AccountId FROM Contact))',
             Query.of('Account').whereBy(filter).buildSOQL()
         );
     }
@@ -706,7 +806,7 @@ public with sharing class QueryTest extends Query {
         accountQuery = Query.of('Account')
             .whereBy(lte(DISTANCE('ShippingAddress', Location.newInstance(37.775000, -122.41800), 'mi'), 20));
         Assert.areEqual(
-            'SELECT Id FROM Account WHERE DISTANCE(ShippingAddress, GEOLOCATION(37.775, -122.418), \'mi\') <= :tmpVar1',
+            'SELECT Id FROM Account WHERE (DISTANCE(ShippingAddress, GEOLOCATION(37.775, -122.418), \'mi\') <= :tmpVar1)',
             accountQuery.buildSOQL()
         );
 
@@ -1168,7 +1268,7 @@ public with sharing class QueryTest extends Query {
     @isTest
     static void testLiteral_Currency() {
         Query accountQuery = Query.of('Account').whereBy(eq('AnnualRevenue', CURRENCY('TRY', 100)));
-        Assert.areEqual('SELECT Id FROM Account WHERE AnnualRevenue = TRY100', accountQuery.buildSOQL());
+        Assert.areEqual('SELECT Id FROM Account WHERE (AnnualRevenue = TRY100)', accountQuery.buildSOQL());
     }
 
     // #endregion

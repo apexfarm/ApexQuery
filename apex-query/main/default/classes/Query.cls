@@ -32,6 +32,8 @@ public virtual class Query implements Querable {
 
         Query whereBy(Filter whereClause);
         Query havingBy(Filter havingClause);
+        LogicalFilter whereBy();
+        LogicalFilter havingBy();
 
         Query offset(Integer n);
         Query limitx(Integer n);
@@ -50,6 +52,7 @@ public virtual class Query implements Querable {
     public interface LogicalFilter extends Filter {
         LogicalFilter add(Filter filter);
         LogicalFilter addAll(List<Filter> filters);
+        Boolean isEmpty();
     }
 
     public virtual class Literal {
@@ -119,13 +122,33 @@ public virtual class Query implements Querable {
     }
 
     public Query whereBy(Filter whereClause) {
+        if (!(whereClause instanceof LogicalFilter)) {
+            whereClause = andx().add(whereClause);
+        }
         this.whereClause = whereClause;
         return this;
     }
 
     public Query havingBy(Filter havingClause) {
+        if (!(havingClause instanceof LogicalFilter)) {
+            havingClause = andx().add(havingClause);
+        }
         this.havingClause = havingClause;
         return this;
+    }
+
+    public LogicalFilter whereBy() {
+        if (this.whereClause == null) {
+            this.whereClause = andx();
+        }
+        return (LogicalFilter) this.whereClause;
+    }
+
+    public LogicalFilter havingBy() {
+        if (this.havingClause == null) {
+            this.havingClause = andx();
+        }
+        return (LogicalFilter) this.havingClause;
     }
 
     public Query offset(Integer n) {
@@ -275,7 +298,10 @@ public virtual class Query implements Querable {
         fragments.add(' FROM ');
         fragments.add(fromName);
 
-        if (this.whereClause != null) {
+        if (
+            this.whereClause != null &&
+            (!(this.whereClause instanceof LogicalFilter) || !((LogicalFilter) this.whereClause).isEmpty())
+        ) {
             fragments.add(' WHERE ');
             this.whereClause.buildSOQL_Filter(fragments, tmpVars);
         }
@@ -285,7 +311,10 @@ public virtual class Query implements Querable {
             this.buildSOQL_GroupBy(fragments);
         }
 
-        if (this.havingClause != null) {
+        if (
+            this.havingClause != null &&
+            (!(this.havingClause instanceof LogicalFilter) || !((LogicalFilter) this.havingClause).isEmpty())
+        ) {
             fragments.add(' HAVING ');
             this.havingClause.buildSOQL_Filter(fragments, tmpVars);
         }
@@ -426,6 +455,10 @@ public virtual class Query implements Querable {
         public LogicalFilter addAll(List<Filter> filters) {
             this.filters.addAll(filters);
             return this;
+        }
+
+        public Boolean isEmpty() {
+            return this.filters.isEmpty();
         }
 
         public virtual void buildSOQL_Filter(List<String> fragments, TmpVars tmpVars) {
