@@ -40,6 +40,36 @@ v2.0 was too complex to maintain and use. v3.0 was trying to be simple, although
 
 ---
 
+## Table of Contents
+
+- [1. Naming Conventions](#1-naming-conventions)
+  - [1.1 Naming Readability](#11-naming-readability)
+  - [1.2 Naming Confliction](#12-naming-confliction)
+- [2. Overview](#2-overview)
+  - [2.1 Query Class](#21-query-class)
+  - [2.2 Query Composition](#22-query-composition)
+  - [2.3 Query Chaining](#23-query-chaining)
+  - [2.4 Query Template](#24-query-template)
+  - [2.5 Query Execution](#25-query-execution)
+- [3. Keywords](#3-keywords)
+  - [3.1 From Statement](#31-from-statement)
+  - [3.2 Select Statement](#32-select-statement)
+  - [3.3 Where Statement](#33-where-statement)
+  - [3.4 Order By Statement](#34-order-by-statement)
+  - [3.5 Group By Statement](#35-group-by-statement)
+  - [3.6 Other Keywords](#36-other-keywords)
+- [4. Filters](#4-filters)
+  - [4.1 Comparison Filter](#41-comparison-filter)
+  - [4.2 Logical Filter](#42-logical-filter)
+- [5. Functions](#5-functions)
+  - [5.1 Aggregate Functions](#51-aggregate-functions)
+  - [5.2 Date/Time Functions](#52-datetime-functions)
+  - [5.3 Other Functions](#53-other-functions)
+- [6. Literals](#6-literals)
+  - [6.1 Date Literals](#61-date-literals)
+  - [6.2 Currency Literals](#62-currency-literals)
+- [7. License](#7-license)
+
 ## 1. Naming Conventions
 
 ### 1.1 Naming Readability
@@ -145,7 +175,8 @@ The `Query` class can chain existing ones to compose them together. Multiple lev
 ```java
 public with sharing class AccountQuery extends Query {
     public List<Account> listAccount() {
-        Query parentQuery = Query.of('Account').selectBy('Name', format(convertCurrency('AnnualRevenue')));
+        Query parentQuery = Query.of('Account')
+            .selectBy('Name', format(convertCurrency('AnnualRevenue')));
         Query childQuery = Query.of('Contact').selectBy('Name', 'Email');
 
         return (List<Account>) Query.of('Account')
@@ -270,7 +301,8 @@ SELECT Id FROM Account
 Query accountQuery = Query.of('Account')
     .selectBy('Name', toLabel('Industry'))
     .selectBy(new List<Object> { 'Owner.Name', FORMAT('CreatedDate') })
-    .selectParent('Parent', Query.of('Account').selectBy('Name', format(convertCurrency('AnnualRevenue'))))
+    .selectParent('Parent', Query.of('Account')
+        .selectBy('Name', format(convertCurrency('AnnualRevenue'))))
     .selectChild('Contacts', Query.of('Contact').selectBy('Name', 'Email'));
 ```
 
@@ -305,15 +337,17 @@ Query accountQuery = Query.of('Account')
 
 #### Get Root Filter
 
-Use `whereBy()` to access the root logical filter.
+Use `whereBy()` to access the root filter, so branch filters can be appended to the stem later.
 
 ```java
 // TYPE #1: to append existing filter with default AND logic
-Query accountQuery = Query.of('Account').selectBy('Name').whereBy(gt('AnnualRevenue', 2000));
+Query accountQuery = Query.of('Account').selectBy('Name')
+    .whereBy(gt('AnnualRevenue', 2000));
 accountQuery.whereBy().add(lt('AnnualRevenue', 6000));
 
 // TYPE #2: to append existing logical filter
-Query accountQuery = Query.of('Account').selectBy('Name').whereBy(andx().add(gt('AnnualRevenue', 2000)));
+Query accountQuery = Query.of('Account').selectBy('Name')
+    .whereBy(andx().add(gt('AnnualRevenue', 2000)));
 accountQuery.whereBy().add(lt('AnnualRevenue', 6000));
 
 // TYPE #3: to append new filters with default AND logic
