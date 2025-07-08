@@ -6,8 +6,8 @@ A query builder to build SOQL dynamically.
 
 | Environment           | Installation Link                                                                                                                                         | Version   |
 | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
-| Production, Developer | <a target="_blank" href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04tGC000007TORgYAO"><img src="docs/images/deploy-button.png"></a> | ver 3.0.3 |
-| Sandbox               | <a target="_blank" href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04tGC000007TORgYAO"><img src="docs/images/deploy-button.png"></a>  | ver 3.0.3 |
+| Production, Developer | <a target="_blank" href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04tGC000007TORgYAO"><img src="docs/images/deploy-button.png"></a> | ver 3.0.4 |
+| Sandbox               | <a target="_blank" href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04tGC000007TORgYAO"><img src="docs/images/deploy-button.png"></a>  | ver 3.0.4 |
 
 ---
 
@@ -170,7 +170,7 @@ public with sharing class AccountQuery extends Query {
 
 ### 2.3 Query Chaining
 
-The `Query` class can chain existing ones to compose them together. Multiple levels of parent and child chaining are supported. And child chaining can even mix with its own parent chaining. But it doesn't support queries with group by clause.
+Parent and child relationship can be assembled via query chaining. Multiple levels of parent and child chaining are supported, but not for queries with group by clause.
 
 ```java
 public with sharing class AccountQuery extends Query {
