@@ -1423,6 +1423,10 @@ public virtual class Query implements Querable {
     // ============================
     // #region Group By Aggregation
 
+    public static String count() {
+        return 'COUNT()';
+    }
+
     public static String count(String field) {
         return 'COUNT(' + field + ')';
     }

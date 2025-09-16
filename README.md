@@ -1,6 +1,6 @@
 # Apex Query
 
-![](https://img.shields.io/badge/version-3.0.4-brightgreen.svg) ![](https://img.shields.io/badge/build-passing-brightgreen.svg) ![](https://img.shields.io/badge/coverage-99%25-brightgreen.svg)
+![](https://img.shields.io/badge/version-3.0.5-brightgreen.svg) ![](https://img.shields.io/badge/build-passing-brightgreen.svg) ![](https://img.shields.io/badge/coverage-99%25-brightgreen.svg)
 
 A query builder for dynamic SOQL construction.
 
@@ -8,8 +8,8 @@ A query builder for dynamic SOQL construction.
 
 | Environment           | Installation Link                                                                                                                                         | Version   |
 | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
-| Production, Developer | <a target="_blank" href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04tGC000007TORgYAO"><img src="docs/images/deploy-button.png"></a> | ver 3.0.4 |
-| Sandbox               | <a target="_blank" href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04tGC000007TORgYAO"><img src="docs/images/deploy-button.png"></a>  | ver 3.0.4 |
+| Production, Developer | <a target="_blank" href="https://login.salesforce.com/packaging/installPackage.apexp?p0=04tGC000007TPn6YAG"><img src="docs/images/deploy-button.png"></a> | ver 3.0.5 |
+| Sandbox               | <a target="_blank" href="https://test.salesforce.com/packaging/installPackage.apexp?p0=04tGC000007TPn6YAG"><img src="docs/images/deploy-button.png"></a>  | ver 3.0.5 |
 
 ---
 
@@ -20,7 +20,7 @@ Version 2.0 was too complex to maintain and use. Version 3.0 aims for simplicity
 - **Key Updates**
   - Performance improved by 30%. This is a modest gain, roughly a 7 vs 10 CPU time difference.
   - Strings are now first-class citizens, and strong type checking has been removed.
-  - Rarely used features, such as value object concepts, have been removed.
+  - Rarely used features have been removed.
 - **New Features**:
   - [Query Composition](#22-query-composition)
   - [Query Chaining](#23-query-chaining)
@@ -115,7 +115,7 @@ ORDER BY AnnualRevenue DESC NULLS LAST
 
 ### 2.2 Query Composition
 
-The main benefit of this library is the ability to break down a full query into various parts and compose them together conditionally. For example, the above SOQL can be decomposed into the following dynamic structure:
+The main advantage of this library is its flexibility: you can split a complete query into multiple segments, freely combine or reorder them as needed, and assemble the final query conditionally. For example, the SOQL above can be broken down into several dynamic components and then composed together as required:
 
 ```java
 public with sharing class AccountQuery extends Query {
@@ -201,7 +201,7 @@ public with sharing class AccountQuery extends Query {
 
 ### 2.4 Query Template
 
-When you want to run the same `Query` with different binding variables, use the following pattern. **Note**: Query templates should be built with `var()` and binding variable names.
+When you want to run the same `Query` with different binding variables, use the following pattern. **Note**: Query templates should be built with `var(binding variable name)`.
 
 ```java
 public with sharing class AccountQuery extends Query {
@@ -247,18 +247,18 @@ WHERE (AnnualRevenue > :revenue AND BillingState = :state)
 
 Execute with the default `AccessLevel.SYSTEM_MODE`:
 
-|       | API            | API with Binding Variables | Return Types                                            |
-| ----- | -------------- | -------------------------- | ------------------------------------------------------- |
-| **1** | `run()`        | `run(bindingVars)`         | `List<SObject>`                                         |
-| **2** | `getLocator()` | `getLocator(bindingVars)`  | `Database.QueryLocator`                                 |
-| **3** | `getCount()`   | `getCount(bindingVars)`    | `Integer`, must be used together with `SELECT COUNT()`. |
+|       | API            | API with Binding Variables | Return Types                                               |
+| ----- | -------------- | -------------------------- | ---------------------------------------------------------- |
+| **1** | `run()`        | `run(bindingVars)`         | `List<SObject>`                                            |
+| **2** | `getLocator()` | `getLocator(bindingVars)`  | `Database.QueryLocator`                                    |
+| **3** | `getCount()`   | `getCount(bindingVars)`    | `Integer`, must be used together with `selectBy(count())`. |
 
 Execute with any `AccessLevel`, such as `AccessLevel.USER_MODE`:
 | | API | API with Access Level | Return Types |
 | ----- | ------------------------- | -------------------------------------- | ------------------------------------------------------- |
 | **1** | `run(AccessLevel)` | `run(bindingVars, AccessLevel)` | `List<SObject>` |
 | **2** | `getLocator(AccessLevel)` | `getLocator(bindingVars, AccessLevel)` | `Database.QueryLocator` |
-| **3** | `getCount(AccessLevel)` | `getCount(bindingVars, AccessLevel)` | `Integer`, must be used together with `SELECT COUNT()`. |
+| **3** | `getCount(AccessLevel)` | `getCount(bindingVars, AccessLevel)` | `Integer`, must be used together with `selectBy(count())`. |
 
 ## 3. Keywords
 
@@ -299,8 +299,8 @@ Equivalent to the following SOQL:
 ```sql
 SELECT Name, toLabel(Industry),
     Owner.Name, FORMAT(CreatedDate)
-    Parent.Name, FORMAT(convertCurrency(Parent.AnnualRevenue)) -- Parent Chaining
-    (SELECT Name, Email FROM Contacts)                         -- Child Chaining
+    Parent.Name, FORMAT(convertCurrency(Parent.AnnualRevenue))
+    (SELECT Name, Email FROM Contacts)
 FROM Account
 ```
 

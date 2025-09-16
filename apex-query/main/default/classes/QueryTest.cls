@@ -38,7 +38,14 @@ public with sharing class QueryTest extends Query {
         Query accountQuery = Query.of('Account').limitx(3).offset(3);
         accountQuery.run();
         accountQuery.getLocator();
-        accountQuery.getCount();
+    }
+
+    @isTest
+    static void testRun_getCount() {
+        Query accountQuery = Query.of('Account').selectBy(count()).whereBy(eq('BillingCountry', 'China'));
+        Assert.areEqual('SELECT COUNT() FROM Account WHERE (BillingCountry = :tmpVar1)', accountQuery.buildSOQL());
+        Integer count = accountQuery.getCount();
+        Assert.areEqual(0, count);
     }
 
     @isTest
