@@ -13,6 +13,10 @@ A query builder for dynamic SOQL construction.
 
 ---
 
+### Translations
+
+- [简体中文](docs/README.zh-CN.md)
+
 ### Release v3.0.0
 
 Version 2.0 was too complex to maintain and use. Version 3.0 aims for simplicity, though there is limited room for improvement. During the redesign, I also considered whether simple string concatenation would suffice.
