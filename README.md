@@ -4,7 +4,7 @@
 
 A query builder for dynamic SOQL construction.
 
-**Support:** If you find this library helpful, please consider sharing it on Twitter or recommending it to your friends or colleagues. Every new star truly motivates me—just one more can make my week!
+**Support:** If you find this library helpful, please consider sharing it on Twitter or recommending it to your friends or colleagues.
 
 | Environment           | Installation Link                                                                                                                                         | Version   |
 | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
